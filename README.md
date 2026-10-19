@@ -8,51 +8,121 @@
 </p>
 
 ## About Laravel
+# Electronics Inventory Management System
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+A Laravel application for managing inventory, categories, staff accounts, and sales. It includes a web interface and a JSON API.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requirements
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.3 or later
+- Composer
+- Node.js and npm
 
-## Learning Laravel
+The default local database is SQLite. You can use another supported Laravel database by updating the `DB_*` values in `.env`.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Local Setup
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+From the repository root, install dependencies and create your environment file:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+cp .env.example .env
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
+
+Create the SQLite database file if it does not already exist, then generate the app key and run migrations and seeders:
+
+```powershell
+New-Item -ItemType File -Force database/database.sqlite
+php artisan key:generate
+php artisan migrate --seed
+```
+
+On macOS/Linux, use `touch database/database.sqlite` to create the SQLite database file.
+
+Install frontend dependencies and start the development processes in separate terminals:
+
+```bash
+npm install
+npm run dev
+```
+
+```bash
+php artisan serve
+```
+
+Open [http://localhost:8000](http://localhost:8000). Vite serves and rebuilds frontend assets while `npm run dev` is running. To create a production asset build, run `npm run build`.
+
+## Seed Accounts
+
+`php artisan migrate --seed` runs `DatabaseSeeder`, which creates `test@gmail.com` with the factory's default password `password`.
+
+To create the admin account defined by `AdminUserSeeder`, run:
+
+```bash
+php artisan db:seed --class=AdminUserSeeder
+```
+
+That seeder currently creates `admin@gmail.com` with password `admin123`. These are development credentials only; change them before using a non-local environment. The admin seeder uses `User::create`, so it will fail if run again after the same email has already been inserted.
+
+## Routes
+
+Web routes are session-authenticated where noted. API routes are under the `/api` prefix; all API routes except login require a Sanctum-authenticated request unless otherwise noted.
+
+### Web
+
+| Method | Path | Access |
+| --- | --- | --- |
+| GET, POST | `/login` | Public; POST is guest-only |
+| POST | `/logout` | Authenticated |
+| GET | `/dashboard` | Authenticated |
+| GET | `/admin/users/create` | Admin |
+| GET | `/categories` | Admin, manager, cashier |
+| GET | `/products` | Admin, manager, cashier |
+| GET | `/categories/create` | Admin, manager |
+| POST | `/categories` | Admin, manager |
+| GET | `/products/create` | Admin, manager |
+| POST | `/products` | Admin, manager |
+| GET | `/admin/users` | Admin |
+
+| POST | `/admin/users` | Admin |
+
+### API
+
+| Method | Path | Access |
+| --- | --- | --- |
+| POST | `/api/login` | Public |
+| POST | `/api/logout` | Sanctum-authenticated |
+| GET | `/api/user` | Sanctum-authenticated |
+| GET | `/api/categories` | Admin, manager |
+| GET | `/api/categories/{category}` | Admin, manager |
+| POST | `/api/categories` | Admin |
+| PUT, PATCH | `/api/categories/{category}` | Admin |
+| DELETE | `/api/categories/{category}` | Admin |
+| GET | `/api/products` | Admin, manager |
+| GET | `/api/products/{product}` | Admin, manager |
+| POST | `/api/products` | Admin, manager |
+| PUT, PATCH | `/api/products/{product}` | Admin, manager |
+| DELETE | `/api/products/{product}` | Admin |
+| POST | `/api/admin/users` | Admin |
+| POST | `/api/admin/users/create` | Admin (alias) |
+| GET | `/api/sales` | Cashier |
+| GET | `/api/sales/{sale}` | Cashier |
+
+To inspect the routes registered by the current application, run:
+
+```bash
+php artisan route:list
+```
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+1. Create a focused branch for your change.
+2. Keep changes scoped, follow the existing Laravel and frontend conventions, and add or update tests for behavior changes.
+3. Run the test suite with `composer test` before opening a pull request.
+4. Include a concise summary, verification steps, and any database migration or environment changes in the pull request.
 
-## Code of Conduct
+Do not commit `.env`, local database files, credentials, or generated dependencies. Never use the development seed credentials outside a local environment.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
