@@ -20,9 +20,13 @@ class RoleMiddleware
         }
 
         if (!in_array($request->user()->role, $roles, true)) {
-    return redirect('/dashboard')
-        ->with('error', 'You are not authorized to access that page.');
-}
+            if ($request->is('api/*')) {
+                return response()->json(['message' => 'You are not authorized to access this resource.'], 403);
+            }
+
+            return redirect('/dashboard')
+                ->with('error', 'You are not authorized to access that page.');
+        }
 
         return $next($request);
     }
