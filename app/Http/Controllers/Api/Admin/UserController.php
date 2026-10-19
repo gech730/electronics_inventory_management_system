@@ -10,6 +10,11 @@ use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
+    public function index(): JsonResponse
+    {
+        return response()->json(User::select('id', 'name', 'email', 'role', 'email_verified_at', 'created_at')->latest()->paginate());
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([

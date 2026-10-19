@@ -25,6 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('role:admin')->group(function () {
+        Route::get('/admin/users', [ApiUserController::class, 'index']);
         Route::post('/admin/users', [ApiUserController::class, 'store']);
         Route::post('/admin/users/create', [ApiUserController::class, 'store']);
 
