@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
+import Users from './pages/Users';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
 import Icon from './components/Icons';
@@ -140,16 +141,7 @@ export default function App() {
               />
             }
           />
-          <Route
-            path="/users"
-            element={
-              <SectionPlaceholder
-                title="Staff User Management"
-                description="Administrator tool to manage store employees, roles (Managers, Cashiers, Storekeepers)."
-                icon="users"
-              />
-            }
-          />
+          <Route path="/users" element={<Users />} />
         </Route>
 
         {/* Fallback */}
