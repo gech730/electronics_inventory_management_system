@@ -79,22 +79,19 @@ export const Login = () => {
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div
             style={{
-              width: 54,
-              height: 54,
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--gradient-primary)',
+              width: 58,
+              height: 58,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: 'var(--shadow-glow)',
               marginBottom: 16,
             }}
           >
-            <Icon name="bolt" size={28} color="#ffffff" />
+            <Icon name="stockwise" size={54} />
           </div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800 }}>VoltTrack</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: 4 }}>
-            Electronics Inventory & POS System
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b' }}>StockWise</h1>
+          <p style={{ color: '#64748b', fontSize: '0.88rem', marginTop: 4 }}>
+            Electronic Inventory Management System
           </p>
         </div>
 

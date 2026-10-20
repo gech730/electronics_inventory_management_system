@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
@@ -63,23 +64,6 @@ const SectionPlaceholder = ({ title, description, icon }) => (
   </div>
 );
 
-// Dashboard Home Shell
-const DashboardPreview = () => {
-  const { user } = useAuth();
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div className="glass-card" style={{ padding: '28px' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-          Welcome back, {user?.name}! 👋
-        </h2>
-        <p style={{ color: 'var(--text-muted)', marginTop: 6 }}>
-          VoltTrack Layout & Navigation shell (Feature 2) is active. Use the sidebar to switch views.
-        </p>
-      </div>
-    </div>
-  );
-};
-
 export default function App() {
   const { isAuthenticated } = useAuth();
 
@@ -100,7 +84,7 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/" element={<DashboardPreview />} />
+          <Route path="/" element={<Dashboard />} />
           <Route
             path="/products"
             element={

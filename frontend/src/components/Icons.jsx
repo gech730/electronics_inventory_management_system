@@ -2,6 +2,17 @@ import React from 'react';
 
 export const Icon = ({ name, size = 18, color = 'currentColor', className = '', ...props }) => {
   const icons = {
+    stockwise: (
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 3L35 11.5V28.5L20 37L5 28.5V11.5L20 3Z" fill="#1677FF" />
+        <path d="M20 3L35 11.5L20 20L5 11.5L20 3Z" fill="#3B82F6" />
+        <path d="M5 11.5L20 20V37L5 28.5V11.5Z" fill="#1D4ED8" />
+        <path d="M35 11.5L20 20V37L35 28.5V11.5Z" fill="#1E40AF" />
+        {/* Inner white cutout box */}
+        <path d="M20 12L28 16.5V25.5L20 30L12 25.5V16.5L20 12Z" fill="#FFFFFF" fillOpacity="0.9" />
+        <path d="M20 12L28 16.5L20 21L12 16.5L20 12Z" fill="#DBEAFE" />
+      </svg>
+    ),
     bolt: (
       <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
     ),

@@ -1,127 +1,156 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Icon from './Icons';
-import { RoleBadge } from './StockBadge';
 
 export const Navbar = ({ onToggleSidebar }) => {
-  const { user, logout, theme, toggleTheme } = useAuth();
-  const location = useLocation();
-
-  // Map route paths to friendly page titles
-  const getPageTitle = (pathname) => {
-    switch (pathname) {
-      case '/':
-        return 'Dashboard Overview';
-      case '/products':
-        return 'Product Catalog';
-      case '/categories':
-        return 'Inventory Categories';
-      case '/pos':
-        return 'Point of Sale (Checkout)';
-      case '/sales':
-        return 'Sales & Transactions';
-      case '/users':
-        return 'Staff User Management';
-      default:
-        return 'VoltTrack';
-    }
-  };
+  const { user, logout } = useAuth();
 
   return (
     <header
       style={{
-        height: 70,
-        background: 'var(--bg-surface)',
-        borderBottom: '1px solid var(--border-subtle)',
+        height: 72,
+        background: '#ffffff',
+        borderBottom: '1px solid #e2e8f0',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 28px',
+        padding: '0 32px',
         position: 'sticky',
         top: 0,
         zIndex: 30,
-        backdropFilter: 'var(--glass-blur)',
       }}
     >
-      {/* Left: Hamburger menu (mobile) + Page Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      {/* Search Input Bar (matching image) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, maxWidth: 440 }}>
         <button
           onClick={onToggleSidebar}
           className="btn btn-secondary btn-icon"
-          style={{ width: 36, height: 36 }}
+          style={{ width: 36, height: 36, display: 'none' }}
           aria-label="Toggle navigation"
         >
           <Icon name="dashboard" size={18} />
         </button>
 
-        <div>
-          <h1 style={{ fontSize: '1.18rem', fontWeight: 700, margin: 0 }}>
-            {getPageTitle(location.pathname)}
-          </h1>
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <Icon
+            name="search"
+            size={16}
+            color="#94a3b8"
+            style={{ position: 'absolute', left: 14 }}
+          />
+          <input
+            type="text"
+            placeholder="Search product, category, or user..."
+            style={{
+              width: '100%',
+              padding: '10px 16px 10px 40px',
+              borderRadius: '24px',
+              border: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              fontSize: '0.86rem',
+              outline: 'none',
+              color: '#1e293b',
+              transition: 'all 150ms ease',
+            }}
+          />
         </div>
       </div>
 
-      {/* Right: Theme Toggle + User Info + Logout */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        {/* Theme Toggle Button */}
-        <button
-          onClick={toggleTheme}
-          className="btn btn-secondary btn-icon"
-          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-        >
-          <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
-        </button>
+      {/* Right Controls: Notification Bell + User Profile */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        {/* Notification Bell with red dot */}
+        <div style={{ position: 'relative', cursor: 'pointer' }}>
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              color: '#64748b',
+            }}
+          >
+            {/* Simple bell SVG */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          </div>
+          {/* Red unread dot */}
+          <span
+            style={{
+              position: 'absolute',
+              top: 2,
+              right: 2,
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: '#ef4444',
+              border: '2px solid #ffffff',
+            }}
+          />
+        </div>
 
-        {/* User Profile Pill */}
+        {/* User Profile Pill with chevron */}
         <div
-          className="glass-card"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
-            padding: '6px 14px 6px 8px',
-            borderRadius: 'var(--radius-full)',
-            border: '1px solid var(--border-subtle)',
+            gap: 12,
+            padding: '4px 6px',
+            cursor: 'pointer',
           }}
         >
           <div
             style={{
-              width: 32,
-              height: 32,
+              width: 38,
+              height: 38,
               borderRadius: '50%',
-              background: 'var(--primary-light)',
-              color: 'var(--primary)',
+              background: '#e2e8f0',
+              color: '#475569',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 700,
-              fontSize: '0.86rem',
-              border: '1px solid var(--border-hover)',
+              fontSize: '0.92rem',
             }}
           >
-            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+            {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-            <span style={{ fontSize: '0.84rem', fontWeight: 700 }}>
-              {user?.name || 'User'}
+            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>
+              {user?.name || 'Getacher Kifilie'}
             </span>
-            <div style={{ transform: 'scale(0.85)', transformOrigin: 'left center' }}>
-              <RoleBadge role={user?.role || 'staff'} />
-            </div>
+            <span style={{ fontSize: '0.74rem', color: '#94a3b8', textTransform: 'capitalize' }}>
+              {user?.role || 'Admin'}
+            </span>
           </div>
+
+          {/* Chevron down arrow */}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </div>
 
-        {/* Sign Out Button */}
+        {/* Sign Out Shortcut */}
         <button
           onClick={logout}
-          className="btn btn-danger"
-          style={{ padding: '8px 14px', fontSize: '0.82rem' }}
-          title="Sign out of your account"
+          className="btn btn-secondary btn-icon"
+          title="Sign Out"
+          style={{ width: 36, height: 36, borderRadius: '50%' }}
         >
-          <Icon name="logout" size={15} />
-          <span>Sign Out</span>
+          <Icon name="logout" size={16} color="#64748b" />
         </button>
       </div>
     </header>

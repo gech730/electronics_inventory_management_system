@@ -6,7 +6,7 @@ import Icon from './Icons';
 export const Sidebar = ({ isOpen, onClose }) => {
   const { user, hasRole } = useAuth();
 
-  // Navigation items defined with their permitted roles
+  // Navigation items matching StockWise Admin design
   const navItems = [
     {
       label: 'Dashboard',
@@ -15,9 +15,15 @@ export const Sidebar = ({ isOpen, onClose }) => {
       roles: ['admin', 'manager', 'cashier', 'storekeeper'],
     },
     {
+      label: 'Users',
+      path: '/users',
+      icon: 'users',
+      roles: ['admin'],
+    },
+    {
       label: 'Products',
       path: '/products',
-      icon: 'cpu',
+      icon: 'package',
       roles: ['admin', 'manager'],
     },
     {
@@ -27,31 +33,24 @@ export const Sidebar = ({ isOpen, onClose }) => {
       roles: ['admin', 'manager', 'cashier'],
     },
     {
-      label: 'Point of Sale',
+      label: 'Inventory',
       path: '/pos',
       icon: 'cart',
       roles: ['cashier', 'admin', 'manager'],
     },
     {
-      label: 'Sales History',
+      label: 'Reports',
       path: '/sales',
-      icon: 'receipt',
+      icon: 'trendingUp',
       roles: ['cashier', 'admin', 'manager'],
-    },
-    {
-      label: 'Staff Users',
-      path: '/users',
-      icon: 'users',
-      roles: ['admin'],
     },
   ];
 
-  // Filter items based on the logged-in user's role
   const visibleItems = navItems.filter((item) => hasRole(item.roles));
 
   return (
     <>
-      {/* Mobile Backdrop Overlay */}
+      {/* Mobile Backdrop */}
       {isOpen && (
         <div
           onClick={onClose}
@@ -61,89 +60,59 @@ export const Sidebar = ({ isOpen, onClose }) => {
             background: 'rgba(0, 0, 0, 0.5)',
             backdropFilter: 'blur(4px)',
             zIndex: 40,
-            display: 'block',
           }}
         />
       )}
 
-      {/* Sidebar Container */}
+      {/* StockWise Dark Navy Sidebar */}
       <aside
         style={{
-          width: 260,
-          background: 'var(--bg-surface)',
-          borderRight: '1px solid var(--border-subtle)',
+          width: 250,
+          background: 'var(--bg-sidebar)',
           display: 'flex',
           flexDirection: 'column',
           position: 'sticky',
           top: 0,
           height: '100vh',
           zIndex: 50,
-          transition: 'transform var(--transition-normal)',
           flexShrink: 0,
+          padding: '24px 16px',
         }}
       >
-        {/* Brand / Logo Header */}
-        <div
-          style={{
-            padding: '24px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: '1px solid var(--border-subtle)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--gradient-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                boxShadow: 'var(--shadow-glow)',
-              }}
-            >
-              <Icon name="bolt" size={22} color="#ffffff" />
+        {/* Brand Header: StockWise */}
+        <div style={{ padding: '0 8px 24px', borderBottom: '1px solid var(--border-sidebar)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="stockwise" size={32} />
             </div>
-            <div>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-                VoltTrack
-              </h2>
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Inventory System
-              </p>
-            </div>
+            <span style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+              StockWise
+            </span>
           </div>
 
-          {/* Close button for mobile */}
-          <button
-            onClick={onClose}
-            className="btn btn-secondary btn-icon"
-            style={{ width: 32, height: 32, display: isOpen ? 'flex' : 'none' }}
-            aria-label="Close menu"
-          >
-            <Icon name="x" size={16} />
-          </button>
+          {/* Role Pill under logo */}
+          <div style={{ marginTop: 14 }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 12px',
+                borderRadius: 'var(--radius-full)',
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: '#94a3b8',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1677ff' }} />
+              <span style={{ textTransform: 'capitalize' }}>{user?.role || 'Admin'}</span>
+            </span>
+          </div>
         </div>
 
-        {/* Navigation Links */}
-        <nav style={{ flex: 1, padding: '20px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <p
-            style={{
-              fontSize: '0.7rem',
-              fontWeight: 700,
-              color: 'var(--text-dim)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              padding: '0 12px 6px',
-            }}
-          >
-            Menu
-          </p>
-
+        {/* Navigation Menu */}
+        <nav style={{ flex: 1, paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {visibleItems.map((item) => (
             <NavLink
               key={item.path}
@@ -152,44 +121,30 @@ export const Sidebar = ({ isOpen, onClose }) => {
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',
-                gap: 12,
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-sm)',
+                gap: 14,
+                padding: '11px 16px',
+                borderRadius: '10px',
                 fontSize: '0.88rem',
                 fontWeight: 600,
                 textDecoration: 'none',
-                transition: 'all var(--transition-fast)',
-                color: isActive ? '#ffffff' : 'var(--text-muted)',
-                background: isActive ? 'var(--gradient-primary)' : 'transparent',
-                boxShadow: isActive ? '0 4px 14px rgba(99, 102, 241, 0.35)' : 'none',
+                transition: 'all 150ms ease',
+                color: isActive ? '#ffffff' : '#94a3b8',
+                background: isActive ? '#1677ff' : 'transparent',
+                boxShadow: isActive ? '0 4px 14px rgba(22, 119, 255, 0.35)' : 'none',
               })}
             >
-              <Icon name={item.icon} size={18} />
+              <Icon name={item.icon} size={18} color="currentColor" />
               <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
-        {/* Footer: User Role & API Status Indicator */}
-        <div
-          style={{
-            padding: '16px 20px',
-            borderTop: '1px solid var(--border-subtle)',
-            background: 'rgba(15, 23, 42, 0.3)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: 'var(--success)',
-                boxShadow: '0 0 8px var(--success)',
-              }}
-            />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 500 }}>
-              API Connected • Role: <strong style={{ color: 'var(--text-main)', textTransform: 'capitalize' }}>{user?.role}</strong>
+        {/* Bottom indicator */}
+        <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-sidebar)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00b074' }} />
+            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>
+              System Online
             </span>
           </div>
         </div>
