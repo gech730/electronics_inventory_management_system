@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
+import Categories from './pages/Categories';
 import Users from './pages/Users';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
@@ -87,16 +88,7 @@ export default function App() {
         >
           <Route path="/" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
-          <Route
-            path="/categories"
-            element={
-              <SectionPlaceholder
-                title="Inventory Categories"
-                description="Organize components into categories (e.g. Microcontrollers, Sensors, Displays, Power)."
-                icon="tag"
-              />
-            }
-          />
+          <Route path="/categories" element={<Categories />} />
           <Route
             path="/pos"
             element={
