@@ -149,6 +149,12 @@ export const Icon = ({ name, size = 18, color = 'currentColor', className = '', 
     shield: (
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     ),
+    power: (
+      <>
+        <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+        <line x1="12" y1="2" x2="12" y2="12" />
+      </>
+    ),
   };
 
   return (
