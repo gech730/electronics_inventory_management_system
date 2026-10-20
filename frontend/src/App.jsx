@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Products from './pages/Products';
 import Users from './pages/Users';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
@@ -85,16 +86,7 @@ export default function App() {
           }
         >
           <Route path="/" element={<Dashboard />} />
-          <Route
-            path="/products"
-            element={
-              <SectionPlaceholder
-                title="Product Catalog"
-                description="Manage inventory stock, pricing margins, SKU tracking, and electronic hardware items."
-                icon="cpu"
-              />
-            }
-          />
+          <Route path="/products" element={<Products />} />
           <Route
             path="/categories"
             element={

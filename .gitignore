@@ -15,8 +15,16 @@
 node_modules/
 dist/
 frontend/dist/
+resources/js/components/
+resources/js/context/
+resources/js/hooks/
+resources/js/pages/
+resources/js/services/
+resources/js/main.jsx
+resources/js/app.jsx
+public/build
 /public/fonts-manifest.dev.json
-/public/hot
+/public/hot  
 /public/storage
 /storage/*.key
 /storage/pail

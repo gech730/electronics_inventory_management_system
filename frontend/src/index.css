@@ -47,10 +47,10 @@
   --info-bg: rgba(22, 119, 255, 0.1);
 
   /* Typography Colors */
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
-  --text-inverse: #0f172a;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --text-inverse: #ffffff;
 
   /* Shadows & Glass */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
