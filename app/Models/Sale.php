@@ -102,4 +102,16 @@ class Sale extends Model
     {
         return $this->hasMany(SaleItem::class);
     }
+
+    /** Payment allocations applied against this invoice */
+    public function paymentAllocations(): HasMany
+    {
+        return $this->hasMany(PaymentAllocation::class);
+    }
+
+    /** Customer returns initiated for this sale */
+    public function returns(): HasMany
+    {
+        return $this->hasMany(SaleReturn::class);
+    }
 }
