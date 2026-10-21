@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ProductVariant extends Model
 {
@@ -37,5 +38,16 @@ class ProductVariant extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /** Tax rates applicable to this variant */
+    public function taxRates(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            TaxRate::class,
+            'product_tax_rates',
+            'product_variant_id',
+            'tax_rate_id'
+        );
     }
 }

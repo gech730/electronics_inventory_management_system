@@ -71,4 +71,16 @@ class Product extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    /** Product gallery images */
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order');
+    }
+
+    /** Primary image for thumbnail / display */
+    public function primaryImage(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ProductImage::class)->where('is_primary', true);
+    }
 }
