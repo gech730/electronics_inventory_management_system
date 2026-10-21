@@ -44,4 +44,22 @@ class StockLocation extends Model
     {
         return $this->belongsTo(Store::class);
     }
+
+    /** Stock balances at this location */
+    public function stockBalances(): HasMany
+    {
+        return $this->hasMany(StockBalance::class);
+    }
+
+    /** Stock reservations at this location */
+    public function stockReservations(): HasMany
+    {
+        return $this->hasMany(StockReservation::class);
+    }
+
+    /** Cycle counts / adjustments at this location */
+    public function stockAdjustments(): HasMany
+    {
+        return $this->hasMany(StockAdjustment::class);
+    }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductVariant extends Model
 {
@@ -49,5 +50,17 @@ class ProductVariant extends Model
             'product_variant_id',
             'tax_rate_id'
         );
+    }
+
+    /** Stock balances across all locations */
+    public function stockBalances(): HasMany
+    {
+        return $this->hasMany(StockBalance::class);
+    }
+
+    /** Stock reservations for this variant */
+    public function stockReservations(): HasMany
+    {
+        return $this->hasMany(StockReservation::class);
     }
 }
