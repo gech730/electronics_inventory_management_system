@@ -23,9 +23,18 @@ class ApiAuthController extends Controller
             return response()->json(['message' => 'The email or password is incorrect.'], 401);
         }
 
+        $expiresAt = now()->addMinutes((int) config('sanctum.expiration', 1440));
+
+        $token = $user->createToken(
+            name: 'inventory-api',
+            abilities: ['*'],
+            expiresAt: $expiresAt
+        );
+
         return response()->json([
-            'token' => $user->createToken('inventory-api')->plainTextToken,
+            'token' => $token->plainTextToken,
             'token_type' => 'Bearer',
+            'expires_at' => $expiresAt->toIso8601String(),
             'user' => $user->only(['id', 'name', 'email', 'role']),
         ]);
     }
