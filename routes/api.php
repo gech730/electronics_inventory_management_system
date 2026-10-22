@@ -16,6 +16,7 @@ Route::get('/products/{product}', [ProductController::class, 'show']);
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/categories/{category}', [CategoryController::class, 'show']);
 Route::get('/brands', [BrandController::class, 'index']);
+Route::get('/brands/{brand}', [BrandController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [ApiAuthController::class, 'logout']);
@@ -25,6 +26,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/products', [ProductController::class, 'store']);
         Route::match(['put', 'patch'], '/products/{product}', [ProductController::class, 'update']);
         Route::post('/brands', [BrandController::class, 'store']);
+        Route::match(['put', 'patch'], '/brands/{brand}', [BrandController::class, 'update']);
     });
 
     Route::middleware('role:admin')->group(function () {
@@ -35,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::match(['put', 'patch'], '/categories/{category}', [CategoryController::class, 'update']);
         Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
         Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+        Route::delete('/brands/{brand}', [BrandController::class, 'destroy']);
     });
 
     Route::middleware('role:cashier')->group(function () {
