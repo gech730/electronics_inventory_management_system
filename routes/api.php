@@ -27,7 +27,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin/users', [ApiUserController::class, 'index']);
         Route::post('/admin/users', [ApiUserController::class, 'store']);
-        Route::post('/admin/users/create', [ApiUserController::class, 'store']);
 
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::match(['put', 'patch'], '/categories/{category}', [CategoryController::class, 'update']);
@@ -37,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:cashier')->group(function () {
         Route::get('/sales', [SaleController::class, 'index']);
+        Route::post('/sales', [SaleController::class, 'store']);
         Route::get('/sales/{sale}', [SaleController::class, 'show']);
     });
 });
