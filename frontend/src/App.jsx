@@ -8,6 +8,9 @@ import Categories from './pages/Categories';
 import Users from './pages/Users';
 import Pos from './pages/Pos';
 import Shifts from './pages/Shifts';
+import Orders from './pages/Orders';
+import Shipments from './pages/Shipments';
+import Customers from './pages/Customers';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
 import Icon from './components/Icons';
@@ -93,6 +96,9 @@ export default function App() {
           <Route path="/categories" element={<Categories />} />
           <Route path="/pos" element={<Pos />} />
           <Route path="/shifts" element={<Shifts />} />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/shipments" element={<Shipments />} />
+          <Route path="/customers" element={<Customers />} />
           <Route
             path="/sales"
             element={
