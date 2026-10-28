@@ -21,6 +21,12 @@ use App\Http\Controllers\Api\StockTransactionController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ShipmentController;
+use App\Http\Controllers\Api\PosRegisterController;
+use App\Http\Controllers\Api\CashierShiftController;
+use App\Http\Controllers\Api\CashMovementController;
+use App\Http\Controllers\Api\PaymentMethodController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\TaxRateController;
 
 Route::post('/login', [ApiAuthController::class, 'login']);
 
@@ -68,9 +74,29 @@ Route::get('/orders/{order}', [OrderController::class, 'show']);
 Route::get('/shipments', [ShipmentController::class, 'index']);
 Route::get('/shipments/{shipment}', [ShipmentController::class, 'show']);
 
+// POS, Cash Drawer, and Financial public read routes
+Route::get('/pos-registers', [PosRegisterController::class, 'index']);
+Route::get('/pos-registers/{posRegister}', [PosRegisterController::class, 'show']);
+Route::get('/cashier-shifts', [CashierShiftController::class, 'index']);
+Route::get('/cashier-shifts/{cashierShift}', [CashierShiftController::class, 'show']);
+Route::get('/cash-movements', [CashMovementController::class, 'index']);
+Route::get('/cash-movements/{cashMovement}', [CashMovementController::class, 'show']);
+Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
+Route::get('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'show']);
+Route::get('/payments', [PaymentController::class, 'index']);
+Route::get('/payments/{payment}', [PaymentController::class, 'show']);
+Route::get('/tax-rates', [TaxRateController::class, 'index']);
+Route::get('/tax-rates/{taxRate}', [TaxRateController::class, 'show']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [ApiAuthController::class, 'logout']);
     Route::get('/user', [ApiAuthController::class, 'user']);
+
+    // Shift management, drawer movements, and payment collections (Available to all authorized staff)
+    Route::post('/cashier-shifts', [CashierShiftController::class, 'store']);
+    Route::match(['put', 'patch'], '/cashier-shifts/{cashierShift}', [CashierShiftController::class, 'update']);
+    Route::post('/cash-movements', [CashMovementController::class, 'store']);
+    Route::post('/payments', [PaymentController::class, 'store']);
 
     // Admin & Manager management routes
     Route::middleware('role:admin,manager')->group(function () {
@@ -115,6 +141,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::match(['put', 'patch'], '/orders/{order}', [OrderController::class, 'update']);
         Route::post('/shipments', [ShipmentController::class, 'store']);
         Route::match(['put', 'patch'], '/shipments/{shipment}', [ShipmentController::class, 'update']);
+
+        // POS Configuration, Payment Methods, and Tax Management
+        Route::post('/pos-registers', [PosRegisterController::class, 'store']);
+        Route::match(['put', 'patch'], '/pos-registers/{posRegister}', [PosRegisterController::class, 'update']);
+        Route::post('/payment-methods', [PaymentMethodController::class, 'store']);
+        Route::match(['put', 'patch'], '/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'update']);
+        Route::post('/tax-rates', [TaxRateController::class, 'store']);
+        Route::match(['put', 'patch'], '/tax-rates/{taxRate}', [TaxRateController::class, 'update']);
+        Route::match(['put', 'patch'], '/payments/{payment}', [PaymentController::class, 'update']);
     });
 
     // Admin-only management & deletion routes
@@ -146,6 +181,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/customers/{customer}', [CustomerController::class, 'destroy']);
         Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
         Route::delete('/shipments/{shipment}', [ShipmentController::class, 'destroy']);
+
+        // POS & Financial deletions
+        Route::delete('/pos-registers/{posRegister}', [PosRegisterController::class, 'destroy']);
+        Route::delete('/cashier-shifts/{cashierShift}', [CashierShiftController::class, 'destroy']);
+        Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy']);
+        Route::delete('/payments/{payment}', [PaymentController::class, 'destroy']);
+        Route::delete('/tax-rates/{taxRate}', [TaxRateController::class, 'destroy']);
     });
 
     // Cashier routes

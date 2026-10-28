@@ -3181,6 +3181,840 @@
           }
         }
       ]
+    },
+    {
+      "name": "21. POS Registers & Terminals",
+      "item": [
+        {
+          "name": "List POS Registers (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pos-registers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pos-registers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get POS Register by ID (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pos-registers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pos-registers",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create POS Register (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"store_id\": 1,\n  \"code\": \"REG-MAIN-01\",\n  \"name\": \"Main Store Checkout Counter 1\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pos-registers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pos-registers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update POS Register (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Express Checkout Lane 1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pos-registers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pos-registers",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete POS Register (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pos-registers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pos-registers",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "22. Cashier Shifts & Cash Balancing",
+      "item": [
+        {
+          "name": "List Cashier Shifts (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cashier-shifts?status=open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cashier-shifts"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "open"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Cashier Shift by ID (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cashier-shifts/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cashier-shifts",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Open Cashier Shift with Float (Staff)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pos_register_id\": 1,\n  \"opening_cash\": 1500.00,\n  \"notes\": \"Morning opening float loaded with petty change\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/cashier-shifts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cashier-shifts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Close Cashier Shift & Count Drawer Cash (Staff)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"closed\",\n  \"counted_cash\": 1500.00,\n  \"notes\": \"Evening shift count verified with supervisor\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/cashier-shifts/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cashier-shifts",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Cash Movements (In/Out/Float)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cash-movements?cashier_shift_id=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cash-movements"
+              ],
+              "query": [
+                {
+                  "key": "cashier_shift_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Record Cash Movement / Petty Cash (Staff)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cashier_shift_id\": 1,\n  \"movement_type\": \"cash_in\",\n  \"amount\": 500.00,\n  \"reason\": \"Mid-day change float replenishment\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/cash-movements",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cash-movements"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "23. Payment Methods & Processing",
+      "item": [
+        {
+          "name": "List Payment Methods (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payment-methods",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payment-methods"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Payment Method by ID (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payment-methods/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payment-methods",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Payment Method (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"AWASH_POS\",\n  \"name\": \"Awash Bank Card POS\",\n  \"method_type\": \"card\",\n  \"provider_name\": \"Awash International Bank\",\n  \"requires_reference\": true,\n  \"is_active\": true,\n  \"sort_order\": 4\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payment-methods",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payment-methods"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Payment Method (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Awash Bank Contactless POS\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payment-methods/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payment-methods",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Payments (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Payment by ID (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Record Payment with Invoice Allocation (Staff)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": 1,\n  \"payment_method_id\": 3,\n  \"amount\": 2398.00,\n  \"transaction_reference\": \"TLB-REC-8921048\",\n  \"notes\": \"Telebirr merchant transfer settled\",\n  \"allocations\": [\n    {\n      \"sale_id\": 1,\n      \"allocated_amount\": 2398.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Payment Status (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"succeeded\",\n  \"notes\": \"Bank statement reconciliation confirmed\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Payment Record (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "24. Tax Rates & Regulations",
+      "item": [
+        {
+          "name": "List Tax Rates (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tax-rates",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tax-rates"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Tax Rate by ID (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tax-rates/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tax-rates",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Tax Rate (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"VAT_15\",\n  \"name\": \"Standard Ethiopian VAT 15%\",\n  \"rate_percent\": 15.0000,\n  \"is_inclusive\": false,\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tax-rates",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tax-rates"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Tax Rate (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ethiopian Value Added Tax (VAT 15%)\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tax-rates/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tax-rates",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Tax Rate (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tax-rates/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tax-rates",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

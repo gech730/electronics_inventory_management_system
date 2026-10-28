@@ -62,66 +62,94 @@ All endpoints are hosted at base URL: `http://localhost:8000/api`
 | 33 | `GET` | `/api/orders/{id}` | **Public** | `Accept` | ❌ NO | None (Order details with items, reservations, & shipments) |
 | 34 | `GET` | `/api/shipments` | **Public** | `Accept` | ❌ NO | None (Logistics packages & courier delivery tracking) |
 | 35 | `GET` | `/api/shipments/{id}` | **Public** | `Accept` | ❌ NO | None (Shipment details with dispatched items) |
+| 36 | `GET` | `/api/pos-registers` | **Public** | `Accept` | ❌ NO | None (Register checkout terminals across retail stores) |
+| 37 | `GET` | `/api/pos-registers/{id}` | **Public** | `Accept` | ❌ NO | None (Single register with shift history) |
+| 38 | `GET` | `/api/cashier-shifts` | **Public** | `Accept` | ❌ NO | None (Cashier work sessions with cash reconciliation) |
+| 39 | `GET` | `/api/cashier-shifts/{id}` | **Public** | `Accept` | ❌ NO | None (Shift details with opening float, counted cash, & variance) |
+| 40 | `GET` | `/api/cash-movements` | **Public** | `Accept` | ❌ NO | None (Petty cash withdrawals & float replenishment log) |
+| 41 | `GET` | `/api/cash-movements/{id}` | **Public** | `Accept` | ❌ NO | None (Single cash movement record) |
+| 42 | `GET` | `/api/payment-methods` | **Public** | `Accept` | ❌ NO | None (Directory of supported payment tender channels) |
+| 43 | `GET` | `/api/payment-methods/{id}` | **Public** | `Accept` | ❌ NO | None (Single payment method details) |
+| 44 | `GET` | `/api/payments` | **Public** | `Accept` | ❌ NO | None (Customer payments and settlement transaction ledger) |
+| 45 | `GET` | `/api/payments/{id}` | **Public** | `Accept` | ❌ NO | None (Payment record with sale invoice allocations) |
+| 46 | `GET` | `/api/tax-rates` | **Public** | `Accept` | ❌ NO | None (National VAT and regional tax rate schedule) |
+| 47 | `GET` | `/api/tax-rates/{id}` | **Public** | `Accept` | ❌ NO | None (Tax rate details with product variant count) |
 | **COMMON AUTHENTICATED ENDPOINTS (Any Authenticated Role)** |
-| 36 | `GET` | `/api/user` | **Any Role** (`admin`, `manager`, `cashier`, `storekeeper`) | `Accept`, `Authorization` | ❌ NO | None (Returns current user identity & role) |
-| 37 | `POST` | `/api/logout` | **Any Role** (`admin`, `manager`, `cashier`, `storekeeper`) | `Accept`, `Authorization` | ❌ NO | None (Revokes current Sanctum Bearer token) |
+| 48 | `GET` | `/api/user` | **Any Role** (`admin`, `manager`, `cashier`, `storekeeper`) | `Accept`, `Authorization` | ❌ NO | None (Returns current user identity & role) |
+| 49 | `POST` | `/api/logout` | **Any Role** (`admin`, `manager`, `cashier`, `storekeeper`) | `Accept`, `Authorization` | ❌ NO | None (Revokes current Sanctum Bearer token) |
+| 50 | `POST` | `/api/cashier-shifts` | **Staff** (`admin`, `manager`, `cashier`) | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ pos_register_id, opening_cash?, notes? }` |
+| 51 | `PUT/PATCH`| `/api/cashier-shifts/{id}` | **Staff** (`admin`, `manager`, `cashier`) | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status: 'closed', counted_cash, notes? }` |
+| 52 | `POST` | `/api/cash-movements` | **Staff** (`admin`, `manager`, `cashier`) | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ cashier_shift_id, movement_type: 'cash_in'|'cash_out', amount, reason }` |
+| 53 | `POST` | `/api/payments` | **Staff** (`admin`, `manager`, `cashier`) | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ payment_method_id, amount, customer_id?, transaction_reference?, allocations?: [...] }` |
 | **ADMIN-ONLY ENDPOINTS (`role:admin`)** |
-| 38 | `GET` | `/api/admin/users` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Paginated staff list) |
-| 39 | `POST` | `/api/admin/users` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, email, password, password_confirmation, role }` |
-| 40 | `POST` | `/api/categories` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, description }` |
-| 41 | `PUT/PATCH`| `/api/categories/{id}` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, description? }` |
-| 42 | `DELETE` | `/api/categories/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes category with product-conflict guard) |
-| 43 | `DELETE` | `/api/products/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes product from catalog) |
-| 44 | `DELETE` | `/api/brands/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes brand with product-conflict guard) |
-| 45 | `DELETE` | `/api/units/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes unit with product-conflict guard) |
-| 46 | `DELETE` | `/api/stores/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes store with location-conflict guard) |
-| 47 | `DELETE` | `/api/stock-locations/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes location with on-hand stock guard) |
-| 48 | `DELETE` | `/api/stock-balances/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes stock balance if on-hand is 0) |
-| 49 | `DELETE` | `/api/suppliers/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes supplier with PO-conflict guard) |
-| 50 | `DELETE` | `/api/purchase-orders/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes purchase order if draft or cancelled) |
-| 51 | `DELETE` | `/api/stock-transfers/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes transfer if draft or cancelled) |
-| 52 | `DELETE` | `/api/stock-adjustments/{id}`| `admin`| `Accept`, `Authorization` | ❌ NO | None (Deletes adjustment if draft or cancelled) |
-| 53 | `DELETE` | `/api/customers/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes customer with order-conflict guard) |
-| 54 | `DELETE` | `/api/orders/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes order if draft or cancelled) |
-| 55 | `DELETE` | `/api/shipments/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes shipment if pending or cancelled) |
+| 54 | `GET` | `/api/admin/users` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Paginated staff list) |
+| 55 | `POST` | `/api/admin/users` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, email, password, password_confirmation, role }` |
+| 56 | `POST` | `/api/categories` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, description }` |
+| 57 | `PUT/PATCH`| `/api/categories/{id}` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, description? }` |
+| 58 | `DELETE` | `/api/categories/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes category with product-conflict guard) |
+| 59 | `DELETE` | `/api/products/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes product from catalog) |
+| 60 | `DELETE` | `/api/brands/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes brand with product-conflict guard) |
+| 61 | `DELETE` | `/api/units/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes unit with product-conflict guard) |
+| 62 | `DELETE` | `/api/stores/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes store with location-conflict guard) |
+| 63 | `DELETE` | `/api/stock-locations/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes location with on-hand stock guard) |
+| 64 | `DELETE` | `/api/stock-balances/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes stock balance if on-hand is 0) |
+| 65 | `DELETE` | `/api/suppliers/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes supplier with PO-conflict guard) |
+| 66 | `DELETE` | `/api/purchase-orders/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes purchase order if draft or cancelled) |
+| 67 | `DELETE` | `/api/stock-transfers/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes transfer if draft or cancelled) |
+| 68 | `DELETE` | `/api/stock-adjustments/{id}`| `admin`| `Accept`, `Authorization` | ❌ NO | None (Deletes adjustment if draft or cancelled) |
+| 69 | `DELETE` | `/api/customers/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes customer with order-conflict guard) |
+| 70 | `DELETE` | `/api/orders/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes order if draft or cancelled) |
+| 71 | `DELETE` | `/api/shipments/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes shipment if pending or cancelled) |
+| 72 | `DELETE` | `/api/pos-registers/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes register with shift guard) |
+| 73 | `DELETE` | `/api/cashier-shifts/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes open shift only) |
+| 74 | `DELETE` | `/api/payment-methods/{id}`| `admin`| `Accept`, `Authorization` | ❌ NO | None (Deletes payment method with usage guard) |
+| 75 | `DELETE` | `/api/payments/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes pending/failed payment only) |
+| 76 | `DELETE` | `/api/tax-rates/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes tax rate with variant link guard) |
 | **ADMIN & MANAGER ENDPOINTS (`role:admin,manager`)** |
-| 56 | `POST` | `/api/products` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ category_id, sku, name, cost_price, selling_price, quantity, minimum_stock, brand_id?, ... }` |
-| 57 | `PUT/PATCH`| `/api/products/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of product fields to update |
-| 58 | `POST` | `/api/brands` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, description?, is_active? }` |
-| 59 | `PUT/PATCH`| `/api/brands/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, description?, is_active? }` |
-| 60 | `POST` | `/api/units` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, abbreviation, allows_decimal_quantity? }` |
-| 61 | `PUT/PATCH`| `/api/units/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, abbreviation?, allows_decimal_quantity? }` |
-| 62 | `POST` | `/api/stores` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ code, name, phone?, email?, address?, is_active? }` |
-| 63 | `PUT/PATCH`| `/api/stores/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ code?, name?, phone?, email?, address?, is_active? }` |
-| 64 | `POST` | `/api/stock-locations` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ store_id?, code, name, location_type, is_sellable?, is_active? }` |
-| 65 | `PUT/PATCH`| `/api/stock-locations/{id}`| `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of stock location fields |
-| 66 | `POST` | `/api/stock-balances` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, product_variant_id, quantity_on_hand, quantity_reserved?, reorder_level? }` |
-| 67 | `PUT/PATCH`| `/api/stock-balances/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ quantity_on_hand?, quantity_reserved?, reorder_level? }` |
-| 68 | `POST` | `/api/suppliers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_code, name, contact_person?, phone?, email?, tax_number?, address?, payment_terms_days? }` |
-| 69 | `PUT/PATCH`| `/api/suppliers/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of supplier fields |
-| 70 | `POST` | `/api/purchase-orders` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, store_id, destination_stock_location_id, items: [{ product_variant_id, quantity_ordered, unit_cost }] }` |
-| 71 | `PUT/PATCH`| `/api/purchase-orders/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, expected_at?, notes? }` |
-| 72 | `POST` | `/api/goods-receipts` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, stock_location_id, purchase_order_id?, items: [{ product_variant_id, quantity_received, unit_cost }] }` |
-| 73 | `POST` | `/api/supplier-payments` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, purchase_order_id?, payment_method_id, amount, transaction_reference?, notes? }` |
-| 74 | `PUT/PATCH`| `/api/supplier-payments/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, transaction_reference?, notes? }` |
-| 75 | `POST` | `/api/stock-transfers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ source_location_id, destination_location_id, items: [{ product_variant_id, quantity_transferred }] }` |
-| 76 | `PUT/PATCH`| `/api/stock-transfers/{id}` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?: 'in_transit'|'received'|'cancelled', notes? }` |
-| 77 | `POST` | `/api/stock-adjustments` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, reason, items: [{ product_variant_id, counted_quantity }] }` |
-| 78 | `PUT/PATCH`| `/api/stock-adjustments/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status: 'posted' }` (Executes inventory reconciliation) |
-| 79 | `POST` | `/api/stock-transactions` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, product_variant_id, transaction_type, quantity, unit_cost?, reference_type?, reference_id?, notes? }` |
-| 80 | `POST` | `/api/customers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ display_name, customer_type?, phone?, email?, tax_number?, credit_limit?, address?: {...} }` |
-| 81 | `PUT/PATCH`| `/api/customers/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of customer profile fields |
-| 82 | `POST` | `/api/customers/{id}/addresses`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ label?, address_type?, recipient_name?, phone?, city?, address_line?, is_default? }` |
-| 83 | `PUT/PATCH`| `/api/customers/{id}/addresses/{addr_id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of address fields |
-| 84 | `DELETE` | `/api/customers/{id}/addresses/{addr_id}`| `admin`, `manager`| `Accept`, `Authorization` | ❌ NO | None (Deletes customer address) |
-| 85 | `POST` | `/api/orders` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ source, fulfillment_type, customer_id?, store_id?, stock_location_id?, items: [{ product_variant_id, quantity_ordered }] }` |
-| 86 | `PUT/PATCH`| `/api/orders/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, customer_notes?, internal_notes?, shipping_fee? }` |
-| 87 | `POST` | `/api/shipments` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ order_id, shipping_provider?, tracking_number?, items: [{ order_item_id, quantity_shipped }] }` |
-| 88 | `PUT/PATCH`| `/api/shipments/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?: 'packed'|'shipped'|'delivered'|'cancelled', tracking_number?, notes? }` |
+| 77 | `POST` | `/api/products` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ category_id, sku, name, cost_price, selling_price, quantity, minimum_stock, brand_id?, ... }` |
+| 78 | `PUT/PATCH`| `/api/products/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of product fields to update |
+| 79 | `POST` | `/api/brands` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, description?, is_active? }` |
+| 80 | `PUT/PATCH`| `/api/brands/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, description?, is_active? }` |
+| 81 | `POST` | `/api/units` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, abbreviation, allows_decimal_quantity? }` |
+| 82 | `PUT/PATCH`| `/api/units/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, abbreviation?, allows_decimal_quantity? }` |
+| 83 | `POST` | `/api/stores` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ code, name, phone?, email?, address?, is_active? }` |
+| 84 | `PUT/PATCH`| `/api/stores/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ code?, name?, phone?, email?, address?, is_active? }` |
+| 85 | `POST` | `/api/stock-locations` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ store_id?, code, name, location_type, is_sellable?, is_active? }` |
+| 86 | `PUT/PATCH`| `/api/stock-locations/{id}`| `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of stock location fields |
+| 87 | `POST` | `/api/stock-balances` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, product_variant_id, quantity_on_hand, quantity_reserved?, reorder_level? }` |
+| 88 | `PUT/PATCH`| `/api/stock-balances/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ quantity_on_hand?, quantity_reserved?, reorder_level? }` |
+| 89 | `POST` | `/api/suppliers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_code, name, contact_person?, phone?, email?, tax_number?, address?, payment_terms_days? }` |
+| 90 | `PUT/PATCH`| `/api/suppliers/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of supplier fields |
+| 91 | `POST` | `/api/purchase-orders` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, store_id, destination_stock_location_id, items: [{ product_variant_id, quantity_ordered, unit_cost }] }` |
+| 92 | `PUT/PATCH`| `/api/purchase-orders/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, expected_at?, notes? }` |
+| 93 | `POST` | `/api/goods-receipts` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, stock_location_id, purchase_order_id?, items: [{ product_variant_id, quantity_received, unit_cost }] }` |
+| 94 | `POST` | `/api/supplier-payments` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, purchase_order_id?, payment_method_id, amount, transaction_reference?, notes? }` |
+| 95 | `PUT/PATCH`| `/api/supplier-payments/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, transaction_reference?, notes? }` |
+| 96 | `POST` | `/api/stock-transfers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ source_location_id, destination_location_id, items: [{ product_variant_id, quantity_transferred }] }` |
+| 97 | `PUT/PATCH`| `/api/stock-transfers/{id}` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?: 'in_transit'|'received'|'cancelled', notes? }` |
+| 98 | `POST` | `/api/stock-adjustments` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, reason, items: [{ product_variant_id, counted_quantity }] }` |
+| 99 | `PUT/PATCH`| `/api/stock-adjustments/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status: 'posted' }` (Executes inventory reconciliation) |
+| 100 | `POST` | `/api/stock-transactions` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, product_variant_id, transaction_type, quantity, unit_cost?, reference_type?, reference_id?, notes? }` |
+| 101 | `POST` | `/api/customers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ display_name, customer_type?, phone?, email?, tax_number?, credit_limit?, address?: {...} }` |
+| 102 | `PUT/PATCH`| `/api/customers/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of customer profile fields |
+| 103 | `POST` | `/api/customers/{id}/addresses`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ label?, address_type?, recipient_name?, phone?, city?, address_line?, is_default? }` |
+| 104 | `PUT/PATCH`| `/api/customers/{id}/addresses/{addr_id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of address fields |
+| 105 | `DELETE` | `/api/customers/{id}/addresses/{addr_id}`| `admin`, `manager`| `Accept`, `Authorization` | ❌ NO | None (Deletes customer address) |
+| 106 | `POST` | `/api/orders` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ source, fulfillment_type, customer_id?, store_id?, stock_location_id?, items: [{ product_variant_id, quantity_ordered }] }` |
+| 107 | `PUT/PATCH`| `/api/orders/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, customer_notes?, internal_notes?, shipping_fee? }` |
+| 108 | `POST` | `/api/shipments` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ order_id, shipping_provider?, tracking_number?, items: [{ order_item_id, quantity_shipped }] }` |
+| 109 | `PUT/PATCH`| `/api/shipments/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?: 'packed'|'shipped'|'delivered'|'cancelled', tracking_number?, notes? }` |
+| 110 | `POST` | `/api/pos-registers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ store_id, code, name, is_active? }` |
+| 111 | `PUT/PATCH`| `/api/pos-registers/{id}`| `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, is_active? }` |
+| 112 | `POST` | `/api/payment-methods` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ code, name, method_type, provider_name?, requires_reference?, sort_order?, is_active? }` |
+| 113 | `PUT/PATCH`| `/api/payment-methods/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of payment method fields |
+| 114 | `POST` | `/api/tax-rates` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ code, name, rate_percent, is_inclusive?, is_active?, effective_from?, effective_to? }` |
+| 115 | `PUT/PATCH`| `/api/tax-rates/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of tax rate fields |
+| 116 | `PUT/PATCH`| `/api/payments/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, transaction_reference?, notes? }` |
 | **CASHIER / POS ENDPOINTS (`role:cashier`)** |
-| 89 | `POST` | `/api/sales` | `cashier` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ items: [{ product_id, quantity }] }` |
-| 90 | `GET` | `/api/sales` | `cashier` | `Accept`, `Authorization` | ❌ NO | None (Cashier's isolated sales history) |
-| 91 | `GET` | `/api/sales/{id}` | `cashier` | `Accept`, `Authorization` | ❌ NO | None (Lookup cashier's receipt by ID) |
+| 117 | `POST` | `/api/sales` | `cashier` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ items: [{ product_id, quantity }] }` |
+| 118 | `GET` | `/api/sales` | `cashier` | `Accept`, `Authorization` | ❌ NO | None (Cashier's isolated sales history) |
+| 119 | `GET` | `/api/sales/{id}` | `cashier` | `Accept`, `Authorization` | ❌ NO | None (Lookup cashier's receipt by ID) |
 
 ---
 
@@ -1078,6 +1106,300 @@ Transitions shipment delivery states (`packed`, `shipped`, `delivered`, `failed`
     "notes": "Delivered and signed by recipient Abebe Bikila"
   }
   ```
+
+### 4.16 `POST /api/pos-registers` — Create POS Register
+Registers a physical terminal or workstation drawer assigned to a specific store.
+
+* **Access / Role:** `admin`, `manager`
+* **Headers Required:**
+  ```http
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer <token>
+  ```
+* **Body Required:** **✅ YES (JSON Object)**
+* **Request Body Fields:**
+  | Field | Type | Required? | Validation Rules | Description |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `store_id` | Integer | **Required** | `required`, `exists:stores,id` | Owning retail store |
+  | `code` | String | **Required** | `required`, `string`, `max:50`, `unique:pos_registers,code` | Unique terminal code |
+  | `name` | String | **Required** | `required`, `string`, `max:100` | Friendly terminal name |
+  | `is_active` | Boolean | Optional | `nullable`, `boolean` | Register active status |
+
+* **Request Body Example:**
+  ```json
+  {
+    "store_id": 1,
+    "code": "REG-01",
+    "name": "Main Checkout Register 1",
+    "is_active": true
+  }
+  ```
+* **Success Response (`201 Created`):**
+  ```json
+  {
+    "message": "POS register created successfully.",
+    "register": {
+      "id": 1,
+      "store_id": 1,
+      "code": "REG-01",
+      "name": "Main Checkout Register 1",
+      "is_active": true,
+      "created_at": "2026-10-28T12:00:00.000000Z"
+    }
+  }
+  ```
+
+---
+
+### 4.17 `POST /api/cashier-shifts/open` — Open Cashier Shift
+Opens an active cashier register shift. Automatically verifies that neither the cashier nor the selected register has an existing unclosed shift, sets `opened_at = now()`, and inserts an `opening_float` audit entry in `cash_movements`.
+
+* **Access / Role:** `admin`, `manager`, `cashier`
+* **Headers Required:**
+  ```http
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer <token>
+  ```
+* **Body Required:** **✅ YES (JSON Object)**
+* **Request Body Fields:**
+  | Field | Type | Required? | Validation Rules | Description |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `pos_register_id` | Integer | **Required** | `required`, `exists:pos_registers,id` | Physical register |
+  | `opening_float` | Number | **Required** | `required`, `numeric`, `min:0` | Initial starting drawer cash |
+  | `notes` | String | Optional | `nullable`, `string` | Shift opening notes |
+
+* **Request Body Example:**
+  ```json
+  {
+    "pos_register_id": 1,
+    "opening_float": 1500.00,
+    "notes": "Morning opening shift float verified"
+  }
+  ```
+* **Success Response (`201 Created`):**
+  ```json
+  {
+    "message": "Cashier shift opened successfully.",
+    "shift": {
+      "id": 1,
+      "pos_register_id": 1,
+      "user_id": 2,
+      "status": "open",
+      "opening_float": 1500.00,
+      "expected_cash": 1500.00,
+      "opened_at": "2026-10-28T08:00:00.000000Z"
+    }
+  }
+  ```
+
+---
+
+### 4.18 `POST /api/cashier-shifts/{id}/close` — Close Cashier Shift & Reconcile Drawer
+Closes an open cashier shift, calculates expected cash by summing drawer movements, compares against counted cash (`drawer_variance = counted_cash - expected_cash`), and flags shifts as `reconciled` or `discrepant`.
+
+* **Access / Role:** `admin`, `manager`, `cashier`
+* **Headers Required:**
+  ```http
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer <token>
+  ```
+* **Body Required:** **✅ YES (JSON Object)**
+* **Request Body Fields:**
+  | Field | Type | Required? | Validation Rules | Description |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `counted_cash` | Number | **Required** | `required`, `numeric`, `min:0` | Actual cash physically counted |
+  | `notes` | String | Optional | `nullable`, `string` | Shift handover / drawer notes |
+
+* **Request Body Example:**
+  ```json
+  {
+    "counted_cash": 3898.00,
+    "notes": "Evening closing shift. Cash matched expected register receipts."
+  }
+  ```
+* **Success Response (`200 OK`):**
+  ```json
+  {
+    "message": "Cashier shift closed and reconciled successfully.",
+    "shift": {
+      "id": 1,
+      "status": "closed",
+      "opening_float": 1500.00,
+      "expected_cash": 3898.00,
+      "closing_cash": 3898.00,
+      "cash_difference": 0.00,
+      "closed_at": "2026-10-28T17:00:00.000000Z"
+    }
+  }
+  ```
+
+---
+
+### 4.19 `POST /api/cash-movements` — Log Shift Cash Movement
+Logs petty cash payouts, safe cash drops, and register float replenishment. Automatically maintains the running `expected_cash` on the target open shift.
+
+* **Access / Role:** `admin`, `manager`, `cashier`
+* **Headers Required:**
+  ```http
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer <token>
+  ```
+* **Body Required:** **✅ YES (JSON Object)**
+* **Request Body Fields:**
+  | Field | Type | Required? | Validation Rules | Description |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `cashier_shift_id` | Integer | **Required** | `required`, `exists:cashier_shifts,id` | Target open shift |
+  | `movement_type` | String | **Required** | `required`, `in:cash_in,cash_out,drop,expense,float_addition` | Movement category |
+  | `amount` | Number | **Required** | `required`, `numeric`, `min:0.01` | Cash amount |
+  | `reason` | String | **Required** | `required`, `string`, `max:255` | Ledger audit reason |
+
+* **Request Body Example:**
+  ```json
+  {
+    "cashier_shift_id": 1,
+    "movement_type": "expense",
+    "amount": 120.00,
+    "reason": "Receipt paper roll replacement and emergency store cleaning supplies"
+  }
+  ```
+* **Success Response (`201 Created`):**
+  ```json
+  {
+    "message": "Cash movement recorded successfully.",
+    "movement": {
+      "id": 2,
+      "cashier_shift_id": 1,
+      "movement_type": "expense",
+      "amount": 120.00,
+      "reason": "Receipt paper roll replacement and emergency store cleaning supplies"
+    }
+  }
+  ```
+
+---
+
+### 4.20 `POST /api/payment-methods` — Register Payment Method
+Configures payment tender methods (Cash, Telebirr, CBE Birr, Bank Wire, Credit Card, Voucher).
+
+* **Access / Role:** `admin`, `manager`
+* **Headers Required:**
+  ```http
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer <token>
+  ```
+* **Body Required:** **✅ YES (JSON Object)**
+* **Request Body Fields:**
+  | Field | Type | Required? | Validation Rules | Description |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `code` | String | **Required** | `required`, `string`, `max:50`, `unique:payment_methods,code` | Method code (e.g., `CBE_BIRR`) |
+  | `name` | String | **Required** | `required`, `string`, `max:100` | Display label (e.g., `Commercial Bank of Ethiopia (CBE Birr)`) |
+  | `method_type` | String | **Required** | `required`, `string`, `max:50` | Category (`cash`, `mobile_money`, `bank_transfer`, `card`) |
+  | `provider_name` | String | Optional | `nullable`, `string`, `max:100` | Gateway / Provider name |
+  | `requires_reference` | Boolean | Optional | `nullable`, `boolean` | True if transaction slip / reference ID required |
+  | `is_active` | Boolean | Optional | `nullable`, `boolean` | Active flag |
+
+* **Request Body Example:**
+  ```json
+  {
+    "code": "CBE_BIRR",
+    "name": "Commercial Bank of Ethiopia (CBE Birr)",
+    "method_type": "mobile_money",
+    "provider_name": "Commercial Bank of Ethiopia",
+    "requires_reference": true,
+    "is_active": true
+  }
+  ```
+* **Success Response (`201 Created`):** Returns configured payment method record.
+
+---
+
+### 4.21 `POST /api/payments` — Record Tender Payment
+Processes tender transactions linked to orders, sales, or customer accounts. Automatically logs cash tender directly into the active cashier's shift drawer.
+
+* **Access / Role:** `admin`, `manager`, `cashier`
+* **Headers Required:**
+  ```http
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer <token>
+  ```
+* **Body Required:** **✅ YES (JSON Object)**
+* **Request Body Fields:**
+  | Field | Type | Required? | Validation Rules | Description |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `order_id` | Integer | Optional | `nullable`, `exists:orders,id` | Linked order |
+  | `payment_method_id` | Integer | **Required** | `required`, `exists:payment_methods,id` | Selected payment tender |
+  | `cashier_shift_id` | Integer | Optional | `nullable`, `exists:cashier_shifts,id` | Active shift (auto-detected for cashiers) |
+  | `amount` | Number | **Required** | `required`, `numeric`, `min:0.01` | Payment amount |
+  | `currency` | String | Optional | `nullable`, `string`, `size:3` | ISO Currency code (default `ETB`) |
+  | `status` | String | Optional | `in:pending,succeeded,failed,reversed` | Initial payment status (default `succeeded`) |
+  | `transaction_reference` | String | Optional | `nullable`, `string`, `max:255` | Bank slip or mobile transfer reference |
+  | `notes` | String | Optional | `nullable`, `string` | Payment memo |
+
+* **Request Body Example:**
+  ```json
+  {
+    "order_id": 1,
+    "payment_method_id": 3,
+    "amount": 2850.20,
+    "currency": "ETB",
+    "transaction_reference": "TLB-REC-20261028-892147",
+    "notes": "Telebirr merchant payment verified via SMS notification"
+  }
+  ```
+* **Success Response (`201 Created`):**
+  ```json
+  {
+    "message": "Payment recorded successfully.",
+    "payment": {
+      "id": 1,
+      "payment_number": "PAY-20261028-0001",
+      "order_id": 1,
+      "amount": 2850.20,
+      "status": "succeeded",
+      "transaction_reference": "TLB-REC-20261028-892147"
+    }
+  }
+  ```
+
+---
+
+### 4.22 `POST /api/tax-rates` — Create Tax Rate Configuration
+Configures multi-tier tax regulations (VAT, TOT, Withholding).
+
+* **Access / Role:** `admin`, `manager`
+* **Headers Required:**
+  ```http
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer <token>
+  ```
+* **Body Required:** **✅ YES (JSON Object)**
+* **Request Body Fields:**
+  | Field | Type | Required? | Validation Rules | Description |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `code` | String | **Required** | `required`, `string`, `max:50`, `unique:tax_rates,code` | Tax code (e.g., `VAT-15`) |
+  | `name` | String | **Required** | `required`, `string`, `max:100` | Tax title (e.g., `Value Added Tax 15%`) |
+  | `rate_percent` | Number | **Required** | `required`, `numeric`, `min:0`, `max:100` | Percentage rate |
+  | `is_inclusive` | Boolean | Optional | `nullable`, `boolean` | True if included in price tag |
+  | `is_active` | Boolean | Optional | `nullable`, `boolean` | Active status flag |
+
+* **Request Body Example:**
+  ```json
+  {
+    "code": "VAT-15",
+    "name": "Standard Value Added Tax 15%",
+    "rate_percent": 15.00,
+    "is_inclusive": false,
+    "is_active": true
+  }
+  ```
+* **Success Response (`201 Created`):** Returns configured tax rate record.
 
 ---
 
