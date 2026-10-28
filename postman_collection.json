@@ -2080,6 +2080,475 @@
           }
         }
       ]
+    },
+    {
+      "name": "15. Inventory Operations - Stock Transfers",
+      "item": [
+        {
+          "name": "List Stock Transfers (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-transfers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Stock Transfer (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-transfers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-transfers",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Stock Transfer Request (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from_stock_location_id\": 1,\n  \"to_stock_location_id\": 2,\n  \"notes\": \"Transfer inventory from Warehouse to Retail Floor\",\n  \"items\": [\n    {\n      \"product_variant_id\": 1,\n      \"quantity_requested\": 5\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stock-transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-transfers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dispatch / Mark In-Transit (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_transit\",\n  \"notes\": \"Dispatched via delivery van #2\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stock-transfers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-transfers",
+                "1"
+              ]
+            },
+            "description": "Atomically locks origin balance and decrements quantity_on_hand from origin stock location."
+          }
+        },
+        {
+          "name": "Receive Stock Transfer (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"received\",\n  \"notes\": \"Received in full at Retail Floor\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stock-transfers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-transfers",
+                "1"
+              ]
+            },
+            "description": "Atomically credits quantity_on_hand into destination stock location balance."
+          }
+        },
+        {
+          "name": "Delete Stock Transfer (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-transfers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-transfers",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. Inventory Operations - Stock Adjustments",
+      "item": [
+        {
+          "name": "List Stock Adjustments (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-adjustments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-adjustments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Stock Adjustment (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-adjustments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-adjustments",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Draft Stock Adjustment / Count Audit (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stock_location_id\": 1,\n  \"reason\": \"End of month cycle count audit\",\n  \"notes\": \"Discrepancy found during physical inventory check\",\n  \"items\": [\n    {\n      \"product_variant_id\": 1,\n      \"counted_quantity\": 98,\n      \"unit_cost\": 850.00,\n      \"notes\": \"2 units damaged in storage rack\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stock-adjustments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-adjustments"
+              ]
+            },
+            "description": "Compares physical count against system quantity and calculates variance automatically."
+          }
+        },
+        {
+          "name": "Post Variance to Live Inventory (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"posted\",\n  \"notes\": \"Variance verified and approved by inventory manager\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stock-adjustments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-adjustments",
+                "1"
+              ]
+            },
+            "description": "Applies variance directly to StockBalance and syncs parent Product catalog quantity."
+          }
+        },
+        {
+          "name": "Delete Stock Adjustment (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-adjustments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-adjustments",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "17. Inventory Operations - Stock Transactions",
+      "item": [
+        {
+          "name": "List Stock Transactions Ledger (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-transactions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Stock Transaction (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-transactions/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-transactions",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Log Manual Stock Transaction (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction_type\": \"opening_balance\",\n  \"notes\": \"Initial stock intake setup\",\n  \"items\": [\n    {\n      \"stock_location_id\": 1,\n      \"product_variant_id\": 1,\n      \"quantity_delta\": 10,\n      \"unit_cost\": 850.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stock-transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-transactions"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

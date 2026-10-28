@@ -15,6 +15,9 @@ use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\GoodsReceiptController;
 use App\Http\Controllers\Api\SupplierPaymentController;
+use App\Http\Controllers\Api\StockTransferController;
+use App\Http\Controllers\Api\StockAdjustmentController;
+use App\Http\Controllers\Api\StockTransactionController;
 
 Route::post('/login', [ApiAuthController::class, 'login']);
 
@@ -46,6 +49,14 @@ Route::get('/goods-receipts/{goodsReceipt}', [GoodsReceiptController::class, 'sh
 Route::get('/supplier-payments', [SupplierPaymentController::class, 'index']);
 Route::get('/supplier-payments/{supplierPayment}', [SupplierPaymentController::class, 'show']);
 
+// Inventory Operations public read routes
+Route::get('/stock-transfers', [StockTransferController::class, 'index']);
+Route::get('/stock-transfers/{stockTransfer}', [StockTransferController::class, 'show']);
+Route::get('/stock-adjustments', [StockAdjustmentController::class, 'index']);
+Route::get('/stock-adjustments/{stockAdjustment}', [StockAdjustmentController::class, 'show']);
+Route::get('/stock-transactions', [StockTransactionController::class, 'index']);
+Route::get('/stock-transactions/{stockTransaction}', [StockTransactionController::class, 'show']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [ApiAuthController::class, 'logout']);
     Route::get('/user', [ApiAuthController::class, 'user']);
@@ -75,6 +86,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/goods-receipts', [GoodsReceiptController::class, 'store']);
         Route::post('/supplier-payments', [SupplierPaymentController::class, 'store']);
         Route::match(['put', 'patch'], '/supplier-payments/{supplierPayment}', [SupplierPaymentController::class, 'update']);
+
+        // Inventory movements & adjustments
+        Route::post('/stock-transfers', [StockTransferController::class, 'store']);
+        Route::match(['put', 'patch'], '/stock-transfers/{stockTransfer}', [StockTransferController::class, 'update']);
+        Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store']);
+        Route::match(['put', 'patch'], '/stock-adjustments/{stockAdjustment}', [StockAdjustmentController::class, 'update']);
+        Route::post('/stock-transactions', [StockTransactionController::class, 'store']);
     });
 
     // Admin-only management & deletion routes
@@ -97,6 +115,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Procurement deletions
         Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy']);
         Route::delete('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy']);
+
+        // Inventory deletions
+        Route::delete('/stock-transfers/{stockTransfer}', [StockTransferController::class, 'destroy']);
+        Route::delete('/stock-adjustments/{stockAdjustment}', [StockAdjustmentController::class, 'destroy']);
     });
 
     // Cashier routes
