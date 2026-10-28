@@ -41,17 +41,29 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@gmail.com\",\n  \"password\": \"password\"\n}"
+              "raw": "{\n  \"email\": \"admin@gmail.com\",\n  \"password\": \"admin123\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/login",
-              "host": ["{{base_url}}"],
-              "path": ["login"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
             },
             "description": "Logs in and retrieves Sanctum Bearer token. The Test script automatically saves the token to {{token}}."
           }
@@ -61,14 +73,30 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/user",
-              "host": ["{{base_url}}"],
-              "path": ["user"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user"
+              ]
             }
           }
         },
@@ -77,14 +105,30 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/logout",
-              "host": ["{{base_url}}"],
-              "path": ["logout"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "logout"
+              ]
             }
           }
         }
@@ -98,15 +142,37 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/admin/users?page=1",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "users"],
-              "query": [{ "key": "page", "value": "1" }]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
             }
           }
         },
@@ -115,12 +181,26 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -128,8 +208,13 @@
             },
             "url": {
               "raw": "{{base_url}}/admin/users",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "users"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ]
             }
           }
         }
@@ -142,12 +227,27 @@
           "name": "List Categories (Public)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/categories?page=1",
-              "host": ["{{base_url}}"],
-              "path": ["categories"],
-              "query": [{ "key": "page", "value": "1" }]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "categories"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
             }
           }
         },
@@ -155,11 +255,22 @@
           "name": "Get Single Category (Public)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/categories/1",
-              "host": ["{{base_url}}"],
-              "path": ["categories", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "categories",
+                "1"
+              ]
             }
           }
         },
@@ -168,12 +279,26 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -181,8 +306,12 @@
             },
             "url": {
               "raw": "{{base_url}}/categories",
-              "host": ["{{base_url}}"],
-              "path": ["categories"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "categories"
+              ]
             }
           }
         },
@@ -191,12 +320,26 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "PATCH",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -204,8 +347,13 @@
             },
             "url": {
               "raw": "{{base_url}}/categories/1",
-              "host": ["{{base_url}}"],
-              "path": ["categories", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "categories",
+                "1"
+              ]
             }
           }
         },
@@ -214,14 +362,31 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "DELETE",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/categories/1",
-              "host": ["{{base_url}}"],
-              "path": ["categories", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "categories",
+                "1"
+              ]
             }
           }
         }
@@ -234,12 +399,27 @@
           "name": "List Brands (Public)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/brands?page=1",
-              "host": ["{{base_url}}"],
-              "path": ["brands"],
-              "query": [{ "key": "page", "value": "1" }]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "brands"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
             }
           }
         },
@@ -247,11 +427,22 @@
           "name": "Get Brand with Products (Public)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/brands/1",
-              "host": ["{{base_url}}"],
-              "path": ["brands", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "brands",
+                "1"
+              ]
             }
           }
         },
@@ -260,12 +451,26 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -273,8 +478,12 @@
             },
             "url": {
               "raw": "{{base_url}}/brands",
-              "host": ["{{base_url}}"],
-              "path": ["brands"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "brands"
+              ]
             }
           }
         },
@@ -283,12 +492,26 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "PATCH",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -296,8 +519,13 @@
             },
             "url": {
               "raw": "{{base_url}}/brands/1",
-              "host": ["{{base_url}}"],
-              "path": ["brands", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "brands",
+                "1"
+              ]
             }
           }
         },
@@ -306,14 +534,31 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "DELETE",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/brands/1",
-              "host": ["{{base_url}}"],
-              "path": ["brands", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "brands",
+                "1"
+              ]
             }
           }
         }
@@ -326,12 +571,27 @@
           "name": "List Products (Public)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/products?page=1",
-              "host": ["{{base_url}}"],
-              "path": ["products"],
-              "query": [{ "key": "page", "value": "1" }]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
             }
           }
         },
@@ -339,11 +599,22 @@
           "name": "Get Single Product (Public)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/products/1",
-              "host": ["{{base_url}}"],
-              "path": ["products", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "products",
+                "1"
+              ]
             }
           }
         },
@@ -352,12 +623,26 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -365,8 +650,12 @@
             },
             "url": {
               "raw": "{{base_url}}/products",
-              "host": ["{{base_url}}"],
-              "path": ["products"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "products"
+              ]
             }
           }
         },
@@ -375,12 +664,26 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "PATCH",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -388,8 +691,13 @@
             },
             "url": {
               "raw": "{{base_url}}/products/1",
-              "host": ["{{base_url}}"],
-              "path": ["products", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "products",
+                "1"
+              ]
             }
           }
         },
@@ -398,14 +706,31 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "DELETE",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/products/1",
-              "host": ["{{base_url}}"],
-              "path": ["products", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "products",
+                "1"
+              ]
             }
           }
         }
@@ -419,12 +744,26 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -432,8 +771,12 @@
             },
             "url": {
               "raw": "{{base_url}}/sales",
-              "host": ["{{base_url}}"],
-              "path": ["sales"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sales"
+              ]
             },
             "description": "Atomically decrements inventory, creates counter order, and returns transaction summary."
           }
@@ -443,15 +786,36 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/sales?page=1",
-              "host": ["{{base_url}}"],
-              "path": ["sales"],
-              "query": [{ "key": "page", "value": "1" }]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sales"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
             }
           }
         },
@@ -460,14 +824,695 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/sales/1",
-              "host": ["{{base_url}}"],
-              "path": ["sales", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sales",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Warehousing - Units",
+      "item": [
+        {
+          "name": "List Units (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/units",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "units"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Unit (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/units/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "units",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Unit (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pieces\",\n  \"abbreviation\": \"pcs\",\n  \"allows_decimal_quantity\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/units",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "units"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Unit (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Standard Pieces\",\n  \"abbreviation\": \"pcs\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/units/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "units",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Unit (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/units/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "units",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Warehousing - Stores",
+      "item": [
+        {
+          "name": "List Stores (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stores",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stores"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Store with Locations (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stores/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stores",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Store (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"STR-MAIN-01\",\n  \"name\": \"Central Flagship Store\",\n  \"phone\": \"+251-911-000000\",\n  \"email\": \"flagship@electronics.com\",\n  \"address\": \"Bole Subcity, Addis Ababa\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stores"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Store (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Central Flagship Retail & Tech Hub\",\n  \"phone\": \"+251-911-222222\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stores",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Store (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stores/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stores",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Warehousing - Stock Locations",
+      "item": [
+        {
+          "name": "List Stock Locations (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-locations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-locations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Stock Location Details (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-locations/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-locations",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Stock Location (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"store_id\": 1,\n  \"code\": \"WH-MAIN-01\",\n  \"name\": \"Primary Electronics Depot\",\n  \"location_type\": \"warehouse\",\n  \"is_sellable\": false,\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stock-locations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-locations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Stock Location (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Primary Electronics Depot - Zone A\",\n  \"is_sellable\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stock-locations/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-locations",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Stock Location (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-locations/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-locations",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Warehousing - Stock Balances",
+      "item": [
+        {
+          "name": "List Stock Balances (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-balances",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-balances"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Stock Balance (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-balances/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-balances",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Initialize Stock Balance (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stock_location_id\": 1,\n  \"product_variant_id\": 1,\n  \"quantity_on_hand\": 100,\n  \"quantity_reserved\": 10,\n  \"reorder_level\": 20\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stock-balances",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-balances"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Stock Balance (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity_on_hand\": 85,\n  \"reorder_level\": 25\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stock-balances/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-balances",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Stock Balance (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stock-balances/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stock-balances",
+                "1"
+              ]
             }
           }
         }
