@@ -1517,6 +1517,569 @@
           }
         }
       ]
+    },
+    {
+      "name": "11. Procurement - Suppliers",
+      "item": [
+        {
+          "name": "List Suppliers (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/suppliers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Supplier (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/suppliers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register Supplier (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplier_code\": \"SUP-TECH-01\",\n  \"name\": \"Global Electronics Components Ltd\",\n  \"contact_person\": \"David Miller\",\n  \"phone\": \"+1-800-555-0199\",\n  \"email\": \"sales@globalelectronics.com\",\n  \"tax_number\": \"TAX-US-992817\",\n  \"address\": \"452 Tech Way, Silicon Valley, CA\",\n  \"payment_terms_days\": 30,\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/suppliers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Supplier (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contact_person\": \"David Miller (Head of B2B)\",\n  \"phone\": \"+1-800-555-0200\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/suppliers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Supplier (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/suppliers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Procurement - Purchase Orders",
+      "item": [
+        {
+          "name": "List Purchase Orders (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/purchase-orders?status=draft",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "purchase-orders"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "draft"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Purchase Order (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/purchase-orders/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Purchase Order (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplier_id\": 1,\n  \"store_id\": 1,\n  \"destination_stock_location_id\": 1,\n  \"currency_code\": \"ETB\",\n  \"expected_at\": \"2026-11-15\",\n  \"notes\": \"Initial stock intake for Q4\",\n  \"items\": [\n    {\n      \"product_variant_id\": 1,\n      \"quantity_ordered\": 50,\n      \"unit_cost\": 850.00,\n      \"discount_amount\": 0,\n      \"tax_amount\": 0\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/purchase-orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "purchase-orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update / Approve Purchase Order (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\",\n  \"notes\": \"Approved by Inventory Director\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/purchase-orders/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Purchase Order (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/purchase-orders/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Procurement - Goods Receipts",
+      "item": [
+        {
+          "name": "List Goods Receipts (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/goods-receipts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "goods-receipts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Goods Receipt (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/goods-receipts/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "goods-receipts",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Receive Goods / Intake Stock (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplier_id\": 1,\n  \"stock_location_id\": 1,\n  \"purchase_order_id\": 1,\n  \"supplier_delivery_note\": \"DN-994821\",\n  \"notes\": \"Delivered via DHL Express in good condition\",\n  \"items\": [\n    {\n      \"product_variant_id\": 1,\n      \"quantity_received\": 50,\n      \"unit_cost\": 850.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/goods-receipts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "goods-receipts"
+              ]
+            },
+            "description": "Intakes stock into the warehouse location, increments StockBalance.quantity_on_hand and Product.quantity atomically, and updates PO received counts."
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Procurement - Supplier Payments",
+      "item": [
+        {
+          "name": "List Supplier Payments (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/supplier-payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "supplier-payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Supplier Payment (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/supplier-payments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "supplier-payments",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Record Supplier Payment (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplier_id\": 1,\n  \"purchase_order_id\": 1,\n  \"payment_method_id\": 1,\n  \"amount\": 42500.00,\n  \"currency_code\": \"ETB\",\n  \"status\": \"succeeded\",\n  \"transaction_reference\": \"CBE-FT-20261028-98421\",\n  \"notes\": \"Wire transfer settlement for PO-1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/supplier-payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "supplier-payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Supplier Payment Status (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"succeeded\",\n  \"notes\": \"Bank wire cleared and reconciled\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/supplier-payments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "supplier-payments",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }
