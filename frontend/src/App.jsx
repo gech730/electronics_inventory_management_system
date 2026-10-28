@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import Categories from './pages/Categories';
 import Users from './pages/Users';
+import Pos from './pages/Pos';
+import Shifts from './pages/Shifts';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
 import Icon from './components/Icons';
@@ -89,16 +91,8 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
           <Route path="/categories" element={<Categories />} />
-          <Route
-            path="/pos"
-            element={
-              <SectionPlaceholder
-                title="Point of Sale (Checkout)"
-                description="Fast barcode/SKU checkout counter for cashiers to process customer transactions."
-                icon="cart"
-              />
-            }
-          />
+          <Route path="/pos" element={<Pos />} />
+          <Route path="/shifts" element={<Shifts />} />
           <Route
             path="/sales"
             element={
