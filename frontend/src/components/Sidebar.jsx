@@ -99,6 +99,12 @@ export const Sidebar = ({ isOpen, onClose }) => {
           roles: ['admin', 'manager'],
         },
         {
+          label: 'Units of Measure',
+          path: '/units',
+          icon: 'tag',
+          roles: ['admin', 'manager'],
+        },
+        {
           label: 'Stock Transfers',
           path: '/transfers',
           icon: 'arrowLeftRight',

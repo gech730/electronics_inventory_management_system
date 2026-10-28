@@ -11,6 +11,9 @@ import Shifts from './pages/Shifts';
 import Orders from './pages/Orders';
 import Shipments from './pages/Shipments';
 import Customers from './pages/Customers';
+import Stores from './pages/Stores';
+import Balances from './pages/Balances';
+import Units from './pages/Units';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
 import Icon from './components/Icons';
@@ -99,6 +102,9 @@ export default function App() {
           <Route path="/orders" element={<Orders />} />
           <Route path="/shipments" element={<Shipments />} />
           <Route path="/customers" element={<Customers />} />
+          <Route path="/stores" element={<Stores />} />
+          <Route path="/balances" element={<Balances />} />
+          <Route path="/units" element={<Units />} />
           <Route
             path="/sales"
             element={
