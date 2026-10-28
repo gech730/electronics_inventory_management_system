@@ -14,6 +14,9 @@ import Customers from './pages/Customers';
 import Stores from './pages/Stores';
 import Balances from './pages/Balances';
 import Units from './pages/Units';
+import Suppliers from './pages/Suppliers';
+import PurchaseOrders from './pages/PurchaseOrders';
+import GoodsReceipts from './pages/GoodsReceipts';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
 import Icon from './components/Icons';
@@ -105,6 +108,9 @@ export default function App() {
           <Route path="/stores" element={<Stores />} />
           <Route path="/balances" element={<Balances />} />
           <Route path="/units" element={<Units />} />
+          <Route path="/suppliers" element={<Suppliers />} />
+          <Route path="/purchase-orders" element={<PurchaseOrders />} />
+          <Route path="/goods-receipts" element={<GoodsReceipts />} />
           <Route
             path="/sales"
             element={
