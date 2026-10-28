@@ -2549,6 +2549,638 @@
           }
         }
       ]
+    },
+    {
+      "name": "18. Customers & Addresses",
+      "item": [
+        {
+          "name": "List Customers (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customers?search=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customers"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Customer by ID (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customers",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Customer with Initial Address (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_code\": \"CUST-CORP-001\",\n  \"customer_type\": \"corporate\",\n  \"display_name\": \"Ethio Telecom Procurement\",\n  \"phone\": \"+251911223344\",\n  \"email\": \"procurement@ethiotelecom.et\",\n  \"tax_number\": \"TIN-9876543210\",\n  \"credit_limit\": 500000.00,\n  \"default_credit_days\": 30,\n  \"notes\": \"Key enterprise corporate account\",\n  \"address\": {\n    \"label\": \"Headquarters\",\n    \"address_type\": \"both\",\n    \"recipient_name\": \"Abebe Bikila\",\n    \"phone\": \"+251911223344\",\n    \"country_code\": \"ET\",\n    \"city\": \"Addis Ababa\",\n    \"sub_city\": \"Kirkos\",\n    \"address_line\": \"Churchill Avenue, Posta Bet\",\n    \"is_default\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/customers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Customer Profile (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credit_limit\": 750000.00,\n  \"notes\": \"Credit limit expanded per annual review\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/customers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customers",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Customer Address (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Bole Branch Office\",\n  \"address_type\": \"shipping\",\n  \"recipient_name\": \"Marta Tefera\",\n  \"phone\": \"+251922334455\",\n  \"country_code\": \"ET\",\n  \"city\": \"Addis Ababa\",\n  \"sub_city\": \"Bole\",\n  \"address_line\": \"Medhanialem Mall, 3rd Floor\",\n  \"is_default\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/customers/1/addresses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customers",
+                "1",
+                "addresses"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Customer Address (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipient_name\": \"Abebe Bikila (Director)\",\n  \"is_default\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/customers/1/addresses/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customers",
+                "1",
+                "addresses",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Customer Address (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customers/1/addresses/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customers",
+                "1",
+                "addresses",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Customer (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customers",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "19. Multi-Channel Orders",
+      "item": [
+        {
+          "name": "List Orders (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders?status=confirmed",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "confirmed"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Order by ID (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Multi-Channel Order (Admin/Manager/Staff)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"backoffice\",\n  \"status\": \"confirmed\",\n  \"fulfillment_type\": \"delivery\",\n  \"customer_id\": 1,\n  \"store_id\": 1,\n  \"stock_location_id\": 1,\n  \"shipping_fee\": 150.00,\n  \"customer_notes\": \"Deliver during working hours 9 AM - 5 PM\",\n  \"internal_notes\": \"Corporate PO-2026-998 Attached\",\n  \"items\": [\n    {\n      \"product_variant_id\": 1,\n      \"quantity_ordered\": 2,\n      \"unit_price\": 1199.00,\n      \"discount_amount\": 50.00,\n      \"tax_rate_percent\": 15.0\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Order Status / Details (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"processing\",\n  \"internal_notes\": \"Items picked and undergoing packaging\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Order (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "20. Shipments & Logistics",
+      "item": [
+        {
+          "name": "List Shipments (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shipments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Shipment by ID (Public/Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shipments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Shipment Package Dispatch (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": 1,\n  \"status\": \"shipped\",\n  \"shipping_provider\": \"DHL Express\",\n  \"tracking_number\": \"DHL-ET-982104928\",\n  \"recipient_name\": \"Abebe Bikila\",\n  \"recipient_phone\": \"+251911223344\",\n  \"notes\": \"Fragile electronics handle with care\",\n  \"items\": [\n    {\n      \"order_item_id\": 1,\n      \"quantity_shipped\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/shipments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Shipment Tracking / Status (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"delivered\",\n  \"notes\": \"Delivered and signed by recipient Abebe Bikila\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/shipments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Shipment (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shipments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

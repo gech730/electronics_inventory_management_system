@@ -18,6 +18,9 @@ use App\Http\Controllers\Api\SupplierPaymentController;
 use App\Http\Controllers\Api\StockTransferController;
 use App\Http\Controllers\Api\StockAdjustmentController;
 use App\Http\Controllers\Api\StockTransactionController;
+use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\ShipmentController;
 
 Route::post('/login', [ApiAuthController::class, 'login']);
 
@@ -57,6 +60,14 @@ Route::get('/stock-adjustments/{stockAdjustment}', [StockAdjustmentController::c
 Route::get('/stock-transactions', [StockTransactionController::class, 'index']);
 Route::get('/stock-transactions/{stockTransaction}', [StockTransactionController::class, 'show']);
 
+// Customer & Multi-Channel Order public read routes
+Route::get('/customers', [CustomerController::class, 'index']);
+Route::get('/customers/{customer}', [CustomerController::class, 'show']);
+Route::get('/orders', [OrderController::class, 'index']);
+Route::get('/orders/{order}', [OrderController::class, 'show']);
+Route::get('/shipments', [ShipmentController::class, 'index']);
+Route::get('/shipments/{shipment}', [ShipmentController::class, 'show']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [ApiAuthController::class, 'logout']);
     Route::get('/user', [ApiAuthController::class, 'user']);
@@ -93,6 +104,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store']);
         Route::match(['put', 'patch'], '/stock-adjustments/{stockAdjustment}', [StockAdjustmentController::class, 'update']);
         Route::post('/stock-transactions', [StockTransactionController::class, 'store']);
+
+        // Customer & Order operations
+        Route::post('/customers', [CustomerController::class, 'store']);
+        Route::match(['put', 'patch'], '/customers/{customer}', [CustomerController::class, 'update']);
+        Route::post('/customers/{customer}/addresses', [CustomerController::class, 'storeAddress']);
+        Route::match(['put', 'patch'], '/customers/{customer}/addresses/{address}', [CustomerController::class, 'updateAddress']);
+        Route::delete('/customers/{customer}/addresses/{address}', [CustomerController::class, 'destroyAddress']);
+        Route::post('/orders', [OrderController::class, 'store']);
+        Route::match(['put', 'patch'], '/orders/{order}', [OrderController::class, 'update']);
+        Route::post('/shipments', [ShipmentController::class, 'store']);
+        Route::match(['put', 'patch'], '/shipments/{shipment}', [ShipmentController::class, 'update']);
     });
 
     // Admin-only management & deletion routes
@@ -119,6 +141,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // Inventory deletions
         Route::delete('/stock-transfers/{stockTransfer}', [StockTransferController::class, 'destroy']);
         Route::delete('/stock-adjustments/{stockAdjustment}', [StockAdjustmentController::class, 'destroy']);
+
+        // Order & Customer deletions
+        Route::delete('/customers/{customer}', [CustomerController::class, 'destroy']);
+        Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
+        Route::delete('/shipments/{shipment}', [ShipmentController::class, 'destroy']);
     });
 
     // Cashier routes

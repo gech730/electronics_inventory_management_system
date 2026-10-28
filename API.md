@@ -56,54 +56,72 @@ All endpoints are hosted at base URL: `http://localhost:8000/api`
 | 27 | `GET` | `/api/stock-adjustments/{id}` | **Public** | `Accept` | ❌ NO | None (Single adjustment with audited items & variances) |
 | 28 | `GET` | `/api/stock-transactions` | **Public** | `Accept` | ❌ NO | None (Immutable inventory audit trail ledger) |
 | 29 | `GET` | `/api/stock-transactions/{id}` | **Public** | `Accept` | ❌ NO | None (Single stock transaction entry) |
+| 30 | `GET` | `/api/customers` | **Public** | `Accept` | ❌ NO | None (Directory of individual and corporate customers) |
+| 31 | `GET` | `/api/customers/{id}` | **Public** | `Accept` | ❌ NO | None (Customer profile with addresses & order history) |
+| 32 | `GET` | `/api/orders` | **Public** | `Accept` | ❌ NO | None (Multi-channel orders filterable by channel/status) |
+| 33 | `GET` | `/api/orders/{id}` | **Public** | `Accept` | ❌ NO | None (Order details with items, reservations, & shipments) |
+| 34 | `GET` | `/api/shipments` | **Public** | `Accept` | ❌ NO | None (Logistics packages & courier delivery tracking) |
+| 35 | `GET` | `/api/shipments/{id}` | **Public** | `Accept` | ❌ NO | None (Shipment details with dispatched items) |
 | **COMMON AUTHENTICATED ENDPOINTS (Any Authenticated Role)** |
-| 30 | `GET` | `/api/user` | **Any Role** (`admin`, `manager`, `cashier`, `storekeeper`) | `Accept`, `Authorization` | ❌ NO | None (Returns current user identity & role) |
-| 31 | `POST` | `/api/logout` | **Any Role** (`admin`, `manager`, `cashier`, `storekeeper`) | `Accept`, `Authorization` | ❌ NO | None (Revokes current Sanctum Bearer token) |
+| 36 | `GET` | `/api/user` | **Any Role** (`admin`, `manager`, `cashier`, `storekeeper`) | `Accept`, `Authorization` | ❌ NO | None (Returns current user identity & role) |
+| 37 | `POST` | `/api/logout` | **Any Role** (`admin`, `manager`, `cashier`, `storekeeper`) | `Accept`, `Authorization` | ❌ NO | None (Revokes current Sanctum Bearer token) |
 | **ADMIN-ONLY ENDPOINTS (`role:admin`)** |
-| 32 | `GET` | `/api/admin/users` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Paginated staff list) |
-| 33 | `POST` | `/api/admin/users` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, email, password, password_confirmation, role }` |
-| 34 | `POST` | `/api/categories` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, description }` |
-| 35 | `PUT/PATCH`| `/api/categories/{id}` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, description? }` |
-| 36 | `DELETE` | `/api/categories/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes category with product-conflict guard) |
-| 37 | `DELETE` | `/api/products/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes product from catalog) |
-| 38 | `DELETE` | `/api/brands/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes brand with product-conflict guard) |
-| 39 | `DELETE` | `/api/units/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes unit with product-conflict guard) |
-| 40 | `DELETE` | `/api/stores/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes store with location-conflict guard) |
-| 41 | `DELETE` | `/api/stock-locations/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes location with on-hand stock guard) |
-| 42 | `DELETE` | `/api/stock-balances/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes stock balance if on-hand is 0) |
-| 43 | `DELETE` | `/api/suppliers/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes supplier with PO-conflict guard) |
-| 44 | `DELETE` | `/api/purchase-orders/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes purchase order if draft or cancelled) |
-| 45 | `DELETE` | `/api/stock-transfers/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes transfer if draft or cancelled) |
-| 46 | `DELETE` | `/api/stock-adjustments/{id}`| `admin`| `Accept`, `Authorization` | ❌ NO | None (Deletes adjustment if draft or cancelled) |
+| 38 | `GET` | `/api/admin/users` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Paginated staff list) |
+| 39 | `POST` | `/api/admin/users` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, email, password, password_confirmation, role }` |
+| 40 | `POST` | `/api/categories` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, description }` |
+| 41 | `PUT/PATCH`| `/api/categories/{id}` | `admin` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, description? }` |
+| 42 | `DELETE` | `/api/categories/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes category with product-conflict guard) |
+| 43 | `DELETE` | `/api/products/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes product from catalog) |
+| 44 | `DELETE` | `/api/brands/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes brand with product-conflict guard) |
+| 45 | `DELETE` | `/api/units/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes unit with product-conflict guard) |
+| 46 | `DELETE` | `/api/stores/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes store with location-conflict guard) |
+| 47 | `DELETE` | `/api/stock-locations/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes location with on-hand stock guard) |
+| 48 | `DELETE` | `/api/stock-balances/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes stock balance if on-hand is 0) |
+| 49 | `DELETE` | `/api/suppliers/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes supplier with PO-conflict guard) |
+| 50 | `DELETE` | `/api/purchase-orders/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes purchase order if draft or cancelled) |
+| 51 | `DELETE` | `/api/stock-transfers/{id}`| `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes transfer if draft or cancelled) |
+| 52 | `DELETE` | `/api/stock-adjustments/{id}`| `admin`| `Accept`, `Authorization` | ❌ NO | None (Deletes adjustment if draft or cancelled) |
+| 53 | `DELETE` | `/api/customers/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes customer with order-conflict guard) |
+| 54 | `DELETE` | `/api/orders/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes order if draft or cancelled) |
+| 55 | `DELETE` | `/api/shipments/{id}` | `admin` | `Accept`, `Authorization` | ❌ NO | None (Deletes shipment if pending or cancelled) |
 | **ADMIN & MANAGER ENDPOINTS (`role:admin,manager`)** |
-| 47 | `POST` | `/api/products` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ category_id, sku, name, cost_price, selling_price, quantity, minimum_stock, brand_id?, ... }` |
-| 48 | `PUT/PATCH`| `/api/products/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of product fields to update |
-| 49 | `POST` | `/api/brands` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, description?, is_active? }` |
-| 50 | `PUT/PATCH`| `/api/brands/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, description?, is_active? }` |
-| 51 | `POST` | `/api/units` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, abbreviation, allows_decimal_quantity? }` |
-| 52 | `PUT/PATCH`| `/api/units/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, abbreviation?, allows_decimal_quantity? }` |
-| 53 | `POST` | `/api/stores` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ code, name, phone?, email?, address?, is_active? }` |
-| 54 | `PUT/PATCH`| `/api/stores/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ code?, name?, phone?, email?, address?, is_active? }` |
-| 55 | `POST` | `/api/stock-locations` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ store_id?, code, name, location_type, is_sellable?, is_active? }` |
-| 56 | `PUT/PATCH`| `/api/stock-locations/{id}`| `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of stock location fields |
-| 57 | `POST` | `/api/stock-balances` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, product_variant_id, quantity_on_hand, quantity_reserved?, reorder_level? }` |
-| 58 | `PUT/PATCH`| `/api/stock-balances/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ quantity_on_hand?, quantity_reserved?, reorder_level? }` |
-| 59 | `POST` | `/api/suppliers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_code, name, contact_person?, phone?, email?, tax_number?, address?, payment_terms_days? }` |
-| 60 | `PUT/PATCH`| `/api/suppliers/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of supplier fields |
-| 61 | `POST` | `/api/purchase-orders` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, store_id, destination_stock_location_id, items: [{ product_variant_id, quantity_ordered, unit_cost }] }` |
-| 62 | `PUT/PATCH`| `/api/purchase-orders/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, expected_at?, notes? }` |
-| 63 | `POST` | `/api/goods-receipts` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, stock_location_id, purchase_order_id?, items: [{ product_variant_id, quantity_received, unit_cost }] }` |
-| 64 | `POST` | `/api/supplier-payments` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, purchase_order_id?, payment_method_id, amount, transaction_reference?, notes? }` |
-| 65 | `PUT/PATCH`| `/api/supplier-payments/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, transaction_reference?, notes? }` |
-| 66 | `POST` | `/api/stock-transfers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ source_location_id, destination_location_id, items: [{ product_variant_id, quantity_transferred }] }` |
-| 67 | `PUT/PATCH`| `/api/stock-transfers/{id}` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?: 'in_transit'|'received'|'cancelled', notes? }` |
-| 68 | `POST` | `/api/stock-adjustments` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, reason, items: [{ product_variant_id, counted_quantity }] }` |
-| 69 | `PUT/PATCH`| `/api/stock-adjustments/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status: 'posted' }` (Executes inventory reconciliation) |
-| 70 | `POST` | `/api/stock-transactions` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, product_variant_id, transaction_type, quantity, unit_cost?, reference_type?, reference_id?, notes? }` |
+| 56 | `POST` | `/api/products` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ category_id, sku, name, cost_price, selling_price, quantity, minimum_stock, brand_id?, ... }` |
+| 57 | `PUT/PATCH`| `/api/products/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of product fields to update |
+| 58 | `POST` | `/api/brands` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, description?, is_active? }` |
+| 59 | `PUT/PATCH`| `/api/brands/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, description?, is_active? }` |
+| 60 | `POST` | `/api/units` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name, abbreviation, allows_decimal_quantity? }` |
+| 61 | `PUT/PATCH`| `/api/units/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ name?, abbreviation?, allows_decimal_quantity? }` |
+| 62 | `POST` | `/api/stores` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ code, name, phone?, email?, address?, is_active? }` |
+| 63 | `PUT/PATCH`| `/api/stores/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ code?, name?, phone?, email?, address?, is_active? }` |
+| 64 | `POST` | `/api/stock-locations` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ store_id?, code, name, location_type, is_sellable?, is_active? }` |
+| 65 | `PUT/PATCH`| `/api/stock-locations/{id}`| `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of stock location fields |
+| 66 | `POST` | `/api/stock-balances` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, product_variant_id, quantity_on_hand, quantity_reserved?, reorder_level? }` |
+| 67 | `PUT/PATCH`| `/api/stock-balances/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ quantity_on_hand?, quantity_reserved?, reorder_level? }` |
+| 68 | `POST` | `/api/suppliers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_code, name, contact_person?, phone?, email?, tax_number?, address?, payment_terms_days? }` |
+| 69 | `PUT/PATCH`| `/api/suppliers/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of supplier fields |
+| 70 | `POST` | `/api/purchase-orders` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, store_id, destination_stock_location_id, items: [{ product_variant_id, quantity_ordered, unit_cost }] }` |
+| 71 | `PUT/PATCH`| `/api/purchase-orders/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, expected_at?, notes? }` |
+| 72 | `POST` | `/api/goods-receipts` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, stock_location_id, purchase_order_id?, items: [{ product_variant_id, quantity_received, unit_cost }] }` |
+| 73 | `POST` | `/api/supplier-payments` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ supplier_id, purchase_order_id?, payment_method_id, amount, transaction_reference?, notes? }` |
+| 74 | `PUT/PATCH`| `/api/supplier-payments/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, transaction_reference?, notes? }` |
+| 75 | `POST` | `/api/stock-transfers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ source_location_id, destination_location_id, items: [{ product_variant_id, quantity_transferred }] }` |
+| 76 | `PUT/PATCH`| `/api/stock-transfers/{id}` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?: 'in_transit'|'received'|'cancelled', notes? }` |
+| 77 | `POST` | `/api/stock-adjustments` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, reason, items: [{ product_variant_id, counted_quantity }] }` |
+| 78 | `PUT/PATCH`| `/api/stock-adjustments/{id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status: 'posted' }` (Executes inventory reconciliation) |
+| 79 | `POST` | `/api/stock-transactions` | `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ stock_location_id, product_variant_id, transaction_type, quantity, unit_cost?, reference_type?, reference_id?, notes? }` |
+| 80 | `POST` | `/api/customers` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ display_name, customer_type?, phone?, email?, tax_number?, credit_limit?, address?: {...} }` |
+| 81 | `PUT/PATCH`| `/api/customers/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of customer profile fields |
+| 82 | `POST` | `/api/customers/{id}/addresses`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ label?, address_type?, recipient_name?, phone?, city?, address_line?, is_default? }` |
+| 83 | `PUT/PATCH`| `/api/customers/{id}/addresses/{addr_id}`| `admin`, `manager`| `Accept`, `Content-Type`, `Authorization` | **✅ YES** | Any subset of address fields |
+| 84 | `DELETE` | `/api/customers/{id}/addresses/{addr_id}`| `admin`, `manager`| `Accept`, `Authorization` | ❌ NO | None (Deletes customer address) |
+| 85 | `POST` | `/api/orders` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ source, fulfillment_type, customer_id?, store_id?, stock_location_id?, items: [{ product_variant_id, quantity_ordered }] }` |
+| 86 | `PUT/PATCH`| `/api/orders/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?, customer_notes?, internal_notes?, shipping_fee? }` |
+| 87 | `POST` | `/api/shipments` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ order_id, shipping_provider?, tracking_number?, items: [{ order_item_id, quantity_shipped }] }` |
+| 88 | `PUT/PATCH`| `/api/shipments/{id}` | `admin`, `manager` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ status?: 'packed'|'shipped'|'delivered'|'cancelled', tracking_number?, notes? }` |
 | **CASHIER / POS ENDPOINTS (`role:cashier`)** |
-| 71 | `POST` | `/api/sales` | `cashier` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ items: [{ product_id, quantity }] }` |
-| 72 | `GET` | `/api/sales` | `cashier` | `Accept`, `Authorization` | ❌ NO | None (Cashier's isolated sales history) |
-| 73 | `GET` | `/api/sales/{id}` | `cashier` | `Accept`, `Authorization` | ❌ NO | None (Lookup cashier's receipt by ID) |
+| 89 | `POST` | `/api/sales` | `cashier` | `Accept`, `Content-Type`, `Authorization` | **✅ YES** | `{ items: [{ product_id, quantity }] }` |
+| 90 | `GET` | `/api/sales` | `cashier` | `Accept`, `Authorization` | ❌ NO | None (Cashier's isolated sales history) |
+| 91 | `GET` | `/api/sales/{id}` | `cashier` | `Accept`, `Authorization` | ❌ NO | None (Lookup cashier's receipt by ID) |
 
 ---
 
@@ -890,6 +908,174 @@ Records a direct inventory audit adjustment with ledger trail tracking.
       "transaction_type": "manual_in",
       "quantity": 10.00
     }
+  }
+  ```
+
+---
+
+### 4.10 `POST /api/customers` — Create Customer Profile
+Registers an individual or corporate customer with credit limits and an optional embedded default address.
+
+* **Access / Role:** `admin`, `manager`
+* **Headers Required:**
+  ```http
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer <token>
+  ```
+* **Body Required:** **✅ YES (JSON Object)**
+* **Request Body Example:**
+  ```json
+  {
+    "customer_code": "CUST-CORP-001",
+    "customer_type": "corporate",
+    "display_name": "Ethio Telecom Procurement",
+    "phone": "+251911223344",
+    "email": "procurement@ethiotelecom.et",
+    "tax_number": "TIN-9876543210",
+    "credit_limit": 500000.00,
+    "default_credit_days": 30,
+    "notes": "Key enterprise corporate account",
+    "address": {
+      "label": "Headquarters",
+      "address_type": "both",
+      "recipient_name": "Abebe Bikila",
+      "phone": "+251911223344",
+      "country_code": "ET",
+      "city": "Addis Ababa",
+      "sub_city": "Kirkos",
+      "address_line": "Churchill Avenue, Posta Bet",
+      "is_default": true
+    }
+  }
+  ```
+* **Success Response (`201 Created`):** Returns the newly created customer with linked addresses.
+
+---
+
+### 4.11 `POST /api/customers/{id}/addresses` — Add Customer Address
+Attaches additional billing or shipping locations to a customer profile.
+
+* **Access / Role:** `admin`, `manager`
+* **Request Body Example:**
+  ```json
+  {
+    "label": "Bole Branch Office",
+    "address_type": "shipping",
+    "recipient_name": "Marta Tefera",
+    "phone": "+251922334455",
+    "city": "Addis Ababa",
+    "sub_city": "Bole",
+    "address_line": "Medhanialem Mall, 3rd Floor",
+    "is_default": false
+  }
+  ```
+* **Success Response (`201 Created`):** Returns created address record.
+
+---
+
+### 4.12 `POST /api/orders` — Create Multi-Channel Order
+Creates an omni-channel order across POS, Online, or Backoffice channels. Automatically generates order numbers, validates and reserves inventory, snapshots product names and SKUs, and calculates line totals, taxes, and discounts.
+
+* **Access / Role:** `admin`, `manager`
+* **Headers Required:**
+  ```http
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer <token>
+  ```
+* **Body Required:** **✅ YES (JSON Object)**
+* **Request Body Example:**
+  ```json
+  {
+    "source": "backoffice",
+    "status": "confirmed",
+    "fulfillment_type": "delivery",
+    "customer_id": 1,
+    "store_id": 1,
+    "stock_location_id": 1,
+    "shipping_fee": 150.00,
+    "customer_notes": "Deliver during working hours 9 AM - 5 PM",
+    "internal_notes": "Corporate PO-2026-998 Attached",
+    "items": [
+      {
+        "product_variant_id": 1,
+        "quantity_ordered": 2,
+        "unit_price": 1199.00,
+        "discount_amount": 50.00,
+        "tax_rate_percent": 15.0
+      }
+    ]
+  }
+  ```
+* **Success Response (`201 Created`):**
+  ```json
+  {
+    "message": "Order created successfully.",
+    "order": {
+      "id": 1,
+      "order_number": "ORD-20261028-A4F1E9",
+      "status": "confirmed",
+      "subtotal": 2398.00,
+      "discount_total": 50.00,
+      "tax_total": 352.20,
+      "shipping_fee": 150.00,
+      "grand_total": 2850.20
+    }
+  }
+  ```
+
+---
+
+### 4.13 `PUT/PATCH /api/orders/{id}` — Update Order Status / Lifecycle
+Transitions order lifecycle status (`draft`, `pending_payment`, `confirmed`, `processing`, `shipped`, `completed`, `cancelled`). Reconciles and releases stock reservations automatically upon cancellation or fulfillment.
+
+* **Access / Role:** `admin`, `manager`
+* **Request Body Example:**
+  ```json
+  {
+    "status": "processing",
+    "internal_notes": "Items picked and undergoing packaging"
+  }
+  ```
+
+---
+
+### 4.14 `POST /api/shipments` — Create Dispatch Package
+Dispatches courier packages and fulfills line items on confirmed orders. Automatically checks unfulfilled quantities and tracks logistics courier references.
+
+* **Access / Role:** `admin`, `manager`
+* **Request Body Example:**
+  ```json
+  {
+    "order_id": 1,
+    "status": "shipped",
+    "shipping_provider": "DHL Express",
+    "tracking_number": "DHL-ET-982104928",
+    "recipient_name": "Abebe Bikila",
+    "recipient_phone": "+251911223344",
+    "notes": "Fragile electronics handle with care",
+    "items": [
+      {
+        "order_item_id": 1,
+        "quantity_shipped": 2
+      }
+    ]
+  }
+  ```
+* **Success Response (`201 Created`):** Returns shipment with items and updated order status.
+
+---
+
+### 4.15 `PUT/PATCH /api/shipments/{id}` — Update Tracking / Delivery Status
+Transitions shipment delivery states (`packed`, `shipped`, `delivered`, `failed`, `cancelled`). Automatically marks parent order as `completed` when all packages are delivered.
+
+* **Access / Role:** `admin`, `manager`
+* **Request Body Example:**
+  ```json
+  {
+    "status": "delivered",
+    "notes": "Delivered and signed by recipient Abebe Bikila"
   }
   ```
 
