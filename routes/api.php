@@ -27,6 +27,8 @@ use App\Http\Controllers\Api\CashMovementController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\TaxRateController;
+use App\Http\Controllers\Api\SaleReturnController;
+use App\Http\Controllers\Api\SaleRefundController;
 
 Route::post('/login', [ApiAuthController::class, 'login']);
 
@@ -87,6 +89,12 @@ Route::get('/payments', [PaymentController::class, 'index']);
 Route::get('/payments/{payment}', [PaymentController::class, 'show']);
 Route::get('/tax-rates', [TaxRateController::class, 'index']);
 Route::get('/tax-rates/{taxRate}', [TaxRateController::class, 'show']);
+
+// Sales Returns & Customer Refunds public read routes
+Route::get('/sale-returns', [SaleReturnController::class, 'index']);
+Route::get('/sale-returns/{saleReturn}', [SaleReturnController::class, 'show']);
+Route::get('/sale-refunds', [SaleRefundController::class, 'index']);
+Route::get('/sale-refunds/{saleRefund}', [SaleRefundController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [ApiAuthController::class, 'logout']);
@@ -150,6 +158,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/tax-rates', [TaxRateController::class, 'store']);
         Route::match(['put', 'patch'], '/tax-rates/{taxRate}', [TaxRateController::class, 'update']);
         Route::match(['put', 'patch'], '/payments/{payment}', [PaymentController::class, 'update']);
+
+        // Sales Returns & Customer Refunds management
+        Route::post('/sale-returns', [SaleReturnController::class, 'store']);
+        Route::match(['put', 'patch'], '/sale-returns/{saleReturn}', [SaleReturnController::class, 'update']);
+        Route::post('/sale-refunds', [SaleRefundController::class, 'store']);
+        Route::match(['put', 'patch'], '/sale-refunds/{saleRefund}', [SaleRefundController::class, 'update']);
     });
 
     // Admin-only management & deletion routes
@@ -188,6 +202,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy']);
         Route::delete('/payments/{payment}', [PaymentController::class, 'destroy']);
         Route::delete('/tax-rates/{taxRate}', [TaxRateController::class, 'destroy']);
+
+        // Sales Returns & Refunds deletions
+        Route::delete('/sale-returns/{saleReturn}', [SaleReturnController::class, 'destroy']);
+        Route::delete('/sale-refunds/{saleRefund}', [SaleRefundController::class, 'destroy']);
     });
 
     // Cashier routes

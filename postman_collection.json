@@ -4015,6 +4015,345 @@
           }
         }
       ]
+    },
+    {
+      "name": "25. Sales Returns & Customer Refunds",
+      "item": [
+        {
+          "name": "List Sale Returns (Public / Filterable)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sale-returns?page=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sale-returns"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Sale Return (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sale-returns/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sale-returns",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Sale Return Request (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sale_id\": 1,\n  \"reason\": \"Customer changed mind within return window\",\n  \"items\": [\n    {\n      \"sale_item_id\": 1,\n      \"quantity\": 1,\n      \"condition\": \"sellable\",\n      \"restock\": true\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sale-returns",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sale-returns"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Sale Return / Process Receipt (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"received\",\n  \"reason\": \"Inspected condition sellable and inventory restocked into location\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sale-returns/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sale-returns",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Sale Return (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sale-returns/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sale-returns",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Sale Refunds (Public / Filterable)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sale-refunds?page=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sale-refunds"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Sale Refund (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sale-refunds/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sale-refunds",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Disburse Customer Refund (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sale_return_id\": 1,\n  \"payment_method_id\": 1,\n  \"amount\": 1199.00,\n  \"status\": \"succeeded\",\n  \"transaction_reference\": \"CSH-DISBURSE-001\",\n  \"notes\": \"Customer cash payout issued from active shift\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sale-refunds",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sale-refunds"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Sale Refund Status (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"succeeded\",\n  \"transaction_reference\": \"TLB-REFUND-ACK-9921\",\n  \"notes\": \"Mobile transfer payout verified\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sale-refunds/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sale-refunds",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Sale Refund (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sale-refunds/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sale-refunds",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }
