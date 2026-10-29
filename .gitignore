@@ -4,6 +4,7 @@
 AGENTS.md
 .env.backup
 .env.production
+!frontend/.env.production
 .phpactor.json
 .phpunit.result.cache
 /.codex
