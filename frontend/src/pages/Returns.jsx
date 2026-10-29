@@ -678,36 +678,36 @@ export const Returns = () => {
 
                       {/* Actions */}
                       <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'nowrap' }}>
                           <button
                             onClick={() => handleViewDetail(ret)}
-                            className="btn btn-secondary"
-                            style={{ padding: '6px 8px', fontSize: '0.75rem' }}
+                            className="action-btn action-btn-view"
                             title="View Return Details"
                           >
-                            <Icon name="clipboard" size={14} />
+                            <Icon name="clipboard" size={13} />
+                            <span>Details</span>
                           </button>
 
                           {/* Quick refund shortcut */}
                           {ret.status !== 'refunded' && ret.status !== 'cancelled' && (
                             <button
                               onClick={() => handleOpenRefundModal(ret)}
-                              className="btn btn-secondary"
-                              style={{ padding: '6px 8px', fontSize: '0.75rem', color: '#10b981' }}
+                              className="action-btn action-btn-success"
                               title="Disburse Customer Refund"
                             >
-                              <Icon name="dollarSign" size={14} />
+                              <Icon name="dollarSign" size={13} color="#00b074" />
+                              <span>Refund</span>
                             </button>
                           )}
 
                           {isAdmin && (ret.status === 'requested' || ret.status === 'cancelled') && (
                             <button
                               onClick={() => setDeleteTarget(ret)}
-                              className="btn btn-secondary"
-                              style={{ padding: '6px 8px', fontSize: '0.75rem', color: 'var(--danger)' }}
+                              className="action-btn action-btn-danger"
                               title="Delete Return"
                             >
-                              <Icon name="trash" size={14} />
+                              <Icon name="trash" size={13} color="#ef4444" />
+                              <span>Delete</span>
                             </button>
                           )}
                         </div>
@@ -1073,7 +1073,7 @@ export const Returns = () => {
                     <button
                       onClick={() => handleUpdateStatus(selectedReturn.id, 'approved')}
                       className="btn"
-                      style={{ padding: '6px 12px', fontSize: '0.78rem', background: '#8b5cf6', color: '#fff', border: 'none', fontWeight: 700 }}
+                      style={{ padding: '7px 14px', fontSize: '0.82rem', background: '#6366f1', color: '#ffffff', border: '1px solid #4f46e5', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}
                       disabled={submitting}
                     >
                       Approve Return
@@ -1084,7 +1084,7 @@ export const Returns = () => {
                     <button
                       onClick={() => handleUpdateStatus(selectedReturn.id, 'received')}
                       className="btn"
-                      style={{ padding: '6px 12px', fontSize: '0.78rem', background: '#0ea5e9', color: '#fff', border: 'none', fontWeight: 700 }}
+                      style={{ padding: '7px 14px', fontSize: '0.82rem', background: '#0284c7', color: '#ffffff', border: '1px solid #0369a1', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}
                       disabled={submitting}
                     >
                       Confirm Items Received
@@ -1095,7 +1095,7 @@ export const Returns = () => {
                     <button
                       onClick={() => handleOpenRefundModal(selectedReturn)}
                       className="btn"
-                      style={{ padding: '6px 12px', fontSize: '0.78rem', background: '#10b981', color: '#fff', border: 'none', fontWeight: 700 }}
+                      style={{ padding: '7px 14px', fontSize: '0.82rem', background: '#00b074', color: '#ffffff', border: '1px solid #059669', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}
                     >
                       Issue Refund Payout
                     </button>

@@ -611,24 +611,24 @@ export const Adjustments = () => {
 
                       {/* Actions */}
                       <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'nowrap' }}>
                           <button
                             onClick={() => handleViewDetail(adj)}
-                            className="btn btn-secondary"
-                            style={{ padding: '6px 8px', fontSize: '0.75rem' }}
+                            className="action-btn action-btn-view"
                             title="View Variances & Post"
                           >
-                            <Icon name="clipboard" size={14} />
+                            <Icon name="clipboard" size={13} />
+                            <span>Audit & Post</span>
                           </button>
 
                           {isAdmin && (adj.status === 'draft' || adj.status === 'cancelled') && (
                             <button
                               onClick={() => setDeleteTarget(adj)}
-                              className="btn btn-secondary"
-                              style={{ padding: '6px 8px', fontSize: '0.75rem', color: 'var(--danger)' }}
+                              className="action-btn action-btn-danger"
                               title="Delete Adjustment"
                             >
-                              <Icon name="trash" size={14} />
+                              <Icon name="trash" size={13} color="#ef4444" />
+                              <span>Delete</span>
                             </button>
                           )}
                         </div>
