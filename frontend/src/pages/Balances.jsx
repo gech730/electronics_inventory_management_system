@@ -26,6 +26,13 @@ export const Balances = () => {
   const [selectedLocation, setSelectedLocation] = useState(locationParam);
   const [lowStockOnly, setLowStockOnly] = useState(false);
 
+  // Tabs: 'matrix' | 'ledger'
+  const [activeTab, setActiveTab] = useState('matrix');
+  const [transactions, setTransactions] = useState([]);
+  const [txLoading, setTxLoading] = useState(false);
+  const [txTypeFilter, setTxTypeFilter] = useState('all');
+  const [txSearchQuery, setTxSearchQuery] = useState('');
+
   // Modals
   const [isInitModalOpen, setIsInitModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -78,9 +85,32 @@ export const Balances = () => {
     }
   };
 
+  // Load immutable stock transaction audit trail
+  const loadTransactionsData = async () => {
+    try {
+      setTxLoading(true);
+      const params = { per_page: 100 };
+      if (txTypeFilter !== 'all') {
+        params.transaction_type = txTypeFilter;
+      }
+      const res = await api.getStockTransactions(params);
+      setTransactions(res?.data || []);
+    } catch {
+      showToast?.('Failed to load stock transactions audit ledger', 'error');
+    } finally {
+      setTxLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadBalancesData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'ledger') {
+      loadTransactionsData();
+    }
+  }, [activeTab, txTypeFilter]);
 
   // Update location filter if query param changes
   useEffect(() => {
@@ -151,6 +181,22 @@ export const Balances = () => {
       return matchesSearch && matchesStore && matchesLocation && matchesLowStock;
     });
   }, [balances, searchQuery, selectedStore, selectedLocation, lowStockOnly]);
+
+  // Filtered Stock Transactions for Audit Ledger
+  const filteredTransactions = useMemo(() => {
+    if (!txSearchQuery) return transactions;
+    const q = txSearchQuery.toLowerCase();
+    return transactions.filter((t) => {
+      const numMatch = t.transaction_number?.toLowerCase().includes(q);
+      const notesMatch = t.notes?.toLowerCase().includes(q);
+      const userMatch = t.createdBy?.name?.toLowerCase().includes(q);
+      const itemMatch = t.items?.some((it) =>
+        it.product_variant?.product?.name?.toLowerCase().includes(q) ||
+        it.product_variant?.sku?.toLowerCase().includes(q)
+      );
+      return numMatch || notesMatch || userMatch || itemMatch;
+    });
+  }, [transactions, txSearchQuery]);
 
   // Aggregate KPI Calculations
   const stats = useMemo(() => {
@@ -464,9 +510,80 @@ export const Balances = () => {
         </div>
       </div>
 
-      {/* Filters and Search Bar */}
-      <div
-        className="glass-card"
+      {/* ── View Switcher Tabs: Matrix vs Audit Ledger ────────────────── */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <button
+          onClick={() => setActiveTab('matrix')}
+          style={{
+            padding: '10px 18px',
+            borderRadius: '10px',
+            fontWeight: 700,
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            background: activeTab === 'matrix' ? '#1677ff' : '#ffffff',
+            color: activeTab === 'matrix' ? '#ffffff' : '#475569',
+            boxShadow: activeTab === 'matrix' ? '0 4px 12px rgba(22, 119, 255, 0.3)' : '0 1px 3px rgba(0,0,0,0.05)',
+            border: activeTab === 'matrix' ? '1px solid #1677ff' : '1px solid #cbd5e1',
+            transition: 'all 150ms ease',
+          }}
+        >
+          <Icon name="cpu" size={17} color={activeTab === 'matrix' ? '#ffffff' : 'currentColor'} />
+          <span>Stock Balances Matrix</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: '9999px',
+              fontSize: '0.72rem',
+              background: activeTab === 'matrix' ? 'rgba(255,255,255,0.2)' : '#f1f5f9',
+              color: activeTab === 'matrix' ? '#ffffff' : '#64748b',
+            }}
+          >
+            {balances.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ledger')}
+          style={{
+            padding: '10px 18px',
+            borderRadius: '10px',
+            fontWeight: 700,
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            background: activeTab === 'ledger' ? '#1677ff' : '#ffffff',
+            color: activeTab === 'ledger' ? '#ffffff' : '#475569',
+            boxShadow: activeTab === 'ledger' ? '0 4px 12px rgba(22, 119, 255, 0.3)' : '0 1px 3px rgba(0,0,0,0.05)',
+            border: activeTab === 'ledger' ? '1px solid #1677ff' : '1px solid #cbd5e1',
+            transition: 'all 150ms ease',
+          }}
+        >
+          <Icon name="clipboard" size={17} color={activeTab === 'ledger' ? '#ffffff' : 'currentColor'} />
+          <span>Stock Movement Audit Ledger</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: '9999px',
+              fontSize: '0.72rem',
+              background: activeTab === 'ledger' ? 'rgba(255,255,255,0.2)' : '#f1f5f9',
+              color: activeTab === 'ledger' ? '#ffffff' : '#64748b',
+            }}
+          >
+            Audit Trail
+          </span>
+        </button>
+      </div>
+
+      {activeTab === 'matrix' && (
+        <>
+          {/* Filters and Search Bar */}
+          <div
+            className="glass-card"
         style={{
           padding: '16px 20px',
           marginBottom: 20,
@@ -773,23 +890,23 @@ export const Balances = () => {
                       {/* Actions */}
                       {isAdminOrManager && (
                         <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'nowrap' }}>
                             <button
                               onClick={() => handleOpenEditModal(item)}
-                              className="btn btn-secondary"
-                              style={{ padding: '6px 8px', fontSize: '0.75rem' }}
+                              className="action-btn action-btn-view"
                               title="Adjust Stock Levels"
                             >
-                              <Icon name="edit" size={14} />
+                              <Icon name="edit" size={13} color="#1677ff" />
+                              <span>Adjust</span>
                             </button>
                             {isAdmin && onHand === 0 && (
                               <button
                                 onClick={() => setDeleteTarget(item)}
-                                className="btn btn-secondary"
-                                style={{ padding: '6px 8px', fontSize: '0.75rem', color: 'var(--danger)' }}
+                                className="action-btn action-btn-danger"
                                 title="Delete 0-Balance Record"
                               >
-                                <Icon name="trash" size={14} />
+                                <Icon name="trash" size={13} color="#ef4444" />
+                                <span>Delete</span>
                               </button>
                             )}
                           </div>
@@ -803,6 +920,182 @@ export const Balances = () => {
           </table>
         </div>
       </div>
+    </>
+  )}
+
+  {/* ── AUDIT LEDGER TAB VIEW ────────────────────────────────────── */}
+  {activeTab === 'ledger' && (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Audit Ledger Filter Bar */}
+      <div
+        className="glass-card"
+        style={{
+          padding: '16px 20px',
+          display: 'flex',
+          gap: 12,
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', flex: 1 }}>
+          {/* Search */}
+          <div style={{ position: 'relative', minWidth: 260 }}>
+            <div
+              style={{
+                position: 'absolute',
+                left: 12,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--text-dim)',
+              }}
+            >
+              <Icon name="search" size={16} />
+            </div>
+            <input
+              type="text"
+              placeholder="Search tx #, product name, or staff..."
+              value={txSearchQuery}
+              onChange={(e) => setTxSearchQuery(e.target.value)}
+              className="input-field"
+              style={{ paddingLeft: 36, width: '100%', fontSize: '0.85rem' }}
+            />
+          </div>
+
+          {/* Movement Type Filter */}
+          <select
+            value={txTypeFilter}
+            onChange={(e) => setTxTypeFilter(e.target.value)}
+            className="input-field"
+            style={{ fontSize: '0.85rem', minWidth: 200 }}
+          >
+            <option value="all">All Movement Types</option>
+            <option value="purchase_receipt">Inbound Goods Receipt (GRN)</option>
+            <option value="sale_issue">Customer POS / Sales Dispatch</option>
+            <option value="transfer_out">Stock Transfer (Outbound)</option>
+            <option value="transfer_in">Stock Transfer (Inbound)</option>
+            <option value="adjustment_in">Cycle Audit Surplus (In)</option>
+            <option value="adjustment_out">Cycle Audit Deficit (Out)</option>
+            <option value="customer_return">Customer RMA Return</option>
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={loadTransactionsData}
+            className="btn btn-secondary"
+            style={{ padding: '8px 14px', fontSize: '0.82rem' }}
+          >
+            <Icon name="refresh" size={15} />
+            <span>Sync Audit Logs</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Audit Ledger Data Table */}
+      <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'rgba(255, 255, 255, 0.04)', borderBottom: '1px solid var(--border-subtle)' }}>
+                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Date & Time</th>
+                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Tx Identifier</th>
+                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Movement Type</th>
+                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Affected Product & SKU</th>
+                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Stock Bay</th>
+                <th style={{ padding: '14px 18px', textAlign: 'right', fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Quantity Delta</th>
+                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Staff / User</th>
+              </tr>
+            </thead>
+            <tbody>
+              {txLoading ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <Icon name="refresh" size={24} className="spin" />
+                    <div style={{ marginTop: 8 }}>Loading inventory movement logs...</div>
+                  </td>
+                </tr>
+              ) : filteredTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <Icon name="clipboard" size={32} color="var(--text-dim)" />
+                    <div style={{ marginTop: 8, fontWeight: 600 }}>No stock movement records found</div>
+                    <div style={{ fontSize: '0.8rem', marginTop: 4 }}>
+                      Stock transactions are automatically logged when goods are received, sold, transferred, or adjusted.
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredTransactions.map((tx) => {
+                  const txTypeConfigs = {
+                    purchase_receipt: { label: 'Inbound GRN', color: '#00b074', bg: 'rgba(0, 176, 116, 0.1)' },
+                    sale_issue: { label: 'POS / Sale', color: '#1677ff', bg: 'rgba(22, 119, 255, 0.1)' },
+                    transfer_out: { label: 'Transfer Out', color: '#6366f1', bg: 'rgba(99, 102, 241, 0.1)' },
+                    transfer_in: { label: 'Transfer In', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+                    adjustment_in: { label: 'Cycle Count (+)', color: '#ff9f43', bg: 'rgba(255, 159, 67, 0.12)' },
+                    adjustment_out: { label: 'Cycle Count (-)', color: '#ea580c', bg: 'rgba(234, 88, 12, 0.12)' },
+                    customer_return: { label: 'Customer Return', color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.1)' },
+                  };
+                  const conf = txTypeConfigs[tx.transaction_type] || {
+                    label: tx.transaction_type,
+                    color: '#64748b',
+                    bg: 'rgba(100, 116, 139, 0.1)',
+                  };
+
+                  const primaryItem = tx.items?.[0];
+                  const otherItemsCount = (tx.items?.length || 1) - 1;
+                  const isPositive = Number(primaryItem?.quantity || 1) >= 0 && !tx.transaction_type?.includes('out') && !tx.transaction_type?.includes('sale');
+
+                  return (
+                    <tr key={tx.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <td style={{ padding: '14px 18px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        {tx.occurred_at ? new Date(tx.occurred_at).toLocaleString() : new Date(tx.created_at).toLocaleString()}
+                      </td>
+                      <td style={{ padding: '14px 18px', fontFamily: 'monospace', fontWeight: 700, fontSize: '0.84rem' }}>
+                        {tx.transaction_number || `TX-${tx.id}`}
+                      </td>
+                      <td style={{ padding: '14px 18px' }}>
+                        <span
+                          className="badge"
+                          style={{
+                            background: conf.bg,
+                            color: conf.color,
+                            border: `1px solid ${conf.color}40`,
+                            fontSize: '0.74rem',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {conf.label}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 18px' }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.86rem' }}>
+                          {primaryItem?.product_variant?.product?.name || primaryItem?.product_variant?.variant_name || 'Hardware Component'}
+                        </div>
+                        <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', fontFamily: 'monospace' }}>
+                          {primaryItem?.product_variant?.sku || 'SKU-N/A'}
+                          {otherItemsCount > 0 && ` +${otherItemsCount} more`}
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 18px', fontSize: '0.84rem' }}>
+                        {primaryItem?.stock_location?.name || 'Warehouse Bay'}
+                      </td>
+                      <td style={{ padding: '14px 18px', textAlign: 'right', fontWeight: 800, fontSize: '0.9rem', color: isPositive ? '#00b074' : '#ef4444' }}>
+                        {isPositive ? '+' : '-'}{Math.abs(Number(primaryItem?.quantity || 1))} units
+                      </td>
+                      <td style={{ padding: '14px 18px', fontSize: '0.82rem', color: 'var(--text-main)' }}>
+                        {tx.createdBy?.name || tx.created_by?.name || 'Authorized Staff'}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )}
 
       {/* ── INITIALIZE STOCK BALANCE MODAL ──────────────────────────────── */}
       <Modal

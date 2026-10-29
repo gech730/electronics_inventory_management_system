@@ -10,6 +10,8 @@ export const Products = () => {
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters & Search
@@ -27,27 +29,35 @@ export const Products = () => {
     name: '',
     sku: '',
     category_id: '',
+    brand_id: '',
+    base_unit_id: '',
     brand: '',
     model_number: '',
     cost_price: '',
     selling_price: '',
     quantity: '',
     minimum_stock: '',
+    track_inventory: true,
+    is_sellable: true,
   };
   const [formData, setFormData] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
-  // Fetch Products & Categories
+  // Fetch Products, Categories, Brands & Units
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [productsRes, categoriesRes] = await Promise.all([
+      const [productsRes, categoriesRes, brandsRes, unitsRes] = await Promise.all([
         api.getProducts({ per_page: 100 }).catch(() => ({ data: [] })),
         api.getCategories({ per_page: 100 }).catch(() => ({ data: [] })),
+        api.getBrands({ per_page: 100 }).catch(() => ({ data: [] })),
+        api.getUnits({ per_page: 100 }).catch(() => ({ data: [] })),
       ]);
       setProducts(productsRes?.data || []);
       setCategories(categoriesRes?.data || []);
+      setBrands(brandsRes?.data || []);
+      setUnits(unitsRes?.data || []);
     } catch (err) {
       addToast(err.message || 'Failed to load inventory data', 'error');
     } finally {
@@ -65,6 +75,8 @@ export const Products = () => {
     setFormData({
       ...initialForm,
       category_id: categories.length > 0 ? categories[0].id : '',
+      brand_id: brands.length > 0 ? brands[0].id : '',
+      base_unit_id: units.length > 0 ? units[0].id : '',
     });
     setFormError('');
     setIsModalOpen(true);
@@ -77,12 +89,16 @@ export const Products = () => {
       name: product.name || '',
       sku: product.sku || '',
       category_id: product.category_id || '',
-      brand: product.brand || '',
+      brand_id: product.brand_id || '',
+      base_unit_id: product.base_unit_id || '',
+      brand: product.brand || (product.brand?.name || ''),
       model_number: product.model_number || '',
       cost_price: product.cost_price || '',
       selling_price: product.selling_price || '',
       quantity: product.quantity || '',
       minimum_stock: product.minimum_stock || '',
+      track_inventory: product.track_inventory ?? true,
+      is_sellable: product.is_sellable ?? true,
     });
     setFormError('');
     setIsModalOpen(true);
@@ -103,6 +119,8 @@ export const Products = () => {
     const payload = {
       ...formData,
       category_id: Number(formData.category_id),
+      brand_id: formData.brand_id ? Number(formData.brand_id) : null,
+      base_unit_id: formData.base_unit_id ? Number(formData.base_unit_id) : null,
       cost_price: parseFloat(formData.cost_price),
       selling_price: parseFloat(formData.selling_price),
       quantity: parseInt(formData.quantity, 10),
@@ -482,46 +500,26 @@ export const Products = () => {
                       {/* Management Action Buttons */}
                       {hasRole(['admin', 'manager']) && (
                         <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
                             {/* Edit Button */}
                             <button
                               onClick={() => handleOpenEdit(p)}
+                              className="action-btn action-btn-view"
                               title="Edit Product"
-                              style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: '8px',
-                                border: '1px solid #e2e8f0',
-                                background: '#f8fafc',
-                                color: '#1677ff',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
                             >
-                              <Icon name="edit" size={14} color="#1677ff" />
+                              <Icon name="edit" size={13} color="#1677ff" />
+                              <span>Edit</span>
                             </button>
 
                             {/* Delete Button (Admin Only) */}
                             {hasRole(['admin']) && (
                               <button
                                 onClick={() => setProductToDelete(p)}
+                                className="action-btn action-btn-danger"
                                 title="Delete Product"
-                                style={{
-                                  width: 32,
-                                  height: 32,
-                                  borderRadius: '8px',
-                                  border: '1px solid rgba(239, 68, 68, 0.2)',
-                                  background: 'rgba(239, 68, 68, 0.08)',
-                                  color: '#ef4444',
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
                               >
-                                <Icon name="trash" size={14} color="#ef4444" />
+                                <Icon name="trash" size={13} color="#ef4444" />
+                                <span>Delete</span>
                               </button>
                             )}
                           </div>
@@ -601,45 +599,80 @@ export const Products = () => {
             </div>
           </div>
 
-          {/* Row 2: Category Dropdown */}
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" htmlFor="category_id" style={{ color: '#64748b', fontSize: '0.78rem' }}>
-              Hardware Category *
-            </label>
-            <select
-              id="category_id"
-              name="category_id"
-              className="form-select"
-              value={formData.category_id}
-              onChange={handleInputChange}
-              style={{ background: '#f8fafc', color: '#1e293b' }}
-              required
-            >
-              <option value="" disabled>Select category...</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Row 3: Brand and Model */}
+          {/* Row 2: Category & Brand Dropdowns */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" htmlFor="brand" style={{ color: '#64748b', fontSize: '0.78rem' }}>
-                Brand (Optional)
+              <label className="form-label" htmlFor="category_id" style={{ color: '#64748b', fontSize: '0.78rem' }}>
+                Hardware Category *
               </label>
-              <input
-                id="brand"
-                name="brand"
-                type="text"
-                className="form-input"
-                placeholder="e.g. Logitech"
-                value={formData.brand}
+              <select
+                id="category_id"
+                name="category_id"
+                className="form-select"
+                value={formData.category_id}
                 onChange={handleInputChange}
                 style={{ background: '#f8fafc', color: '#1e293b' }}
-              />
+                required
+              >
+                <option value="" disabled>Select category...</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label" htmlFor="brand_id" style={{ color: '#64748b', fontSize: '0.78rem' }}>
+                Hardware Brand
+              </label>
+              <select
+                id="brand_id"
+                name="brand_id"
+                className="form-select"
+                value={formData.brand_id}
+                onChange={(e) => {
+                  const sel = brands.find((b) => String(b.id) === e.target.value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    brand_id: e.target.value,
+                    brand: sel ? sel.name : prev.brand,
+                  }));
+                }}
+                style={{ background: '#f8fafc', color: '#1e293b' }}
+              >
+                <option value="">-- Select Brand --</option>
+                {brands.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Row 3: Unit of Measure & Model */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label" htmlFor="base_unit_id" style={{ color: '#64748b', fontSize: '0.78rem' }}>
+                Unit of Measure
+              </label>
+              <select
+                id="base_unit_id"
+                name="base_unit_id"
+                className="form-select"
+                value={formData.base_unit_id}
+                onChange={handleInputChange}
+                style={{ background: '#f8fafc', color: '#1e293b' }}
+              >
+                <option value="">-- Standard (Piece/Unit) --</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.code})
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group" style={{ margin: 0 }}>
