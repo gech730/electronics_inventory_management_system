@@ -710,32 +710,28 @@ export const PurchaseOrders = () => {
 
                       {/* Actions */}
                       <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
                           <button
                             onClick={() => handleViewDetail(po)}
-                            className="btn btn-secondary"
-                            style={{ padding: '6px 8px', fontSize: '0.75rem' }}
+                            className="action-btn action-btn-primary"
                             title="View Full PO Details"
                           >
-                            <Icon name="clipboard" size={14} />
+                            <Icon name="eye" size={13} />
+                            View
                           </button>
 
                           {/* Quick Receive shortcut for approved/partially_received */}
                           {(po.status === 'approved' || po.status === 'partially_received') && (
                             <Link
                               to={`/goods-receipts?po_id=${po.id}`}
-                              className="btn btn-secondary"
+                              className="action-btn action-btn-success"
                               style={{
-                                padding: '6px 8px',
-                                fontSize: '0.75rem',
-                                color: '#10b981',
-                                display: 'inline-flex',
-                                alignItems: 'center',
                                 textDecoration: 'none',
                               }}
                               title="Receive Goods for this PO"
                             >
-                              <Icon name="package" size={14} />
+                              <Icon name="package" size={13} />
+                              Receive
                             </Link>
                           )}
 
@@ -743,11 +739,11 @@ export const PurchaseOrders = () => {
                           {isAdmin && (po.status === 'draft' || po.status === 'cancelled') && (
                             <button
                               onClick={() => setDeleteTarget(po)}
-                              className="btn btn-secondary"
-                              style={{ padding: '6px 8px', fontSize: '0.75rem', color: 'var(--danger)' }}
+                              className="action-btn action-btn-danger"
                               title="Delete PO"
                             >
-                              <Icon name="trash" size={14} />
+                              <Icon name="trash" size={13} />
+                              Delete
                             </button>
                           )}
                         </div>
@@ -1304,7 +1300,7 @@ export const PurchaseOrders = () => {
               </span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button
                 type="button"
                 onClick={() => setIsDetailModalOpen(false)}
@@ -1312,6 +1308,16 @@ export const PurchaseOrders = () => {
               >
                 Close
               </button>
+              {(selectedPO.status === 'approved' || selectedPO.status === 'partially_received') && (
+                <Link
+                  to={`/goods-receipts?po_id=${selectedPO.id}`}
+                  className="btn btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', fontWeight: 700 }}
+                >
+                  <Icon name="package" size={16} />
+                  Receive Inbound Goods &rarr;
+                </Link>
+              )}
             </div>
           </div>
         )}
@@ -1343,7 +1349,6 @@ export const PurchaseOrders = () => {
               onClick={confirmDelete}
               className="btn btn-danger"
               disabled={submitting}
-              style={{ background: 'var(--danger)', color: '#fff', border: 'none' }}
             >
               {submitting ? 'Deleting...' : 'Confirm Deletion'}
             </button>

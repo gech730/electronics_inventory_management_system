@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icons';
@@ -6,6 +7,8 @@ import Modal from '../components/Modal';
 
 export const Shipments = () => {
   const { user, showToast } = useAuth();
+  const [searchParams] = useSearchParams();
+  const orderParam = searchParams.get('order_id');
 
   // Data states
   const [shipments, setShipments] = useState([]);
@@ -47,7 +50,16 @@ export const Shipments = () => {
       const allOrders = ordRes?.data || [];
       const eligible = allOrders.filter((o) => ['confirmed', 'processing'].includes(o.status));
       setEligibleOrders(eligible);
-      if (eligible.length > 0 && !newShipment.order_id) {
+
+      if (orderParam) {
+        const targetOrder = allOrders.find((o) => String(o.id) === String(orderParam));
+        if (targetOrder) {
+          selectOrderForDispatch(targetOrder);
+          setIsCreateModalOpen(true);
+        } else if (eligible.length > 0) {
+          selectOrderForDispatch(eligible[0]);
+        }
+      } else if (eligible.length > 0 && !newShipment.order_id) {
         selectOrderForDispatch(eligible[0]);
       }
     } catch (err) {
@@ -355,23 +367,36 @@ export const Shipments = () => {
                         </span>
                       </td>
                       <td style={{ padding: '12px 18px', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                        <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              setSelectedShipment(shp);
+                              setIsDetailModalOpen(true);
+                            }}
+                            className="action-btn action-btn-primary"
+                            title="View Package Details"
+                          >
+                            <Icon name="eye" size={13} />
+                            View
+                          </button>
                           {shp.status === 'packed' && (
                             <button
                               onClick={() => handleUpdateStatus(shp.id, 'shipped')}
-                              className="btn btn-secondary"
-                              style={{ padding: '4px 10px', fontSize: '0.76rem', fontWeight: 700 }}
+                              className="action-btn action-btn-primary"
+                              title="Dispatch Package"
                             >
+                              <Icon name="truck" size={13} />
                               Dispatch
                             </button>
                           )}
                           {shp.status === 'shipped' && (
                             <button
                               onClick={() => handleUpdateStatus(shp.id, 'delivered')}
-                              className="btn btn-primary"
-                              style={{ padding: '4px 10px', fontSize: '0.76rem', fontWeight: 700, background: 'var(--success)' }}
+                              className="action-btn action-btn-success"
+                              title="Mark Delivered"
                             >
-                              Mark Delivered
+                              <Icon name="check" size={13} />
+                              Delivered
                             </button>
                           )}
                         </div>
@@ -511,6 +536,102 @@ export const Shipments = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* MODAL 2: Shipment Details & Tracking */}
+      <Modal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        title={selectedShipment ? `Shipment Details: ${selectedShipment.shipment_number}` : 'Shipment Details'}
+        maxWidth={580}
+      >
+        {selectedShipment && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                gap: 12,
+                background: 'var(--bg-app)',
+                padding: '14px 16px',
+                borderRadius: 8,
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>STATUS</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--brand-purple)' }}>
+                  {selectedShipment.status}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>CARRIER</div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>
+                  {selectedShipment.shipping_provider || 'Direct Van'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>TRACKING #</div>
+                <div style={{ fontSize: '0.84rem', fontWeight: 700, fontFamily: 'monospace' }}>
+                  {selectedShipment.tracking_number || 'TRK-NONE'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
+                Recipient Information
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{selectedShipment.recipient_name}</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                Phone: {selectedShipment.recipient_phone || 'N/A'}
+              </div>
+              {selectedShipment.notes && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: 6, fontStyle: 'italic' }}>
+                  Notes: {selectedShipment.notes}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => setIsDetailModalOpen(false)}
+                className="btn btn-secondary"
+              >
+                Close
+              </button>
+              {selectedShipment.status === 'packed' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleUpdateStatus(selectedShipment.id, 'shipped');
+                    setIsDetailModalOpen(false);
+                  }}
+                  className="btn btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                >
+                  <Icon name="truck" size={16} />
+                  Mark Dispatched
+                </button>
+              )}
+              {selectedShipment.status === 'shipped' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleUpdateStatus(selectedShipment.id, 'delivered');
+                    setIsDetailModalOpen(false);
+                  }}
+                  className="btn btn-success"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                >
+                  <Icon name="check" size={16} />
+                  Confirm Delivered
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -484,13 +484,26 @@ export const Orders = () => {
                         </span>
                       </td>
                       <td style={{ padding: '12px 18px', textAlign: 'right' }}>
-                        <button
-                          onClick={() => handleViewDetails(ord)}
-                          className="btn btn-secondary"
-                          style={{ padding: '5px 12px', fontSize: '0.78rem', fontWeight: 600 }}
-                        >
-                          View Details
-                        </button>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => handleViewDetails(ord)}
+                            className="action-btn action-btn-primary"
+                          >
+                            <Icon name="eye" size={13} />
+                            View
+                          </button>
+                          {(ord.status === 'confirmed' || ord.status === 'processing') && (
+                            <Link
+                              to={`/shipments?order_id=${ord.id}`}
+                              className="action-btn action-btn-success"
+                              style={{ textDecoration: 'none' }}
+                              title="Create Shipment for this Order"
+                            >
+                              <Icon name="truck" size={13} />
+                              Dispatch
+                            </Link>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -639,12 +652,13 @@ export const Orders = () => {
                   </button>
                 )}
 
-                {selectedOrder.status === 'processing' && (
+                {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'processing') && (
                   <Link
-                    to="/shipments"
+                    to={`/shipments?order_id=${selectedOrder.id}`}
                     className="btn btn-primary"
-                    style={{ fontSize: '0.8rem', padding: '6px 14px', textDecoration: 'none' }}
+                    style={{ fontSize: '0.8rem', padding: '6px 14px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
                   >
+                    <Icon name="truck" size={15} />
                     Dispatch Shipment &rarr;
                   </Link>
                 )}
@@ -653,8 +667,8 @@ export const Orders = () => {
                   <button
                     onClick={() => handleUpdateStatus(selectedOrder.id, 'cancelled')}
                     disabled={submitting}
-                    className="btn btn-secondary"
-                    style={{ fontSize: '0.8rem', padding: '6px 14px', color: 'var(--danger)' }}
+                    className="btn btn-danger"
+                    style={{ fontSize: '0.8rem', padding: '6px 14px' }}
                   >
                     Cancel Order (Release Holds)
                   </button>

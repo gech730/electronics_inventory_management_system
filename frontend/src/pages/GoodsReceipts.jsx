@@ -603,11 +603,11 @@ export const GoodsReceipts = () => {
                     <td style={{ padding: '14px 18px', textAlign: 'right' }}>
                       <button
                         onClick={() => handleViewDetail(grn)}
-                        className="btn btn-secondary"
-                        style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+                        className="action-btn action-btn-primary"
                         title="View Intake Summary"
                       >
-                        <Icon name="clipboard" size={14} />
+                        <Icon name="eye" size={13} />
+                        View
                       </button>
                     </td>
                   </tr>
