@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\SaleRefundController;
 use App\Http\Controllers\Api\CheckoutController;
 
 Route::post('/login', [ApiAuthController::class, 'login']);
+Route::post('/register', [ApiAuthController::class, 'register']);
 Route::post('/checkout', [CheckoutController::class, 'checkout']);
 
 // Public routes (catalog, stores, locations, units browsing)

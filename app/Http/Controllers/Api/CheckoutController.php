@@ -45,19 +45,30 @@ class CheckoutController extends Controller
         ]);
 
         $result = DB::transaction(function () use ($validated, $request) {
-            // 1. Find or create Customer
+            $authUserId = $request->user()?->id;
+
+            // 1. Find or create customer
             $phoneClean = preg_replace('/[^\d+]/', '', $validated['phone']);
-            $customer = Customer::where('phone', $phoneClean)
-                ->orWhere(function ($q) use ($validated) {
-                    if (!empty($validated['email'])) {
-                        $q->where('email', $validated['email']);
-                    }
-                })
-                ->first();
+            $customer = null;
+
+            if ($authUserId) {
+                $customer = Customer::where('user_id', $authUserId)->first();
+            }
+
+            if (!$customer) {
+                $customer = Customer::where('phone', $phoneClean)
+                    ->orWhere(function ($q) use ($validated) {
+                        if (!empty($validated['email'])) {
+                            $q->where('email', $validated['email']);
+                        }
+                    })
+                    ->first();
+            }
 
             if (!$customer) {
                 $codeSuffix = strtoupper(Str::random(5));
                 $customer = Customer::create([
+                    'user_id'             => $authUserId,
                     'customer_code'       => 'CUST-ONL-' . $codeSuffix,
                     'customer_type'       => Customer::TYPE_INDIVIDUAL,
                     'display_name'        => $validated['customer_name'],
@@ -70,6 +81,7 @@ class CheckoutController extends Controller
                 ]);
             } else {
                 $customer->update([
+                    'user_id'      => $customer->user_id ?? $authUserId,
                     'display_name' => $validated['customer_name'],
                     'email'        => $validated['email'] ?? $customer->email,
                 ]);
@@ -108,6 +120,7 @@ class CheckoutController extends Controller
                 'shipping_address_id'       => $address->id,
                 'shipping_address_snapshot' => json_encode($address->toArray()),
                 'currency_code'             => 'ETB',
+                'created_by'                => $authUserId,
                 'subtotal'                  => 0.00,
                 'discount_total'            => 0.00,
                 'tax_total'                 => 0.00,
