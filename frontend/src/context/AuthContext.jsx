@@ -68,6 +68,14 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  const register = async (registerData) => {
+    const data = await api.register(registerData);
+    setToken(data.token);
+    setUser(data.user);
+    addToast(data.message || `Welcome to Ngus Electronics, ${data.user.name}!`, 'success');
+    return data;
+  };
+
   const logout = async () => {
     try {
       await api.logout();
@@ -94,6 +102,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!token && !!user,
         loading,
         login,
+        register,
         logout,
         hasRole,
         theme,

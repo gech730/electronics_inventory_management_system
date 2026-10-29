@@ -29,6 +29,7 @@ const routeTitles = {
   '/finance-settings': 'Financial Ledger, Accounts & Currencies',
   '/users': 'Staff Access & RBAC Identity Management',
   '/login': 'Staff & Client Authentication Portal',
+  '/register': 'Customer Registration & Account Portal',
 };
 
 // Synchronize document.title with route changes
@@ -119,10 +120,14 @@ export default function App() {
         {/* Public Impressive Home Route */}
         <Route path="/" element={<Home />} />
 
-        {/* Public Login Route */}
+        {/* Public Login & Register Routes */}
         <Route
           path="/login"
           element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
+        />
+        <Route
+          path="/register"
+          element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
         />
 
         {/* Protected Application Routes wrapped in Layout */}

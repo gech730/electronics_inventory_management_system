@@ -7,7 +7,7 @@ import Modal from '../components/Modal';
 
 export const Home = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, login, register, logout } = useAuth();
   const { addToCart, setIsCartOpen, totalCount } = useCart();
 
   // State
@@ -16,6 +16,18 @@ export const Home = () => {
   const [catalogCategory, setCatalogCategory] = useState('all');
   const [catalogSearch, setCatalogSearch] = useState('');
   const [addedItemNotice, setAddedItemNotice] = useState(null);
+
+  // Auth Enforcement Modal State
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalPendingItem, setAuthModalPendingItem] = useState(null);
+  const [authModalTab, setAuthModalTab] = useState('login'); // 'login' | 'register'
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [authPhone, setAuthPhone] = useState('');
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
 
   // Inquiry Modal State
   const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
@@ -79,11 +91,86 @@ export const Home = () => {
   };
 
   const handleAddToCartWithFeedback = (item) => {
+    if (!isAuthenticated) {
+      setAuthModalPendingItem(item);
+      setAuthError('');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     addToCart(item);
     setAddedItemNotice(item.id);
     setTimeout(() => {
       setAddedItemNotice(null);
     }, 1800);
+  };
+
+  const handleAuthModalLogin = async (e) => {
+    e.preventDefault();
+    if (!authEmail || !authPassword) {
+      setAuthError('Please enter both email and password.');
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      await login(authEmail, authPassword);
+      setIsAuthModalOpen(false);
+      if (authModalPendingItem) {
+        addToCart(authModalPendingItem);
+        setAddedItemNotice(authModalPendingItem.id);
+        setTimeout(() => setAddedItemNotice(null), 1800);
+        setAuthModalPendingItem(null);
+      }
+    } catch (err) {
+      setAuthError(err.data?.message || err.message || 'Login failed. Please check credentials.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleAuthModalRegister = async (e) => {
+    e.preventDefault();
+    if (!authName || !authEmail || !authPassword) {
+      setAuthError('Please fill in all required fields.');
+      return;
+    }
+    if (authPassword.length < 6) {
+      setAuthError('Password must be at least 6 characters.');
+      return;
+    }
+    if (authPassword !== authPasswordConfirm) {
+      setAuthError('Passwords do not match.');
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      await register({
+        name: authName,
+        email: authEmail,
+        phone: authPhone || undefined,
+        password: authPassword,
+        password_confirmation: authPasswordConfirm,
+      });
+      setIsAuthModalOpen(false);
+      if (authModalPendingItem) {
+        addToCart(authModalPendingItem);
+        setAddedItemNotice(authModalPendingItem.id);
+        setTimeout(() => setAddedItemNotice(null), 1800);
+        setAuthModalPendingItem(null);
+      }
+    } catch (err) {
+      const vErrors = err.data?.errors;
+      if (vErrors) {
+        const first = Object.values(vErrors)[0];
+        setAuthError(Array.isArray(first) ? first[0] : first);
+      } else {
+        setAuthError(err.data?.message || err.message || 'Registration failed.');
+      }
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleTrackOrderSubmit = async (e) => {
@@ -418,46 +505,107 @@ export const Home = () => {
             </button>
 
             {isAuthenticated ? (
-              <Link
-                to="/dashboard"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
-                  color: '#090a0f',
-                  fontWeight: 800,
-                  fontSize: '0.84rem',
-                  padding: '8px 22px',
-                  borderRadius: '9999px',
-                  textDecoration: 'none',
-                  boxShadow: '0 0 20px rgba(245, 158, 11, 0.4)',
-                }}
-              >
-                <span>Console</span>
-              </Link>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {user?.role === 'customer' ? (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 14px',
+                      borderRadius: '9999px',
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      color: '#f59e0b',
+                      fontSize: '0.82rem',
+                      fontWeight: 800,
+                    }}
+                  >
+                    <span>👑</span>
+                    <span style={{ maxWidth: 110, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {user?.name?.split(' ')[0] || 'Client'}
+                    </span>
+                  </div>
+                ) : (
+                  <Link
+                    to="/dashboard"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                      color: '#090a0f',
+                      fontWeight: 800,
+                      fontSize: '0.82rem',
+                      padding: '7px 18px',
+                      borderRadius: '9999px',
+                      textDecoration: 'none',
+                      boxShadow: '0 0 20px rgba(245, 158, 11, 0.4)',
+                    }}
+                  >
+                    <span>Console</span>
+                  </Link>
+                )}
+
+                <button
+                  onClick={() => logout()}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#94a3b8',
+                    fontSize: '0.76rem',
+                    fontWeight: 600,
+                    padding: '6px 12px',
+                    borderRadius: '9999px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#ef4444'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'; }}
+                >
+                  Sign Out
+                </button>
+              </div>
             ) : (
-              <Link
-                to="/login"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
-                  color: '#090a0f',
-                  fontWeight: 800,
-                  fontSize: '0.86rem',
-                  padding: '8px 24px',
-                  borderRadius: '9999px',
-                  textDecoration: 'none',
-                  boxShadow: '0 0 20px rgba(245, 158, 11, 0.35)',
-                  transition: 'transform 0.2s, filter 0.2s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.filter = 'brightness(1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-              >
-                Login
-              </Link>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Link
+                  to="/login"
+                  style={{
+                    color: '#cbd5e1',
+                    fontSize: '0.84rem',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    padding: '6px 10px',
+                    transition: 'color 0.2s',
+                  }}
+                  onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
+                  onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}
+                >
+                  Sign In
+                </Link>
+
+                <Link
+                  to="/register"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                    color: '#090a0f',
+                    fontWeight: 800,
+                    fontSize: '0.84rem',
+                    padding: '7px 20px',
+                    borderRadius: '9999px',
+                    textDecoration: 'none',
+                    boxShadow: '0 0 20px rgba(245, 158, 11, 0.35)',
+                    transition: 'transform 0.2s, filter 0.2s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.filter = 'brightness(1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                >
+                  Register
+                </Link>
+              </div>
             )}
           </div>
         </nav>
@@ -1507,6 +1655,288 @@ export const Home = () => {
             </div>
           </form>
         )}
+      </Modal>
+
+      {/* 👑 Imperial Auth Enforce Modal (Enforce Login before adding to cart) */}
+      <Modal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setAuthModalPendingItem(null);
+        }}
+        title="Sign In Required | Ngus Electronics"
+        size="md"
+      >
+        <div style={{ padding: '4px 0' }}>
+          {/* Pending Product Summary Card */}
+          {authModalPendingItem && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                padding: '12px 16px',
+                borderRadius: '14px',
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+                marginBottom: 20,
+              }}
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '10px',
+                  background: '#090b14',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                }}
+              >
+                {authModalPendingItem.image_url ? (
+                  <img src={authModalPendingItem.image_url} alt={authModalPendingItem.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: '1.4rem' }}>💻</span>
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Reserving Hardware:
+                </div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {authModalPendingItem.name}
+                </div>
+                <div style={{ fontSize: '0.84rem', fontWeight: 900, color: '#f59e0b', marginTop: 2 }}>
+                  ETB {Number(authModalPendingItem.selling_price || 0).toLocaleString()}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Tab Switcher */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '9999px',
+              padding: '4px',
+              marginBottom: 18,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => { setAuthModalTab('login'); setAuthError(''); }}
+              style={{
+                padding: '7px 14px',
+                borderRadius: '9999px',
+                border: 'none',
+                background: authModalTab === 'login' ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : 'transparent',
+                color: authModalTab === 'login' ? '#090a0f' : '#94a3b8',
+                fontWeight: 800,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+              }}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthModalTab('register'); setAuthError(''); }}
+              style={{
+                padding: '7px 14px',
+                borderRadius: '9999px',
+                border: 'none',
+                background: authModalTab === 'register' ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : 'transparent',
+                color: authModalTab === 'register' ? '#090a0f' : '#94a3b8',
+                fontWeight: 800,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+              }}
+            >
+              Create Account
+            </button>
+          </div>
+
+          {authError && (
+            <div
+              style={{
+                padding: '10px 14px',
+                borderRadius: '8px',
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#f87171',
+                fontSize: '0.82rem',
+                marginBottom: 16,
+              }}
+            >
+              {authError}
+            </div>
+          )}
+
+          {authModalTab === 'login' ? (
+            <form onSubmit={handleAuthModalLogin}>
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  className="form-input"
+                  placeholder="name@example.com"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  disabled={authLoading}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <input
+                  type="password"
+                  required
+                  className="form-input"
+                  placeholder="••••••••"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  disabled={authLoading}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(false)}
+                  className="btn btn-secondary"
+                  disabled={authLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  style={{
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                    color: '#090a0f',
+                    fontWeight: 800,
+                    border: 'none',
+                    padding: '10px 22px',
+                    borderRadius: '9999px',
+                    cursor: authLoading ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {authLoading ? 'Signing In...' : 'Sign In & Add to Bag'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleAuthModalRegister}>
+              <div className="form-group">
+                <label className="form-label">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  className="form-input"
+                  placeholder="Dawit Kebede"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  disabled={authLoading}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 10 }}>
+                <div className="form-group">
+                  <label className="form-label">Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    className="form-input"
+                    placeholder="dawit@example.com"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    disabled={authLoading}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Phone</label>
+                  <input
+                    type="tel"
+                    className="form-input"
+                    placeholder="+251 911 234567"
+                    value={authPhone}
+                    onChange={(e) => setAuthPhone(e.target.value)}
+                    disabled={authLoading}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="form-group">
+                  <label className="form-label">Password *</label>
+                  <input
+                    type="password"
+                    required
+                    className="form-input"
+                    placeholder="Min 6 chars"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    disabled={authLoading}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Confirm Password *</label>
+                  <input
+                    type="password"
+                    required
+                    className="form-input"
+                    placeholder="Repeat password"
+                    value={authPasswordConfirm}
+                    onChange={(e) => setAuthPasswordConfirm(e.target.value)}
+                    disabled={authLoading}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(false)}
+                  className="btn btn-secondary"
+                  disabled={authLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  style={{
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                    color: '#090a0f',
+                    fontWeight: 800,
+                    border: 'none',
+                    padding: '10px 22px',
+                    borderRadius: '9999px',
+                    cursor: authLoading ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {authLoading ? 'Registering...' : 'Register & Add to Bag'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div style={{ marginTop: 16, textAlign: 'center', paddingTop: 14, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            <Link
+              to="/login"
+              style={{ color: '#f59e0b', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600 }}
+            >
+              Or open dedicated account portal &rarr;
+            </Link>
+          </div>
+        </div>
       </Modal>
     </div>
   );

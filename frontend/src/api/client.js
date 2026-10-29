@@ -81,11 +81,22 @@ class ApiClient {
     return data;
   }
 
-  // ── Auth APIs ────────────────────────────────────────────────
   async login(email, password) {
     const res = await this.request('/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
+    });
+    if (res.token) {
+      this.setToken(res.token, res.token_type || 'Bearer');
+      localStorage.setItem('volttrack_user', JSON.stringify(res.user));
+    }
+    return res;
+  }
+
+  async register(data) {
+    const res = await this.request('/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
     if (res.token) {
       this.setToken(res.token, res.token_type || 'Bearer');

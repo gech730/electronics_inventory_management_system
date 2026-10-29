@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import Icon from './Icons';
 
 export const CustomerCartDrawer = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
   const {
     cart,
     removeFromCart,
@@ -23,14 +27,24 @@ export const CustomerCartDrawer = () => {
   const [fulfillmentType, setFulfillmentType] = useState('delivery');
   const [paymentMethod, setPaymentMethod] = useState('telebirr');
   const [formData, setFormData] = useState({
-    customer_name: '',
+    customer_name: user?.name || '',
     phone: '',
-    email: '',
+    email: user?.email || '',
     delivery_address: '',
     city: 'Addis Ababa',
     payment_reference: '',
     customer_notes: '',
   });
+
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        customer_name: prev.customer_name || user.name || '',
+        email: prev.email || user.email || '',
+      }));
+    }
+  }, [user]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -652,7 +666,14 @@ export const CustomerCartDrawer = () => {
             </div>
 
             <button
-              onClick={() => setCheckoutStep('checkout')}
+              onClick={() => {
+                if (!isAuthenticated) {
+                  setIsCartOpen(false);
+                  navigate('/login?redirect=/');
+                  return;
+                }
+                setCheckoutStep('checkout');
+              }}
               style={{
                 width: '100%',
                 padding: '13px',
@@ -669,7 +690,7 @@ export const CustomerCartDrawer = () => {
               onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-1px)')}
               onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
             >
-              Proceed to Checkout &rarr;
+              {isAuthenticated ? 'Proceed to Checkout →' : 'Sign In to Checkout →'}
             </button>
           </div>
         )}
