@@ -29,8 +29,10 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\TaxRateController;
 use App\Http\Controllers\Api\SaleReturnController;
 use App\Http\Controllers\Api\SaleRefundController;
+use App\Http\Controllers\Api\CheckoutController;
 
 Route::post('/login', [ApiAuthController::class, 'login']);
+Route::post('/checkout', [CheckoutController::class, 'checkout']);
 
 // Public routes (catalog, stores, locations, units browsing)
 Route::get('/products', [ProductController::class, 'index']);

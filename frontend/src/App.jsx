@@ -63,6 +63,8 @@ import Sales from './pages/Sales';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
 import Icon from './components/Icons';
+import { CartProvider } from './context/CartContext';
+import CustomerCartDrawer from './components/CustomerCartDrawer';
 
 // Protected Route Guard
 const ProtectedRoute = ({ children }) => {
@@ -111,7 +113,7 @@ export default function App() {
   }, [showToast]);
 
   return (
-    <>
+    <CartProvider>
       <PageTitleManager />
       <Routes>
         {/* Public Impressive Home Route */}
@@ -156,7 +158,8 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <CustomerCartDrawer />
       <ToastContainer />
-    </>
+    </CartProvider>
   );
 }

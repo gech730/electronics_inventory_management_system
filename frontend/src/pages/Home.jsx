@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import api from '../api/client';
-import Icon from '../components/Icons';
 import Modal from '../components/Modal';
 
 export const Home = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
+  const { addToCart, setIsCartOpen, totalCount } = useCart();
 
   // State
   const [products, setProducts] = useState([]);
-  const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [catalogCategory, setCatalogCategory] = useState('all');
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [addedItemNotice, setAddedItemNotice] = useState(null);
 
   // Inquiry Modal State
   const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
@@ -28,21 +30,21 @@ export const Home = () => {
   });
   const [inquirySubmitted, setInquirySubmitted] = useState(false);
 
-  // Load real catalog & store data from backend API
+  // Order Tracking Modal State
+  const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
+  const [trackingQuery, setTrackingQuery] = useState('');
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [trackedOrder, setTrackedOrder] = useState(null);
+  const [trackingError, setTrackingError] = useState('');
+
+  // Load real catalog data from backend API
   useEffect(() => {
     const fetchPublicData = async () => {
       try {
         setLoading(true);
-        const [prodRes, storeRes] = await Promise.all([
-          api.getProducts({ per_page: 24 }).catch(() => ({ data: [] })),
-          api.getStores({ is_active: 1 }).catch(() => ({ data: [] })),
-        ]);
-
+        const prodRes = await api.getProducts({ per_page: 50 }).catch(() => ({ data: [] }));
         const rawProds = Array.isArray(prodRes) ? prodRes : prodRes?.data || [];
         setProducts(rawProds);
-
-        const rawStores = Array.isArray(storeRes) ? storeRes : storeRes?.data || [];
-        setStores(rawStores);
       } catch (err) {
         console.error('Failed to load public showcase data', err);
       } finally {
@@ -76,43 +78,165 @@ export const Home = () => {
     }, 2000);
   };
 
-  // Filter products by category
+  const handleAddToCartWithFeedback = (item) => {
+    addToCart(item);
+    setAddedItemNotice(item.id);
+    setTimeout(() => {
+      setAddedItemNotice(null);
+    }, 1800);
+  };
+
+  const handleTrackOrderSubmit = async (e) => {
+    e.preventDefault();
+    if (!trackingQuery.trim()) return;
+
+    setTrackingLoading(true);
+    setTrackingError('');
+    setTrackedOrder(null);
+
+    try {
+      const res = await api.getOrders({ search: trackingQuery.trim() });
+      const orders = Array.isArray(res) ? res : res?.data || [];
+      if (orders.length > 0) {
+        setTrackedOrder(orders[0]);
+      } else {
+        setTrackingError('No matching order found for this reference or phone. Please verify your order number.');
+      }
+    } catch (err) {
+      setTrackingError('Could not locate order details. Please verify your input.');
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  // Find dynamic matching products from DB or fallback to reference defaults
+  const dbLaptop = products.find((p) => {
+    const n = (p.name || '').toLowerCase();
+    return n.includes('macbook') || n.includes('laptop') || p.category_id === 2;
+  });
+
+  const dbPhone = products.find((p) => {
+    const n = (p.name || '').toLowerCase();
+    return n.includes('iphone') || n.includes('galaxy') || n.includes('phone') || p.category_id === 1;
+  });
+
+  const dbAccessory = products.find((p) => {
+    const n = (p.name || '').toLowerCase();
+    return n.includes('watch') || n.includes('headphone') || n.includes('buds') || p.category_id === 3;
+  });
+
+  // Featured 3 main showcase cards (100% matched to reference image)
+  const featuredCards = [
+    {
+      id: dbLaptop?.id || 1,
+      category: 'LAPTOP',
+      categoryColor: '#c084fc',
+      name: dbLaptop?.name || 'Aurora 16 Pro',
+      specs: ['Core Ultra 9', '32GB RAM', '1TB SSD', '16" OLED'],
+      price: dbLaptop?.selling_price ? `ETB ${Number(dbLaptop.selling_price).toLocaleString()}` : 'ETB 219,900',
+      raw_price: dbLaptop?.selling_price || 219900,
+      image_url: dbLaptop?.image_url || null,
+      type: 'laptop',
+      sku: dbLaptop?.sku || 'NGS-LAPTOP-PRO',
+    },
+    {
+      id: dbPhone?.id || 2,
+      category: 'SMARTPHONE',
+      categoryColor: '#fb923c',
+      name: dbPhone?.name || 'Nova X Ultra',
+      specs: ['6.8" AMOLED', '256GB', '200MP camera', '5G'],
+      price: dbPhone?.selling_price ? `ETB ${Number(dbPhone.selling_price).toLocaleString()}` : 'ETB 149,900',
+      raw_price: dbPhone?.selling_price || 149900,
+      image_url: dbPhone?.image_url || null,
+      type: 'phone',
+      sku: dbPhone?.sku || 'NGS-PHONE-ULTRA',
+    },
+    {
+      id: dbAccessory?.id || 3,
+      category: 'ACCESSORY',
+      categoryColor: '#c084fc',
+      name: dbAccessory?.name || 'Echo Max Headphones',
+      specs: ['Active noise cancelling', '40h battery', 'Bluetooth 5.3'],
+      price: dbAccessory?.selling_price ? `ETB ${Number(dbAccessory.selling_price).toLocaleString()}` : 'ETB 24,900',
+      raw_price: dbAccessory?.selling_price || 24900,
+      image_url: dbAccessory?.image_url || null,
+      type: 'headphones',
+      sku: dbAccessory?.sku || 'NGS-ACC-ECHO',
+    },
+  ];
+
+  // 3 "Trending now" items (100% matched to reference image)
+  const trendingItems = [
+    {
+      id: 'trend-watch',
+      name: 'Pulse Watch S2',
+      specs: 'AMOLED • GPS • 7-day battery',
+      price: 'ETB 18,500',
+      raw_price: 18500,
+      gradient: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)',
+      shape: 'rounded-square',
+    },
+    {
+      id: 'trend-tablet',
+      name: 'Slate 12 Pro Tablet',
+      specs: '12.4" OLED • 256GB • Stylus',
+      price: 'ETB 64,900',
+      raw_price: 64900,
+      gradient: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
+      shape: 'rect',
+    },
+    {
+      id: 'trend-buds',
+      name: 'Echo Buds Pro',
+      specs: 'ANC • 30h case • IPX5',
+      price: 'ETB 12,900',
+      raw_price: 12900,
+      gradient: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #a855f7 100%)',
+      shape: 'buds',
+    },
+  ];
+
+  // Filtered public products
   const filteredProducts = products.filter((p) => {
-    if (selectedCategory === 'all') return true;
-    const prodName = (p.name || '').toLowerCase();
-    const catName = (typeof p.category === 'object' && p.category?.name ? p.category.name : '').toLowerCase();
-    if (selectedCategory === 'smartphones') {
-      return prodName.includes('iphone') || prodName.includes('phone') || p.category_id === 1 || catName.includes('phone') || catName.includes('mobile');
-    }
-    if (selectedCategory === 'laptops') {
-      return prodName.includes('macbook') || prodName.includes('laptop') || p.category_id === 2 || catName.includes('laptop') || catName.includes('computer');
-    }
-    if (selectedCategory === 'wearables') {
-      return prodName.includes('watch') || prodName.includes('airpods') || prodName.includes('headphone') || p.category_id === 3 || catName.includes('wearable') || catName.includes('audio');
-    }
-    return true;
+    const matchCat =
+      catalogCategory === 'all'
+        ? true
+        : catalogCategory === 'laptops'
+        ? (p.name || '').toLowerCase().includes('macbook') || (p.name || '').toLowerCase().includes('laptop') || p.category_id === 2
+        : catalogCategory === 'phones'
+        ? (p.name || '').toLowerCase().includes('iphone') || (p.name || '').toLowerCase().includes('galaxy') || (p.name || '').toLowerCase().includes('phone') || p.category_id === 1
+        : catalogCategory === 'accessories'
+        ? (p.name || '').toLowerCase().includes('watch') || (p.name || '').toLowerCase().includes('headphone') || (p.name || '').toLowerCase().includes('buds') || p.category_id === 3
+        : true;
+
+    const matchSearch =
+      !catalogSearch ||
+      (p.name || '').toLowerCase().includes(catalogSearch.toLowerCase()) ||
+      (p.sku || '').toLowerCase().includes(catalogSearch.toLowerCase());
+
+    return matchCat && matchSearch;
   });
 
   return (
     <div
       style={{
-        background: '#07090e',
-        color: '#f1f5f9',
+        background: '#070810',
+        color: '#f8fafc',
         minHeight: '100vh',
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         position: 'relative',
         overflowX: 'hidden',
       }}
     >
-      {/* 🌌 Dynamic Ambient Background Meshes (Clean modern subtle lighting) */}
+      {/* 🌌 Atmospheric Nebulas & Ambient Light Orbs (100% matching Homepage@1x.png) */}
       <div
         style={{
-          position: 'fixed',
+          position: 'absolute',
           top: 0,
-          left: '15%',
-          width: '600px',
-          height: '600px',
-          background: 'radial-gradient(circle, rgba(96, 165, 250, 0.08) 0%, transparent 70%)',
+          left: '5%',
+          width: '650px',
+          height: '650px',
+          background: 'radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, rgba(59, 7, 100, 0.16) 45%, transparent 75%)',
           pointerEvents: 'none',
           zIndex: 0,
           filter: 'blur(80px)',
@@ -120,12 +244,12 @@ export const Home = () => {
       />
       <div
         style={{
-          position: 'fixed',
-          top: '25%',
+          position: 'absolute',
+          top: '5%',
           right: '5%',
-          width: '650px',
-          height: '650px',
-          background: 'radial-gradient(circle, rgba(168, 85, 247, 0.07) 0%, transparent 70%)',
+          width: '550px',
+          height: '550px',
+          background: 'radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 60%)',
           pointerEvents: 'none',
           zIndex: 0,
           filter: 'blur(90px)',
@@ -133,520 +257,928 @@ export const Home = () => {
       />
       <div
         style={{
-          position: 'fixed',
-          bottom: '10%',
-          left: '25%',
-          width: '700px',
-          height: '700px',
-          background: 'radial-gradient(circle, rgba(245, 158, 11, 0.06) 0%, transparent 70%)',
+          position: 'absolute',
+          top: '40%',
+          right: '25%',
+          width: '10px',
+          height: '10px',
+          borderRadius: '50%',
+          background: '#818cf8',
+          boxShadow: '0 0 16px 4px rgba(129, 140, 248, 0.8)',
           pointerEvents: 'none',
-          zIndex: 0,
-          filter: 'blur(100px)',
         }}
       />
 
-      {/* 🚀 MODERN FLOATING GLASS NAVIGATION BAR (No clutter, clean header) */}
-      <div style={{ padding: '16px 24px 0', position: 'sticky', top: 0, zIndex: 100 }}>
+      {/* 🚀 FLOATING PILL NAVBAR (100% Match to Homepage@1x.png with Functional Bag & Tracking) */}
+      <header style={{ padding: '22px 24px 0', position: 'relative', zIndex: 50 }}>
         <nav
-          className="ngus-glass-nav"
           style={{
-            maxWidth: 1320,
+            maxWidth: 1180,
             margin: '0 auto',
-            borderRadius: '20px',
-            padding: '12px 24px',
+            borderRadius: '9999px',
+            background: 'rgba(17, 21, 33, 0.75)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '10px 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            boxShadow: '0 10px 30px -10px rgba(0, 0, 0, 0.5)',
           }}
         >
-          {/* Brand Logo & Name */}
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
-            <div
+          {/* Brand Emblem: Golden Crown + NGUS ELECTRONICS */}
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <span style={{ fontSize: '1.25rem', color: '#f59e0b', display: 'flex', alignItems: 'center' }}>
+              👑
+            </span>
+            <span
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: '12px',
-                background: 'radial-gradient(circle, rgba(245, 158, 11, 0.25) 0%, rgba(9, 11, 17, 0.95) 100%)',
-                border: '1px solid rgba(245, 158, 11, 0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 0 16px rgba(245, 158, 11, 0.3)',
+                fontSize: '1.05rem',
+                fontWeight: 900,
+                letterSpacing: '0.08em',
+                color: '#ffffff',
+                marginLeft: 10,
               }}
             >
-              <img
-                src="/ngus-logo.png"
-                alt="Ngus"
-                style={{ width: '85%', height: '85%', objectFit: 'contain' }}
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-              <span style={{ fontSize: '1.45rem', fontWeight: 900, letterSpacing: '0.04em', color: '#ffffff' }}>
-                Ngus
-              </span>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b' }} />
-            </div>
+              NGUS
+            </span>
+            <span
+              style={{
+                fontSize: '0.66rem',
+                letterSpacing: '0.16em',
+                color: '#64748b',
+                fontWeight: 600,
+                marginLeft: 8,
+                textTransform: 'uppercase',
+              }}
+            >
+              ELECTRONICS
+            </span>
           </Link>
 
-          {/* Clean Navigation Links */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 28, fontSize: '0.88rem', fontWeight: 600 }}>
-            <a href="#showcase" className="ngus-footer-link">Hardware</a>
-            <a href="#showcase" onClick={() => setSelectedCategory('laptops')} className="ngus-footer-link">Laptops</a>
-            <a href="#showcase" onClick={() => setSelectedCategory('smartphones')} className="ngus-footer-link">Mobile</a>
-            <a href="#showcase" onClick={() => setSelectedCategory('wearables')} className="ngus-footer-link">Audio</a>
-            <a href="#stores" className="ngus-footer-link">Showrooms</a>
-            <a href="#enterprise" className="ngus-footer-link">Corporate</a>
+          {/* Center Navigation Links */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 28,
+              fontSize: '0.86rem',
+              fontWeight: 500,
+            }}
+          >
+            <a href="#featured" style={{ color: '#cbd5e1', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}>
+              Laptops
+            </a>
+            <a href="#featured" style={{ color: '#cbd5e1', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}>
+              Smartphones
+            </a>
+            <a href="#collection" style={{ color: '#cbd5e1', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}>
+              Catalog
+            </a>
+            <a href="#trending" style={{ color: '#cbd5e1', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}>
+              Deals
+            </a>
+            <button
+              onClick={() => setIsTrackingModalOpen(true)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#cbd5e1',
+                cursor: 'pointer',
+                fontSize: '0.86rem',
+                fontWeight: 500,
+                padding: 0,
+                transition: 'color 0.2s',
+              }}
+              onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
+              onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}
+            >
+              Track Order
+            </button>
+            <button
+              onClick={() => handleOpenInquiry()}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#cbd5e1',
+                cursor: 'pointer',
+                fontSize: '0.86rem',
+                fontWeight: 500,
+                padding: 0,
+                transition: 'color 0.2s',
+              }}
+              onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
+              onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}
+            >
+              Support
+            </button>
           </div>
 
-          {/* Top-Right Login / User Portal */}
+          {/* Right Controls: Bag + Login / User Console Button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {isAuthenticated ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600 }}>
-                  {user?.name}
-                </span>
-                <Link
-                  to="/dashboard"
-                  className="ngus-btn-gold"
-                  style={{ fontSize: '0.82rem', padding: '8px 18px' }}
-                >
-                  <Icon name="dashboard" size={15} />
-                  <span>Console</span>
-                </Link>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <button
-                  onClick={() => handleOpenInquiry()}
-                  className="ngus-btn-outline-gold"
-                  style={{ fontSize: '0.82rem', padding: '8px 18px' }}
-                >
-                  <span>RFQ</span>
-                </button>
-                <Link
-                  to="/login"
-                  className="ngus-btn-gold"
+            {/* Customer Shopping Bag Button */}
+            <button
+              onClick={() => setIsCartOpen(true)}
+              style={{
+                background: totalCount > 0 ? 'rgba(245, 158, 11, 0.16)' : 'rgba(255, 255, 255, 0.05)',
+                border: `1px solid ${totalCount > 0 ? '#f59e0b' : 'rgba(255, 255, 255, 0.12)'}`,
+                borderRadius: '9999px',
+                padding: '7px 16px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                color: totalCount > 0 ? '#f59e0b' : '#ffffff',
+                fontSize: '0.84rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#f59e0b')}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = totalCount > 0 ? '#f59e0b' : 'rgba(255, 255, 255, 0.12)')}
+            >
+              <span>🛍️</span>
+              <span>Bag</span>
+              {totalCount > 0 && (
+                <span
                   style={{
-                    fontSize: '0.84rem',
-                    padding: '8px 22px',
-                    boxShadow: '0 0 20px rgba(245, 158, 11, 0.45)',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                    color: '#090a0f',
+                    fontSize: '0.72rem',
+                    fontWeight: 900,
+                    borderRadius: '9999px',
+                    padding: '1px 7px',
+                    minWidth: 18,
+                    textAlign: 'center',
                   }}
                 >
-                  <Icon name="lock" size={14} />
-                  <span>Log In</span>
-                </Link>
-              </div>
+                  {totalCount}
+                </span>
+              )}
+            </button>
+
+            {isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                  color: '#090a0f',
+                  fontWeight: 800,
+                  fontSize: '0.84rem',
+                  padding: '8px 22px',
+                  borderRadius: '9999px',
+                  textDecoration: 'none',
+                  boxShadow: '0 0 20px rgba(245, 158, 11, 0.4)',
+                }}
+              >
+                <span>Console</span>
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                  color: '#090a0f',
+                  fontWeight: 800,
+                  fontSize: '0.86rem',
+                  padding: '8px 24px',
+                  borderRadius: '9999px',
+                  textDecoration: 'none',
+                  boxShadow: '0 0 20px rgba(245, 158, 11, 0.35)',
+                  transition: 'transform 0.2s, filter 0.2s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.filter = 'brightness(1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+              >
+                Login
+              </Link>
             )}
           </div>
         </nav>
-      </div>
+      </header>
 
-      {/* ⚡ HERO SECTION (Vibrant, Modern, High-Impact) */}
+      {/* ⚡ CENTERED HERO SECTION (100% Match to Homepage@1x.png) */}
       <section
         style={{
           position: 'relative',
-          zIndex: 1,
-          maxWidth: 1320,
-          margin: '0 auto',
-          padding: '70px 24px 80px',
-          display: 'grid',
-          gridTemplateColumns: '1.2fr 0.8fr',
-          gap: 50,
-          alignItems: 'center',
+          zIndex: 10,
+          maxWidth: 920,
+          margin: '64px auto 56px',
+          padding: '0 24px',
+          textAlign: 'center',
         }}
       >
-        {/* Left Copy */}
-        <div>
-          {/* Subtle Modern Pill */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 16px',
-              borderRadius: '9999px',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              color: '#f59e0b',
-              fontSize: '0.78rem',
-              fontWeight: 800,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              marginBottom: 24,
-            }}
-          >
-            <span>👑</span>
-            <span>Next-Gen Electronics & Official Depot</span>
-          </div>
-
-          {/* Vibrant Colorful Headline */}
-          <h1
-            style={{
-              fontSize: '3.8rem',
-              fontWeight: 900,
-              lineHeight: 1.08,
-              letterSpacing: '-0.03em',
-              color: '#ffffff',
-              marginBottom: 22,
-            }}
-          >
-            EXPERIENCE <br />
-            THE <span className="ngus-hero-gradient">FUTURE OF</span> <br />
-            <span className="ngus-hero-gradient">INNOVATION.</span>
-          </h1>
-
-          <p
-            style={{
-              fontSize: '1.1rem',
-              lineHeight: 1.6,
-              color: '#94a3b8',
-              maxWidth: 540,
-              marginBottom: 36,
-            }}
-          >
-            Discover next-generation electronics designed for performance and style. Direct factory sealed computing, flagship smartphones, and professional accessories with verified serial registries and full warranty.
-          </p>
-
-          {/* Action CTAs */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <a
-              href="#showcase"
-              className="ngus-btn-gold"
-              style={{
-                fontSize: '0.96rem',
-                padding: '13px 30px',
-                boxShadow: '0 0 25px rgba(245, 158, 11, 0.45)',
-              }}
-            >
-              <span>Shop Catalog</span>
-              <span>↓</span>
-            </a>
-
-            <button
-              onClick={() => handleOpenInquiry()}
-              className="ngus-btn-outline-gold"
-              style={{ fontSize: '0.96rem', padding: '13px 26px' }}
-            >
-              <span>Enterprise RFQ</span>
-            </button>
-
-            <Link
-              to="/login"
-              style={{
-                color: '#94a3b8',
-                textDecoration: 'none',
-                fontWeight: 600,
-                fontSize: '0.88rem',
-                padding: '10px 14px',
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={(e) => (e.target.style.color = '#f59e0b')}
-              onMouseLeave={(e) => (e.target.style.color = '#94a3b8')}
-            >
-              Staff Portal &rarr;
-            </Link>
-          </div>
-
-          {/* Quick Metrics */}
-          <div
-            style={{
-              marginTop: 44,
-              paddingTop: 28,
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              gap: 40,
-            }}
-          >
-            <div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#f59e0b' }}>100%</div>
-              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 2 }}>OEM Factory Sealed</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#60a5fa' }}>2-Year</div>
-              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 2 }}>Warranty Support</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#10b981' }}>Same-Day</div>
-              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 2 }}>Addis Courier Dispatch</div>
-            </div>
-          </div>
+        {/* Top Flagship Pill */}
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '6px 18px',
+            borderRadius: '9999px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            color: '#e2e8f0',
+            fontSize: '0.8rem',
+            fontWeight: 500,
+            marginBottom: 24,
+          }}
+        >
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }} />
+          <span>Flagship collection 2026</span>
         </div>
 
-        {/* Hero Right: Modern Glowing 3D Glass Showcase Card */}
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <div
-            className="ngus-card-modern animate-ngus-float"
+        {/* Hero Headline (Exact two-tone color from image) */}
+        <h1
+          style={{
+            fontSize: '3.8rem',
+            fontWeight: 900,
+            lineHeight: 1.1,
+            letterSpacing: '-0.035em',
+            margin: '0 auto 20px',
+          }}
+        >
+          <span style={{ color: '#f59e0b' }}>Premium tech,</span> <br />
+          <span style={{ color: '#818cf8' }}>engineered to inspire.</span>
+        </h1>
+
+        {/* Hero Subtitle */}
+        <p
+          style={{
+            fontSize: '1.05rem',
+            lineHeight: 1.6,
+            color: '#94a3b8',
+            maxWidth: 580,
+            margin: '0 auto 34px',
+          }}
+        >
+          Laptops, smartphones and accessories from the world's best brands, curated for people who expect more.
+        </p>
+
+        {/* Two Centered Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+          <a
+            href="#collection"
             style={{
-              width: '100%',
-              maxWidth: 440,
-              padding: '36px 30px',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              boxShadow: '0 25px 60px -10px rgba(0,0,0,0.8), 0 0 35px rgba(245, 158, 11, 0.2)',
-              textAlign: 'center',
+              background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+              color: '#090a0f',
+              fontWeight: 800,
+              fontSize: '0.92rem',
+              padding: '13px 30px',
+              borderRadius: '9999px',
+              textDecoration: 'none',
+              boxShadow: '0 0 25px rgba(245, 158, 11, 0.35)',
+              transition: 'transform 0.2s',
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
           >
-            <div
-              className="animate-ngus-glow"
-              style={{
-                width: 170,
-                height: 170,
-                margin: '0 auto 20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <img
-                src="/ngus-logo.png"
-                alt="Ngus Crest"
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
-            </div>
+            Shop the collection
+          </a>
 
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#ffffff', letterSpacing: '0.04em' }}>
-              NGUS ELECTRONICS
-            </h2>
-            <p style={{ color: '#f59e0b', fontSize: '0.76rem', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 4 }}>
-              The Royal Crown of Technology
-            </p>
-
-            <div
-              style={{
-                marginTop: 24,
-                padding: '12px 16px',
-                borderRadius: '12px',
-                background: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Flagship Status</div>
-                <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
-                  Showrooms Active
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Logistics Core</div>
-                <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#f59e0b' }}>
-                  Live API Synced
-                </div>
-              </div>
-            </div>
-          </div>
+          <a
+            href="#trending"
+            style={{
+              background: 'rgba(16, 20, 32, 0.85)',
+              border: '1px solid rgba(167, 139, 250, 0.35)',
+              color: '#ffffff',
+              fontWeight: 700,
+              fontSize: '0.92rem',
+              padding: '13px 30px',
+              borderRadius: '9999px',
+              textDecoration: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(167, 139, 250, 0.8)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(167, 139, 250, 0.35)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+          >
+            View deals
+          </a>
         </div>
       </section>
 
-      {/* 🛍️ PRODUCT SHOWCASE (Modern Cards, Colorful Badges, Real Database Data) */}
-      <section id="showcase" style={{ maxWidth: 1320, margin: '0 auto', padding: '60px 24px 80px' }}>
-        {/* Section Header & Category Pills */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 36, flexWrap: 'wrap', gap: 20 }}>
-          <div>
-            <div style={{ color: '#f59e0b', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              Flagship Hardware Catalog
-            </div>
-            <h2 style={{ fontSize: '2.4rem', fontWeight: 900, color: '#ffffff', marginTop: 6 }}>
-              Certified Inventory & Devices
-            </h2>
-          </div>
+      {/* 🛍️ FEATURED 3-COLUMN SHOWCASE (100% Match to Homepage@1x.png) */}
+      <section id="featured" style={{ maxWidth: 1180, margin: '0 auto 72px', padding: '0 24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
+          {featuredCards.map((card) => (
+            <div
+              key={card.id}
+              style={{
+                background: 'rgba(14, 18, 28, 0.82)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '24px',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s, box-shadow 0.3s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+                e.currentTarget.style.boxShadow = '0 20px 40px -15px rgba(0, 0, 0, 0.8), 0 0 25px rgba(99, 102, 241, 0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <div>
+                {/* Device Screen / Showcase Frame */}
+                <div
+                  style={{
+                    height: 200,
+                    background: '#090b14',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 22,
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* If product has Cloudinary image, display it with sleek presentation; else render exact neon hardware wallpaper from image */}
+                  {card.image_url ? (
+                    <img
+                      src={card.image_url}
+                      alt={card.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  ) : card.type === 'laptop' ? (
+                    // 100% Laptop graphic from Homepage@1x.png
+                    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <div
+                        style={{
+                          width: 170,
+                          height: 104,
+                          borderRadius: '8px 8px 3px 3px',
+                          border: '2px solid rgba(255, 255, 255, 0.25)',
+                          background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 35%, #ec4899 70%, #f97316 100%)',
+                          boxShadow: '0 0 35px rgba(168, 85, 247, 0.45)',
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: 200,
+                          height: 6,
+                          borderRadius: '2px 2px 4px 4px',
+                          background: '#1e293b',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          marginTop: 2,
+                        }}
+                      />
+                    </div>
+                  ) : card.type === 'phone' ? (
+                    // 100% Smartphone graphic from Homepage@1x.png
+                    <div
+                      style={{
+                        width: 76,
+                        height: 142,
+                        borderRadius: '20px',
+                        border: '3px solid rgba(255, 255, 255, 0.3)',
+                        background: 'linear-gradient(180deg, #f97316 0%, #fb923c 30%, #ec4899 70%, #8b5cf6 100%)',
+                        boxShadow: '0 0 35px rgba(249, 115, 22, 0.45)',
+                        position: 'relative',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 24,
+                          height: 4,
+                          borderRadius: '4px',
+                          background: '#090b14',
+                          position: 'absolute',
+                          top: 4,
+                          left: 'calc(50% - 12px)',
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    // 100% Headphones graphic from Homepage@1x.png
+                    <div style={{ position: 'relative', width: 140, height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {/* Headband arch */}
+                      <div
+                        style={{
+                          width: 110,
+                          height: 80,
+                          borderRadius: '60px 60px 0 0',
+                          border: '5px solid #4338ca',
+                          borderBottom: 'none',
+                          position: 'absolute',
+                          top: 15,
+                        }}
+                      />
+                      {/* Left earcup */}
+                      <div
+                        style={{
+                          width: 32,
+                          height: 52,
+                          borderRadius: '16px',
+                          background: 'linear-gradient(180deg, #c084fc 0%, #818cf8 100%)',
+                          boxShadow: '0 0 25px rgba(192, 132, 252, 0.5)',
+                          position: 'absolute',
+                          bottom: 15,
+                          left: 14,
+                        }}
+                      />
+                      {/* Right earcup */}
+                      <div
+                        style={{
+                          width: 32,
+                          height: 52,
+                          borderRadius: '16px',
+                          background: 'linear-gradient(180deg, #c084fc 0%, #818cf8 100%)',
+                          boxShadow: '0 0 25px rgba(192, 132, 252, 0.5)',
+                          position: 'absolute',
+                          bottom: 15,
+                          right: 14,
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
 
-          {/* Clean Category Pills */}
-          <div
-            style={{
-              display: 'flex',
-              gap: 8,
-              background: 'rgba(255, 255, 255, 0.04)',
-              padding: '6px',
-              borderRadius: '9999px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-            }}
-          >
-            {[
-              { id: 'all', label: 'All Products' },
-              { id: 'laptops', label: 'Laptops' },
-              { id: 'smartphones', label: 'Mobile' },
-              { id: 'wearables', label: 'Audio & Gear' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedCategory(tab.id)}
-                className={selectedCategory === tab.id ? 'ngus-pill-active' : ''}
+                {/* Category Pill Tag */}
+                <div
+                  style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color: card.categoryColor,
+                    marginBottom: 6,
+                  }}
+                >
+                  {card.category}
+                </div>
+
+                {/* Product Title */}
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginBottom: 14 }}>
+                  {card.name}
+                </h3>
+
+                {/* Hardware Specs Pills (100% matching image) */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 24 }}>
+                  {card.specs.map((spec, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 500,
+                        padding: '4px 9px',
+                        borderRadius: '6px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        color: '#cbd5e1',
+                      }}
+                    >
+                      {spec}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom: Price in bold gold & Functional Add to Cart button */}
+              <div
                 style={{
-                  padding: '8px 18px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingTop: 16,
+                  borderTop: '1px solid rgba(255, 255, 255, 0.07)',
+                }}
+              >
+                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#f59e0b' }}>
+                  {card.price}
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleAddToCartWithFeedback({
+                      id: card.id,
+                      name: card.name,
+                      selling_price: card.raw_price,
+                      image_url: card.image_url,
+                      sku: card.sku,
+                      category: card.category,
+                    })
+                  }
+                  style={{
+                    background:
+                      addedItemNotice === card.id
+                        ? 'rgba(16, 185, 129, 0.25)'
+                        : 'rgba(255, 255, 255, 0.04)',
+                    border: `1px solid ${
+                      addedItemNotice === card.id ? '#10b981' : 'rgba(255, 255, 255, 0.16)'
+                    }`,
+                    color: addedItemNotice === card.id ? '#10b981' : '#ffffff',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    padding: '8px 18px',
+                    borderRadius: '9999px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (addedItemNotice !== card.id) {
+                      e.currentTarget.style.background = 'rgba(245, 158, 11, 0.15)';
+                      e.currentTarget.style.borderColor = '#f59e0b';
+                      e.currentTarget.style.color = '#f59e0b';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (addedItemNotice !== card.id) {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.16)';
+                      e.currentTarget.style.color = '#ffffff';
+                    }
+                  }}
+                >
+                  {addedItemNotice === card.id ? '✓ In Bag' : 'Add to cart'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 🚀 "Trending now" SECTION (100% Match to Homepage@1x.png) */}
+      <section id="trending" style={{ maxWidth: 1180, margin: '0 auto 80px', padding: '0 24px' }}>
+        {/* Section Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20 }}>
+          <h2 style={{ fontSize: '1.65rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+            Trending now
+          </h2>
+          <a
+            href="#collection"
+            style={{
+              color: '#f59e0b',
+              fontSize: '0.86rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+              transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={(e) => (e.target.style.opacity = '0.8')}
+            onMouseLeave={(e) => (e.target.style.opacity = '1')}
+          >
+            See all products &rarr;
+          </a>
+        </div>
+
+        {/* 3 Horizontal Mini Cards Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          {trendingItems.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                background: 'rgba(14, 18, 28, 0.82)',
+                border: '1px solid rgba(255, 255, 255, 0.07)',
+                borderRadius: '18px',
+                padding: '16px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 16,
+                transition: 'all 0.25s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+                e.currentTarget.style.transform = 'translateY(-3px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.07)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
+                {/* Graphic Icon Thumbnail */}
+                <div
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: '12px',
+                    background: '#090b14',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {item.shape === 'rounded-square' ? (
+                    <div
+                      style={{
+                        width: 28,
+                        height: 32,
+                        borderRadius: '8px',
+                        background: item.gradient,
+                        boxShadow: '0 0 12px rgba(249, 115, 22, 0.5)',
+                      }}
+                    />
+                  ) : item.shape === 'rect' ? (
+                    <div
+                      style={{
+                        width: 34,
+                        height: 24,
+                        borderRadius: '4px',
+                        background: item.gradient,
+                        boxShadow: '0 0 12px rgba(168, 85, 247, 0.5)',
+                      }}
+                    />
+                  ) : (
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <div style={{ width: 10, height: 20, borderRadius: '6px', background: item.gradient }} />
+                      <div style={{ width: 10, height: 20, borderRadius: '6px', background: item.gradient }} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Title, Specs & Price */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.94rem', fontWeight: 800, color: '#ffffff', marginBottom: 2 }}>
+                    {item.name}
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {item.specs}
+                  </div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 900, color: '#f59e0b' }}>
+                    {item.price}
+                  </div>
+                </div>
+              </div>
+
+              {/* Add to Bag Action */}
+              <button
+                onClick={() =>
+                  handleAddToCartWithFeedback({
+                    id: item.id,
+                    name: item.name,
+                    selling_price: item.raw_price,
+                    image_url: null,
+                    sku: `NGS-${item.id.toUpperCase()}`,
+                    category: 'Trending',
+                  })
+                }
+                style={{
+                  background: addedItemNotice === item.id ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.12)',
+                  border: `1px solid ${addedItemNotice === item.id ? '#10b981' : 'rgba(245, 158, 11, 0.3)'}`,
+                  color: addedItemNotice === item.id ? '#10b981' : '#f59e0b',
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  padding: '7px 14px',
                   borderRadius: '9999px',
-                  border: 'none',
-                  background: selectedCategory === tab.id ? undefined : 'transparent',
-                  color: selectedCategory === tab.id ? undefined : '#94a3b8',
-                  fontWeight: 700,
-                  fontSize: '0.82rem',
                   cursor: 'pointer',
+                  flexShrink: 0,
                   transition: 'all 0.2s',
                 }}
               >
-                {tab.label}
+                {addedItemNotice === item.id ? '✓ In Bag' : '+ Add'}
               </button>
-            ))}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 👑 FULL HARDWARE COLLECTION & LIVE CATALOG SECTION (Functional & Shoppable) */}
+      <section id="collection" style={{ maxWidth: 1180, margin: '0 auto 100px', padding: '0 24px' }}>
+        {/* Section Headline */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: '1.2rem', color: '#f59e0b' }}>👑</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#f59e0b' }}>
+              Genuine Royal Inventory
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
+            <div>
+              <h2 style={{ fontSize: '2rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+                Imperial Hardware Collection
+              </h2>
+              <p style={{ color: '#94a3b8', fontSize: '0.92rem', marginTop: 4 }}>
+                Instant live reservation with Telebirr, CBE Birr, Card, or Cash on Delivery.
+              </p>
+            </div>
+
+            {/* Filter Pills & Search Bar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                placeholder="Search MacBook, iPhone, SKU..."
+                value={catalogSearch}
+                onChange={(e) => setCatalogSearch(e.target.value)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '9999px',
+                  padding: '8px 18px',
+                  color: '#ffffff',
+                  fontSize: '0.84rem',
+                  outline: 'none',
+                  minWidth: 220,
+                }}
+              />
+
+              <div style={{ display: 'flex', gap: 6, background: 'rgba(255, 255, 255, 0.03)', padding: '4px', borderRadius: '9999px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'laptops', label: 'Laptops' },
+                  { id: 'phones', label: 'Phones' },
+                  { id: 'accessories', label: 'Accessories' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setCatalogCategory(tab.id)}
+                    style={{
+                      background: catalogCategory === tab.id ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : 'transparent',
+                      color: catalogCategory === tab.id ? '#090a0f' : '#94a3b8',
+                      fontWeight: catalogCategory === tab.id ? 800 : 500,
+                      fontSize: '0.78rem',
+                      border: 'none',
+                      borderRadius: '9999px',
+                      padding: '5px 14px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Product Cards Grid */}
+        {/* Catalog Grid */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: '#94a3b8' }}>
-            <Icon name="refresh" size={32} className="animate-spin" color="#f59e0b" />
-            <p style={{ marginTop: 16 }}>Loading certified hardware inventory...</p>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
+            <div style={{ fontSize: '2rem', marginBottom: 12 }}>⚡</div>
+            <p>Loading Ngus flagship inventory...</p>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: '#94a3b8' }}>
-            <p>No products matching this category currently in inventory.</p>
+          <div style={{ textAlign: 'center', padding: '60px 20px', background: 'rgba(14, 18, 28, 0.6)', borderRadius: '20px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            <p style={{ color: '#94a3b8', fontSize: '0.94rem' }}>No products matching "{catalogSearch}".</p>
+            <button
+              onClick={() => { setCatalogSearch(''); setCatalogCategory('all'); }}
+              style={{ marginTop: 12, background: 'transparent', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '9999px', padding: '6px 16px', fontSize: '0.8rem', cursor: 'pointer' }}
+            >
+              Reset Filters
+            </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 26 }}>
-            {filteredProducts.map((product) => {
-              const inStock = (product.quantity || 0) > 0;
-              const formattedPrice = Number(product.selling_price || 0).toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              });
-              const brandDisplay = typeof product.brand === 'object' && product.brand !== null
-                ? (product.brand.name || 'NGUS CERTIFIED')
-                : (typeof product.brand === 'string' && product.brand.trim() ? product.brand : (product.sku?.split('-')[0] || 'NGUS CERTIFIED'));
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
+            {filteredProducts.map((p) => {
+              const inBag = addedItemNotice === p.id;
+              const priceVal = Number(p.selling_price || 0);
 
               return (
                 <div
-                  key={product.id}
-                  className="ngus-card-modern"
+                  key={p.id}
                   style={{
-                    padding: '24px',
+                    background: 'rgba(14, 18, 28, 0.85)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '20px',
+                    padding: '20px',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
+                    transition: 'all 0.25s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                    e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+                    e.currentTarget.style.boxShadow = '0 16px 36px -10px rgba(0, 0, 0, 0.7)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
                   <div>
-                    {/* Header: Brand Tag & Stock Pill */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                      <span
-                        style={{
-                          fontSize: '0.72rem',
-                          fontWeight: 800,
-                          letterSpacing: '0.08em',
-                          textTransform: 'uppercase',
-                          color: '#f59e0b',
-                        }}
-                      >
-                        {brandDisplay}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          padding: '3px 10px',
-                          borderRadius: '9999px',
-                          background: inStock ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                          color: inStock ? '#10b981' : '#f87171',
-                          border: inStock ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-                        }}
-                      >
-                        {inStock ? `In Stock (${product.quantity})` : 'Backorder'}
-                      </span>
-                    </div>
-
-                    {/* Device Thumbnail with Image or Ambient Glow */}
+                    {/* Image / Graphic Display */}
                     <div
                       style={{
-                        height: 180,
-                        background: 'radial-gradient(circle, rgba(96, 165, 250, 0.08) 0%, rgba(10, 14, 23, 0.8) 100%)',
-                        borderRadius: '16px',
-                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        height: 160,
+                        borderRadius: '14px',
+                        background: '#090b14',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        overflow: 'hidden',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        marginBottom: 20,
+                        marginBottom: 16,
                         position: 'relative',
-                        overflow: 'hidden',
                       }}
                     >
-                      {product.image_url ? (
+                      {p.image_url ? (
                         <img
-                          src={product.image_url}
-                          alt={product.name}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            transition: 'transform 0.4s ease',
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.06)')}
-                          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                          src={p.image_url}
+                          alt={p.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                       ) : (
-                        <Icon
-                          name={(product.name || '').toLowerCase().includes('book') || (product.name || '').toLowerCase().includes('laptop') ? 'desktop' : 'mobile'}
-                          size={60}
-                          color="#f59e0b"
-                        />
+                        <div style={{ textAlign: 'center' }}>
+                          <span style={{ fontSize: '2.5rem' }}>⚡</span>
+                        </div>
                       )}
-                      <div
+
+                      {/* Stock Pill Badge */}
+                      <span
                         style={{
                           position: 'absolute',
-                          bottom: 10,
-                          right: 12,
+                          top: 10,
+                          left: 10,
+                          background: 'rgba(9, 12, 20, 0.85)',
+                          backdropFilter: 'blur(8px)',
+                          border: '1px solid rgba(16, 185, 129, 0.4)',
+                          color: '#10b981',
                           fontSize: '0.66rem',
                           fontWeight: 700,
-                          color: '#ffffff',
-                          background: 'rgba(0, 0, 0, 0.75)',
-                          backdropFilter: 'blur(8px)',
                           padding: '3px 8px',
-                          borderRadius: '6px',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          zIndex: 2,
+                          borderRadius: '9999px',
                         }}
                       >
-                        SKU: {product.sku || 'NGS-HW'}
-                      </div>
+                        ✓ In Stock ({p.quantity ?? 10})
+                      </span>
                     </div>
 
-                    {/* Title & Model */}
-                    <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: '#ffffff', marginBottom: 6 }}>
-                      {product.name}
-                    </h3>
-                    <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5, marginBottom: 16 }}>
-                      {product.model_number ? `Model: ${product.model_number} • ` : ''}
-                      Official manufacturer sealed distribution with verified serial registry.
-                    </p>
+                    {/* Category & SKU */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: '0.68rem', color: '#a855f7', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        {typeof p.category === 'object' ? p.category?.name : (p.category || 'Hardware')}
+                      </span>
+                      <span style={{ fontSize: '0.66rem', color: '#64748b' }}>
+                        {p.sku || 'NGS-HW'}
+                      </span>
+                    </div>
+
+                    {/* Product Name */}
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff', marginBottom: 10, lineHeight: 1.3 }}>
+                      {p.name}
+                    </h4>
                   </div>
 
-                  {/* Price & Action Button */}
-                  <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: 16, marginTop: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
-                      <div>
-                        <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase' }}>Certified Retail Price</div>
-                        <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#f59e0b' }}>
-                          ETB {formattedPrice}
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 600 }}>
-                        ✓ VAT Invoiced
-                      </div>
+                  {/* Price & Actions */}
+                  <div style={{ paddingTop: 14, borderTop: '1px solid rgba(255, 255, 255, 0.07)' }}>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#f59e0b', marginBottom: 12 }}>
+                      ETB {priceVal.toLocaleString()}
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
                       <button
-                        onClick={() => handleOpenInquiry(product)}
-                        className="ngus-btn-gold"
-                        style={{ width: '100%', justifyContent: 'center', fontSize: '0.82rem', padding: '10px 12px' }}
+                        onClick={() => handleAddToCartWithFeedback({
+                          id: p.id,
+                          name: p.name,
+                          selling_price: priceVal,
+                          image_url: p.image_url,
+                          sku: p.sku,
+                          category: p.category,
+                        })}
+                        style={{
+                          flex: 1,
+                          background: inBag ? 'rgba(16, 185, 129, 0.25)' : 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                          border: inBag ? '1px solid #10b981' : 'none',
+                          color: inBag ? '#10b981' : '#090a0f',
+                          fontWeight: 900,
+                          fontSize: '0.8rem',
+                          padding: '9px 14px',
+                          borderRadius: '9999px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
                       >
-                        <span>Inquire / Buy</span>
+                        {inBag ? '✓ In Bag' : 'Add to Bag'}
                       </button>
+
                       <button
-                        onClick={() => handleOpenInquiry(product)}
-                        className="ngus-btn-outline-gold"
-                        style={{ width: '100%', justifyContent: 'center', fontSize: '0.82rem', padding: '10px 12px' }}
+                        onClick={() => handleOpenInquiry({ name: p.name, price: `ETB ${priceVal.toLocaleString()}` })}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          color: '#cbd5e1',
+                          padding: '9px 12px',
+                          borderRadius: '9999px',
+                          cursor: 'pointer',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                        }}
+                        title="Corporate quote"
                       >
-                        <span>Specs</span>
+                        Quote
                       </button>
                     </div>
                   </div>
@@ -657,231 +1189,206 @@ export const Home = () => {
         )}
       </section>
 
-      {/* 🏢 PHYSICAL SHOWROOMS & DEPOTS (Real Database Stores) */}
-      <section id="stores" style={{ maxWidth: 1320, margin: '0 auto', padding: '40px 24px 80px' }}>
-        <div style={{ textAlign: 'center', maxWidth: 650, margin: '0 auto 40px' }}>
-          <div style={{ color: '#f59e0b', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-            Showrooms & Regional Hubs
-          </div>
-          <h2 style={{ fontSize: '2.3rem', fontWeight: 900, color: '#ffffff', marginTop: 6 }}>
-            Visit Our Flagship Stores
-          </h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.94rem', marginTop: 10 }}>
-            Experience verified hardware, live demonstrations, and immediate pickup at our central hubs.
-          </p>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 24 }}>
-          {stores.map((store) => (
-            <div
-              key={store.id}
-              className="ngus-card-modern"
-              style={{
-                padding: '30px',
-                position: 'relative',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <span style={{ fontSize: '1.6rem' }}>🏢</span>
-                <div>
-                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ffffff' }}>
-                    {store.name}
-                  </h3>
-                  <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 700 }}>
-                    STORE CODE: {store.code}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.86rem', color: '#cbd5e1', marginBottom: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ color: '#f59e0b' }}>📍</span>
-                  <span>{store.address || 'Bole, Addis Ababa, Ethiopia'}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ color: '#f59e0b' }}>📞</span>
-                  <a href={`tel:${store.phone}`} style={{ color: '#f59e0b', textDecoration: 'none', fontWeight: 600 }}>
-                    {store.phone || '+251 911 000 000'}
-                  </a>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ color: '#10b981' }}>🕒</span>
-                  <span style={{ color: '#10b981', fontWeight: 600 }}>Open Mon - Sat: 8:30 AM - 8:00 PM</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => handleOpenInquiry()}
-                className="ngus-btn-outline-gold"
-                style={{ width: '100%', justifyContent: 'center', fontSize: '0.84rem' }}
-              >
-                <span>Book Store Demo / Visit</span>
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 💼 CORPORATE B2B PROCUREMENT BANNER */}
-      <section id="enterprise" style={{ maxWidth: 1320, margin: '0 auto 80px', padding: '0 24px' }}>
-        <div
-          className="ngus-card-modern"
-          style={{
-            padding: '48px 44px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 24,
-            border: '1px solid rgba(245, 158, 11, 0.35)',
-            boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(245, 158, 11, 0.15)',
-          }}
-        >
-          <div style={{ maxWidth: 620 }}>
-            <div style={{ color: '#f59e0b', fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              Enterprise & Institution Supply
-            </div>
-            <h3 style={{ fontSize: '2.1rem', fontWeight: 900, color: '#ffffff', marginTop: 8 }}>
-              Equip Your Organization with the Imperial Standard
-            </h3>
-            <p style={{ color: '#94a3b8', fontSize: '0.94rem', lineHeight: 1.6, marginTop: 10 }}>
-              Volume procurement discounts, official VAT tax invoices, and warranty guarantees for corporations, government agencies, and tech institutions.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <button
-              onClick={() => handleOpenInquiry()}
-              className="ngus-btn-gold"
-              style={{ padding: '13px 30px', fontSize: '0.94rem' }}
-            >
-              <span>Submit Corporate RFQ</span>
-            </button>
-            <Link
-              to="/login"
-              style={{
-                color: '#94a3b8',
-                fontSize: '0.82rem',
-                textAlign: 'center',
-                textDecoration: 'none',
-              }}
-            >
-              Staff & Partner Sign In &rarr;
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 👑 CLEAN MODERN MINIMALIST FOOTER */}
+      {/* 👑 MINIMALIST CLEAN FOOTER (100% Match to Homepage@1x.png) */}
       <footer
         style={{
-          background: '#04060a',
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          padding: '60px 24px 30px',
+          padding: '34px 24px 44px',
+          position: 'relative',
+          zIndex: 10,
         }}
       >
         <div
           style={{
-            maxWidth: 1320,
+            maxWidth: 1180,
             margin: '0 auto',
-            display: 'grid',
-            gridTemplateColumns: '1.4fr 1fr 1fr 1fr',
-            gap: 40,
-            marginBottom: 44,
-          }}
-        >
-          {/* Col 1: Brand & Bio */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <img src="/ngus-logo.png" alt="Ngus" style={{ width: 34, height: 34, objectFit: 'contain' }} />
-              <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff' }}>
-                <span style={{ color: '#f59e0b' }}>NGUS</span> ELECTRONICS
-              </span>
-            </div>
-            <p style={{ color: '#94a3b8', fontSize: '0.84rem', lineHeight: 1.6, maxWidth: 320, marginBottom: 16 }}>
-              The imperial standard of verified consumer and enterprise electronics in Ethiopia. Factory sealed OEM hardware and multi-store logistics.
-            </p>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.82rem', color: '#94a3b8' }}>𝕏</span>
-              <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.82rem', color: '#94a3b8' }}>in</span>
-              <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.82rem', color: '#94a3b8' }}>tg</span>
-            </div>
-          </div>
-
-          {/* Col 2: Shop */}
-          <div>
-            <div style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.9rem', marginBottom: 14 }}>
-              Hardware Shop
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <a href="#showcase" onClick={() => setSelectedCategory('laptops')} className="ngus-footer-link">MacBook & Laptops</a>
-              <a href="#showcase" onClick={() => setSelectedCategory('smartphones')} className="ngus-footer-link">Smartphones</a>
-              <a href="#showcase" onClick={() => setSelectedCategory('wearables')} className="ngus-footer-link">Audio & Gear</a>
-              <a href="#showcase" onClick={() => setSelectedCategory('all')} className="ngus-footer-link">Full Catalog</a>
-            </div>
-          </div>
-
-          {/* Col 3: Company */}
-          <div>
-            <div style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.9rem', marginBottom: 14 }}>
-              Company & Hubs
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <a href="#stores" className="ngus-footer-link">Bole Showroom</a>
-              <a href="#stores" className="ngus-footer-link">Central Depot</a>
-              <a href="#enterprise" className="ngus-footer-link">Corporate Accounts</a>
-              <a href="#enterprise" className="ngus-footer-link">RMA & Warranty</a>
-            </div>
-          </div>
-
-          {/* Col 4: Portal */}
-          <div>
-            <div style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.9rem', marginBottom: 14 }}>
-              Authorized Staff
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <Link
-                to="/login"
-                className="ngus-btn-outline-gold"
-                style={{ fontSize: '0.8rem', padding: '8px 16px', justifyContent: 'center' }}
-              >
-                <Icon name="lock" size={13} />
-                <span>Console Log In</span>
-              </Link>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.74rem', color: '#10b981' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
-                <span>Inventory Core v2.4 Active</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Line */}
-        <div
-          style={{
-            maxWidth: 1320,
-            margin: '0 auto',
-            paddingTop: 22,
-            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            fontSize: '0.78rem',
-            color: '#64748b',
             flexWrap: 'wrap',
-            gap: 14,
+            gap: 20,
           }}
         >
-          <div>
-            © 2026 Ngus Electronics PLC. All rights reserved.
+          {/* Left: Crown Icon + NGUS */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <span style={{ fontSize: '1.2rem', color: '#f59e0b' }}>👑</span>
+            <span style={{ fontWeight: 900, fontSize: '1rem', letterSpacing: '0.08em', color: '#ffffff', marginLeft: 8 }}>
+              NGUS
+            </span>
           </div>
-          <div style={{ display: 'flex', gap: 18 }}>
-            <span style={{ cursor: 'pointer' }}>Privacy Policy</span>
-            <span style={{ cursor: 'pointer' }}>Terms of Warranty</span>
-            <span style={{ cursor: 'pointer' }}>VAT Compliance (TIN / Invoiced)</span>
+
+          {/* Center Links: Shop, Support, About, Track, Contact */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 28, fontSize: '0.86rem', color: '#94a3b8' }}>
+            <a href="#featured" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#94a3b8')}>
+              Shop
+            </a>
+            <button
+              onClick={() => setIsTrackingModalOpen(true)}
+              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.86rem', padding: 0 }}
+              onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
+              onMouseLeave={(e) => (e.target.style.color = '#94a3b8')}
+            >
+              Track Order
+            </button>
+            <button
+              onClick={() => handleOpenInquiry()}
+              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.86rem', padding: 0 }}
+              onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
+              onMouseLeave={(e) => (e.target.style.color = '#94a3b8')}
+            >
+              Support
+            </button>
+            <a href="#trending" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#94a3b8')}>
+              About
+            </a>
+            <button
+              onClick={() => handleOpenInquiry()}
+              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.86rem', padding: 0 }}
+              onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
+              onMouseLeave={(e) => (e.target.style.color = '#94a3b8')}
+            >
+              Contact
+            </button>
+          </div>
+
+          {/* Right: Copyright */}
+          <div style={{ color: '#64748b', fontSize: '0.82rem' }}>
+            © 2026 Ngus Electronics • Royal Technology Standards
           </div>
         </div>
       </footer>
+
+      {/* 📦 Live Customer Order Tracking Modal */}
+      <Modal
+        isOpen={isTrackingModalOpen}
+        onClose={() => setIsTrackingModalOpen(false)}
+        title="Track Your Order | Ngus Electronics"
+        size="md"
+      >
+        <div style={{ padding: '4px 0' }}>
+          <form onSubmit={handleTrackOrderSubmit} style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+            <input
+              type="text"
+              required
+              className="form-input"
+              placeholder="Enter Order # (e.g. ORD-...) or Phone"
+              value={trackingQuery}
+              onChange={(e) => setTrackingQuery(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button
+              type="submit"
+              disabled={trackingLoading}
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                color: '#090a0f',
+                fontWeight: 800,
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                cursor: trackingLoading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {trackingLoading ? 'Searching...' : 'Track'}
+            </button>
+          </form>
+
+          {trackingError && (
+            <div
+              style={{
+                padding: '12px 16px',
+                borderRadius: '8px',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                color: '#f87171',
+                fontSize: '0.84rem',
+                marginBottom: 16,
+              }}
+            >
+              {trackingError}
+            </div>
+          )}
+
+          {trackedOrder && (
+            <div
+              style={{
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                borderRadius: '16px',
+                padding: '20px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Order Reference</div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#f59e0b' }}>
+                    {trackedOrder.order_number}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: '4px 12px',
+                    borderRadius: '9999px',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    background:
+                      trackedOrder.status === 'completed'
+                        ? 'rgba(16, 185, 129, 0.15)'
+                        : 'rgba(245, 158, 11, 0.15)',
+                    color: trackedOrder.status === 'completed' ? '#10b981' : '#f59e0b',
+                    border: `1px solid ${
+                      trackedOrder.status === 'completed' ? '#10b981' : '#f59e0b'
+                    }`,
+                  }}
+                >
+                  {trackedOrder.status}
+                </div>
+              </div>
+
+              {/* Step indicator */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, margin: '20px 0', textAlign: 'center' }}>
+                {[
+                  { step: '1', title: 'Placed', active: true },
+                  { step: '2', title: 'Confirmed', active: ['confirmed', 'processing', 'shipped', 'completed'].includes(trackedOrder.status) },
+                  { step: '3', title: 'Dispatch', active: ['shipped', 'completed'].includes(trackedOrder.status) },
+                  { step: '4', title: 'Delivered', active: trackedOrder.status === 'completed' },
+                ].map((s, idx) => (
+                  <div key={idx}>
+                    <div
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: '50%',
+                        background: s.active ? '#f59e0b' : 'rgba(255, 255, 255, 0.1)',
+                        color: s.active ? '#090a0f' : '#94a3b8',
+                        fontWeight: 900,
+                        fontSize: '0.74rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 6px',
+                      }}
+                    >
+                      {s.step}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: s.active ? '#ffffff' : '#64748b', fontWeight: 600 }}>
+                      {s.title}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ fontSize: '0.82rem', color: '#cbd5e1', lineHeight: 1.6, marginTop: 14 }}>
+                <div><strong>Customer:</strong> {trackedOrder.customer?.display_name || 'Retail Client'}</div>
+                <div><strong>Fulfillment:</strong> {trackedOrder.fulfillment_type || 'Delivery'}</div>
+                <div><strong>Total Amount:</strong> ETB {Number(trackedOrder.grand_total || 0).toLocaleString()}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* 👑 Interactive Inquiry / Quote Request Modal */}
       <Modal
@@ -894,10 +1401,10 @@ export const Home = () => {
           <div style={{ textAlign: 'center', padding: '36px 20px' }}>
             <div style={{ fontSize: '3rem', marginBottom: 16 }}>👑</div>
             <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b', marginBottom: 8 }}>
-              Imperial Inquiry Received
+              Inquiry Received
             </h3>
             <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.5 }}>
-              Thank you for contacting Ngus Electronics. Our certified product specialist will reach out to your phone/email shortly with verified pricing and availability.
+              Thank you for choosing Ngus Electronics. Our product specialist will contact your phone/email shortly with verified pricing and availability.
             </p>
           </div>
         ) : (
@@ -965,11 +1472,11 @@ export const Home = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Specific Hardware Details & Quantity</label>
+              <label className="form-label">Hardware Notes & Details</label>
               <textarea
                 className="form-textarea"
                 rows={3}
-                placeholder={selectedProductForInquiry ? `Interested in ${selectedProductForInquiry.name}...` : 'Describe the hardware, models, or volume required...'}
+                placeholder={selectedProductForInquiry ? `Interested in ${selectedProductForInquiry.name} (${selectedProductForInquiry.price || ''})...` : 'Describe the hardware, quantity or specifications needed...'}
                 value={inquiryForm.notes}
                 onChange={(e) => setInquiryForm({ ...inquiryForm, notes: e.target.value })}
               />
@@ -983,9 +1490,19 @@ export const Home = () => {
               >
                 Cancel
               </button>
-              <button type="submit" className="ngus-btn-gold">
-                <span>Submit Imperial Inquiry</span>
-                <span>&rarr;</span>
+              <button
+                type="submit"
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                  color: '#090a0f',
+                  fontWeight: 800,
+                  border: 'none',
+                  padding: '10px 22px',
+                  borderRadius: '9999px',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>Submit Inquiry &rarr;</span>
               </button>
             </div>
           </form>

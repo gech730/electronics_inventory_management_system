@@ -102,6 +102,13 @@ class ApiClient {
     }
   }
 
+  checkout(data) {
+    return this.request('/checkout', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   getUser() {
     return this.request('/user');
   }
