@@ -426,23 +426,40 @@ export const Home = () => {
             <a href="#trending" style={{ color: '#cbd5e1', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}>
               Deals
             </a>
-            <button
-              onClick={() => setIsTrackingModalOpen(true)}
+            <Link
+              to="/tracking"
               style={{
-                background: 'transparent',
-                border: 'none',
                 color: '#cbd5e1',
-                cursor: 'pointer',
+                textDecoration: 'none',
                 fontSize: '0.86rem',
                 fontWeight: 500,
-                padding: 0,
                 transition: 'color 0.2s',
               }}
-              onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
+              onMouseEnter={(e) => (e.target.style.color = '#60a5fa')}
               onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}
             >
               Track Order
-            </button>
+            </Link>
+            {isAuthenticated && user?.role === 'customer' && (
+              <Link
+                to="/customer/dashboard"
+                style={{
+                  color: '#fbbf24',
+                  textDecoration: 'none',
+                  fontSize: '0.86rem',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  transition: 'opacity 0.2s',
+                }}
+                onMouseEnter={(e) => (e.target.style.opacity = '0.8')}
+                onMouseLeave={(e) => (e.target.style.opacity = '1')}
+              >
+                <span>👑</span>
+                <span>My Orders</span>
+              </Link>
+            )}
             <button
               onClick={() => handleOpenInquiry()}
               style={{
@@ -507,25 +524,37 @@ export const Home = () => {
             {isAuthenticated ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {user?.role === 'customer' ? (
-                  <div
+                  <Link
+                    to="/customer/dashboard"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
                       padding: '6px 14px',
                       borderRadius: '9999px',
-                      background: 'rgba(245, 158, 11, 0.12)',
-                      border: '1px solid rgba(245, 158, 11, 0.3)',
-                      color: '#f59e0b',
+                      background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(180, 83, 9, 0.15) 100%)',
+                      border: '1px solid rgba(245, 158, 11, 0.4)',
+                      color: '#fbbf24',
                       fontSize: '0.82rem',
                       fontWeight: 800,
+                      textDecoration: 'none',
+                      boxShadow: '0 0 16px rgba(245, 158, 11, 0.25)',
+                      transition: 'all 0.2s',
                     }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#fbbf24';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+                    }}
+                    title="Open Customer Dashboard"
                   >
                     <span>👑</span>
                     <span style={{ maxWidth: 110, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {user?.name?.split(' ')[0] || 'Client'}
                     </span>
-                  </div>
+                    <span style={{ fontSize: '0.70rem', color: '#fef08a' }}>• Portal</span>
+                  </Link>
                 ) : (
                   <Link
                     to="/dashboard"

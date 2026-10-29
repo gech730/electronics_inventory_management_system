@@ -30,6 +30,8 @@ const routeTitles = {
   '/users': 'Staff Access & RBAC Identity Management',
   '/login': 'Staff & Client Authentication Portal',
   '/register': 'Customer Registration & Account Portal',
+  '/customer/dashboard': 'Royal Customer Portal & Order History',
+  '/tracking': 'Live Consignment & Dispatch Tracking',
 };
 
 // Synchronize document.title with route changes
@@ -42,6 +44,8 @@ function PageTitleManager() {
   return null;
 }
 import Dashboard from './pages/Dashboard';
+import CustomerDashboard from './pages/CustomerDashboard';
+import OrderTracking from './pages/OrderTracking';
 import Products from './pages/Products';
 import Categories from './pages/Categories';
 import Users from './pages/Users';
@@ -99,7 +103,7 @@ const ProtectedRoute = ({ children }) => {
 };
 
 export default function App() {
-  const { isAuthenticated, showToast } = useAuth();
+  const { user, isAuthenticated, showToast } = useAuth();
 
   // Network offline / online recovery toast listener
   useEffect(() => {
@@ -120,14 +124,47 @@ export default function App() {
         {/* Public Impressive Home Route */}
         <Route path="/" element={<Home />} />
 
+        {/* Public Consignment & Parcel Tracking */}
+        <Route path="/tracking" element={<OrderTracking />} />
+
+        {/* Dedicated Customer Portal & Order Ledger */}
+        <Route
+          path="/customer/dashboard"
+          element={
+            <ProtectedRoute>
+              <CustomerDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/my-orders" element={<Navigate to="/customer/dashboard?tab=orders" replace />} />
+        <Route path="/account" element={<Navigate to="/customer/dashboard" replace />} />
+
         {/* Public Login & Register Routes */}
         <Route
           path="/login"
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
+          element={
+            isAuthenticated ? (
+              <Navigate
+                to={user?.role === 'customer' ? '/customer/dashboard' : '/dashboard'}
+                replace
+              />
+            ) : (
+              <Login />
+            )
+          }
         />
         <Route
           path="/register"
-          element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
+          element={
+            isAuthenticated ? (
+              <Navigate
+                to={user?.role === 'customer' ? '/customer/dashboard' : '/dashboard'}
+                replace
+              />
+            ) : (
+              <Login />
+            )
+          }
         />
 
         {/* Protected Application Routes wrapped in Layout */}

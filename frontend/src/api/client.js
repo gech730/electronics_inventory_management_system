@@ -820,6 +820,23 @@ class ApiClient {
   deleteSaleRefund(id) {
     return this.request(`/sale-refunds/${id}`, { method: 'DELETE' });
   }
+
+  // ── Customer Portal & Live Tracking ────────────────────────
+  getCustomerProfile() {
+    return this.request('/customer/profile');
+  }
+
+  getCustomerOrders() {
+    return this.request('/customer/orders');
+  }
+
+  getCustomerShipments() {
+    return this.request('/customer/shipments');
+  }
+
+  trackShipment(reference) {
+    return this.request(`/tracking/${encodeURIComponent(reference)}`);
+  }
 }
 
 export const api = new ApiClient();

@@ -35,7 +35,7 @@ export const Login = () => {
       if (redirectPath) {
         navigate(redirectPath, { replace: true });
       } else if (user?.role === 'customer') {
-        navigate('/', { replace: true });
+        navigate('/customer/dashboard', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }
@@ -57,7 +57,7 @@ export const Login = () => {
       if (redirectPath) {
         navigate(redirectPath, { replace: true });
       } else if (res.user?.role === 'customer') {
-        navigate('/', { replace: true });
+        navigate('/customer/dashboard', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }
@@ -100,7 +100,7 @@ export const Login = () => {
       if (redirectPath) {
         navigate(redirectPath, { replace: true });
       } else if (res.user?.role === 'customer') {
-        navigate('/', { replace: true });
+        navigate('/customer/dashboard', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }

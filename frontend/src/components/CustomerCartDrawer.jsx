@@ -24,6 +24,7 @@ export const CustomerCartDrawer = () => {
     setLastOrder,
   } = useCart();
 
+  const [lastShipment, setLastShipment] = useState(null);
   const [fulfillmentType, setFulfillmentType] = useState('delivery');
   const [paymentMethod, setPaymentMethod] = useState('telebirr');
   const [formData, setFormData] = useState({
@@ -91,6 +92,7 @@ export const CustomerCartDrawer = () => {
 
       if (res && res.data) {
         setLastOrder(res.data.order || res.data);
+        setLastShipment(res.data.shipment || null);
         setCheckoutStep('success');
         clearCart();
       } else {
@@ -603,8 +605,29 @@ export const CustomerCartDrawer = () => {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: '0.82rem' }}>
                   <span style={{ color: '#94a3b8' }}>Fulfillment</span>
-                  <span style={{ color: '#ffffff' }}>Same-Day Express Dispatch</span>
+                  <span style={{ color: '#ffffff' }}>
+                    {fulfillmentType === 'delivery' ? 'Express Courier Dispatch' : 'Vault Pickup (Bole)'}
+                  </span>
                 </div>
+
+                {(lastShipment?.tracking_number || lastOrder?.shipments?.[0]?.tracking_number) && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 8,
+                    fontSize: '0.82rem',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                  }}>
+                    <span style={{ color: '#93c5fd', fontWeight: 600 }}>Tracking Code:</span>
+                    <strong style={{ color: '#60a5fa', letterSpacing: '0.04em' }}>
+                      {lastShipment?.tracking_number || lastOrder?.shipments?.[0]?.tracking_number}
+                    </strong>
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '0.94rem' }}>
                   <span style={{ fontWeight: 800, color: '#ffffff' }}>Total Paid</span>
@@ -614,26 +637,73 @@ export const CustomerCartDrawer = () => {
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  setIsCartOpen(false);
-                  setCheckoutStep('cart');
-                }}
-                style={{
-                  width: '100%',
-                  padding: '13px',
-                  borderRadius: '9999px',
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
-                  border: 'none',
-                  color: '#090a0f',
-                  fontWeight: 900,
-                  fontSize: '0.92rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 0 25px rgba(245, 158, 11, 0.35)',
-                }}
-              >
-                Continue Shopping &rarr;
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {(lastShipment?.tracking_number || lastOrder?.order_number) && (
+                  <button
+                    onClick={() => {
+                      const refCode = lastShipment?.tracking_number || lastOrder?.order_number;
+                      setIsCartOpen(false);
+                      setCheckoutStep('cart');
+                      navigate(`/tracking?ref=${encodeURIComponent(refCode)}`);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '9999px',
+                      background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                      border: 'none',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.88rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 0 20px rgba(37, 99, 235, 0.4)',
+                    }}
+                  >
+                    Track Package Progress Live &rarr;
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setIsCartOpen(false);
+                    setCheckoutStep('cart');
+                    navigate('/customer/dashboard');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '9999px',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    color: '#fbbf24',
+                    fontWeight: 800,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  View My Order History & Receipts
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsCartOpen(false);
+                    setCheckoutStep('cart');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '9999px',
+                    background: 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Continue Shopping
+                </button>
+              </div>
             </div>
           )}
         </div>
