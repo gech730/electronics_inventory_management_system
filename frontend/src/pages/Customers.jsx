@@ -442,29 +442,30 @@ export const Customers = () => {
                     <td style={{ padding: '12px 18px' }}>
                       <button
                         onClick={() => handleOpenAddresses(cust)}
-                        className="btn btn-secondary"
-                        style={{ padding: '3px 8px', fontSize: '0.74rem', fontWeight: 600 }}
+                        className="action-btn action-btn-view"
+                        style={{ fontSize: '0.74rem' }}
                       >
-                        {cust.addresses?.length ?? 1} Saved &rarr;
+                        <Icon name="mapPin" size={12} />
+                        {cust.addresses?.length ?? 1} Addresses
                       </button>
                     </td>
                     <td style={{ padding: '12px 18px', textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
                         <button
                           onClick={() => handleOpenEdit(cust)}
-                          className="btn btn-secondary"
-                          style={{ padding: '4px 8px', fontSize: '0.76rem' }}
+                          className="action-btn action-btn-primary"
                           title="Edit Profile"
                         >
-                          <Icon name="edit" size={14} />
+                          <Icon name="edit" size={13} />
+                          Edit
                         </button>
                         <button
                           onClick={() => handleDeleteCustomer(cust)}
-                          className="btn btn-secondary"
-                          style={{ padding: '4px 8px', fontSize: '0.76rem', color: 'var(--danger)' }}
+                          className="action-btn action-btn-danger"
                           title="Delete Profile"
                         >
-                          <Icon name="trash" size={14} />
+                          <Icon name="trash" size={13} />
+                          Delete
                         </button>
                       </div>
                     </td>

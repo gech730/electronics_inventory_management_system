@@ -439,11 +439,12 @@ export const Users = () => {
 
                       {/* Management Action Buttons */}
                       <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           {/* Toggle Active / Inactive Status Button */}
                           <button
                             onClick={() => handleToggleStatus(staff)}
                             disabled={isCurrentAdmin}
+                            className={`action-btn ${isActive ? 'action-btn-view' : 'action-btn-success'}`}
                             title={
                               isCurrentAdmin
                                 ? 'Cannot deactivate yourself'
@@ -451,22 +452,9 @@ export const Users = () => {
                                 ? 'Mark as Inactive'
                                 : 'Activate user'
                             }
-                            style={{
-                              padding: '6px 10px',
-                              borderRadius: '8px',
-                              border: '1px solid #e2e8f0',
-                              background: isActive ? '#f8fafc' : 'rgba(0, 176, 116, 0.1)',
-                              color: isActive ? '#64748b' : '#00b074',
-                              fontSize: '0.78rem',
-                              fontWeight: 600,
-                              cursor: isCurrentAdmin ? 'not-allowed' : 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              opacity: isCurrentAdmin ? 0.4 : 1,
-                            }}
+                            style={{ opacity: isCurrentAdmin ? 0.4 : 1, cursor: isCurrentAdmin ? 'not-allowed' : 'pointer' }}
                           >
-                            <Icon name="power" size={14} color={isActive ? '#64748b' : '#00b074'} />
+                            <Icon name="power" size={13} />
                             <span>{isActive ? 'Deactivate' : 'Activate'}</span>
                           </button>
 
@@ -474,22 +462,12 @@ export const Users = () => {
                           <button
                             onClick={() => setUserToDelete(staff)}
                             disabled={isCurrentAdmin}
+                            className="action-btn action-btn-danger"
                             title={isCurrentAdmin ? 'Cannot delete your own account' : 'Delete user'}
-                            style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: '8px',
-                              border: '1px solid rgba(239, 68, 68, 0.2)',
-                              background: 'rgba(239, 68, 68, 0.08)',
-                              color: '#ef4444',
-                              cursor: isCurrentAdmin ? 'not-allowed' : 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              opacity: isCurrentAdmin ? 0.4 : 1,
-                            }}
+                            style={{ opacity: isCurrentAdmin ? 0.4 : 1, cursor: isCurrentAdmin ? 'not-allowed' : 'pointer' }}
                           >
-                            <Icon name="trash" size={14} color="#ef4444" />
+                            <Icon name="trash" size={13} />
+                            <span>Delete</span>
                           </button>
                         </div>
                       </td>

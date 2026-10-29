@@ -570,74 +570,28 @@ export const Categories = () => {
                       {/* Management Action Buttons */}
                       {hasRole(['admin', 'manager']) && (
                         <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             {/* Edit Button */}
                             <button
                               onClick={() => handleOpenEdit(c)}
+                              className="action-btn action-btn-primary"
                               title="Edit Category"
-                              style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: '10px',
-                                border: '1px solid #e2e8f0',
-                                background: '#f8fafc',
-                                color: '#1677ff',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 150ms ease',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#1677ff';
-                                e.currentTarget.style.color = '#ffffff';
-                                e.currentTarget.style.borderColor = '#1677ff';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = '#f8fafc';
-                                e.currentTarget.style.color = '#1677ff';
-                                e.currentTarget.style.borderColor = '#e2e8f0';
-                              }}
                             >
-                              <Icon name="edit" size={15} color="#1677ff" />
+                              <Icon name="edit" size={13} />
+                              Edit
                             </button>
 
                             {/* Delete Button (Admin Only) */}
                             {hasRole(['admin']) && (
                               <button
                                 onClick={() => setCategoryToDelete(c)}
-                                title="Delete Category"
+                                className="action-btn action-btn-danger"
+                                title={productCount > 0 ? "Cannot delete category with associated products" : "Delete Category"}
                                 disabled={productCount > 0}
-                                style={{
-                                  width: 36,
-                                  height: 36,
-                                  borderRadius: '10px',
-                                  border: productCount > 0 ? '1px solid #e2e8f0' : '1px solid rgba(239, 68, 68, 0.2)',
-                                  background: productCount > 0 ? '#f8fafc' : 'rgba(239, 68, 68, 0.08)',
-                                  color: productCount > 0 ? '#cbd5e1' : '#ef4444',
-                                  cursor: productCount > 0 ? 'not-allowed' : 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  opacity: productCount > 0 ? 0.5 : 1,
-                                  transition: 'all 150ms ease',
-                                }}
-                                onMouseEnter={(e) => {
-                                  if (productCount === 0) {
-                                    e.currentTarget.style.background = '#ef4444';
-                                    e.currentTarget.style.color = '#ffffff';
-                                    e.currentTarget.style.borderColor = '#ef4444';
-                                  }
-                                }}
-                                onMouseLeave={(e) => {
-                                  if (productCount === 0) {
-                                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
-                                    e.currentTarget.style.color = '#ef4444';
-                                    e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.2)';
-                                  }
-                                }}
+                                style={{ opacity: productCount > 0 ? 0.45 : 1, cursor: productCount > 0 ? 'not-allowed' : 'pointer' }}
                               >
-                                <Icon name="trash" size={15} color={productCount > 0 ? '#cbd5e1' : '#ef4444'} />
+                                <Icon name="trash" size={13} />
+                                Delete
                               </button>
                             )}
                           </div>

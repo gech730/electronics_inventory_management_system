@@ -696,31 +696,31 @@ export const Stores = () => {
 
                         {isAdminOrManager && (
                           <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
                               <button
                                 onClick={() => handleOpenLocationModal(null, store.id)}
-                                className="btn btn-secondary"
-                                style={{ padding: '6px 8px', fontSize: '0.75rem' }}
+                                className="action-btn action-btn-success"
                                 title="Add stock location for this store"
                               >
-                                <Icon name="plus" size={14} />
+                                <Icon name="plus" size={13} />
+                                + Bay
                               </button>
                               <button
                                 onClick={() => handleOpenStoreModal(store)}
-                                className="btn btn-secondary"
-                                style={{ padding: '6px 8px', fontSize: '0.75rem' }}
+                                className="action-btn action-btn-primary"
                                 title="Edit Store"
                               >
-                                <Icon name="edit" size={14} />
+                                <Icon name="edit" size={13} />
+                                Edit
                               </button>
                               {isAdmin && (
                                 <button
                                   onClick={() => setDeleteTarget({ type: 'store', item: store })}
-                                  className="btn btn-secondary"
-                                  style={{ padding: '6px 8px', fontSize: '0.75rem', color: 'var(--danger)' }}
+                                  className="action-btn action-btn-danger"
                                   title="Delete Store"
                                 >
-                                  <Icon name="trash" size={14} />
+                                  <Icon name="trash" size={13} />
+                                  Delete
                                 </button>
                               )}
                             </div>
@@ -998,23 +998,23 @@ export const Stores = () => {
                       </Link>
 
                       {isAdminOrManager && (
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           <button
                             onClick={() => handleOpenLocationModal(loc)}
-                            className="btn btn-secondary"
-                            style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                            className="action-btn action-btn-primary"
                             title="Edit Location"
                           >
-                            <Icon name="edit" size={14} />
+                            <Icon name="edit" size={13} />
+                            Edit
                           </button>
                           {isAdmin && (
                             <button
                               onClick={() => setDeleteTarget({ type: 'location', item: loc })}
-                              className="btn btn-secondary"
-                              style={{ padding: '4px 8px', fontSize: '0.75rem', color: 'var(--danger)' }}
+                              className="action-btn action-btn-danger"
                               title="Delete Location"
                             >
-                              <Icon name="trash" size={14} />
+                              <Icon name="trash" size={13} />
+                              Delete
                             </button>
                           )}
                         </div>

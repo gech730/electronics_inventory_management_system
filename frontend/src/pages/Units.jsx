@@ -453,23 +453,23 @@ export const Units = () => {
 
                     {isAdminOrManager && (
                       <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
                           <button
                             onClick={() => handleOpenModal(unit)}
-                            className="btn btn-secondary"
-                            style={{ padding: '6px 8px', fontSize: '0.75rem' }}
+                            className="action-btn action-btn-primary"
                             title="Edit Unit"
                           >
-                            <Icon name="edit" size={14} />
+                            <Icon name="edit" size={13} />
+                            Edit
                           </button>
                           {isAdmin && (
                             <button
                               onClick={() => setDeleteTarget(unit)}
-                              className="btn btn-secondary"
-                              style={{ padding: '6px 8px', fontSize: '0.75rem', color: 'var(--danger)' }}
+                              className="action-btn action-btn-danger"
                               title="Delete Unit"
                             >
-                              <Icon name="trash" size={14} />
+                              <Icon name="trash" size={13} />
+                              Delete
                             </button>
                           )}
                         </div>

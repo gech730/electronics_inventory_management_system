@@ -350,22 +350,23 @@ export const Sales = () => {
                     </td>
 
                     <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
                         <button
                           onClick={() => handleViewReceipt(sale)}
-                          className="btn btn-secondary"
-                          style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+                          className="action-btn action-btn-primary"
                           title="View Receipt"
                         >
-                          <Icon name="receipt" size={14} />
+                          <Icon name="receipt" size={13} />
+                          Receipt
                         </button>
                         <Link
                           to={`/returns`}
-                          className="btn btn-secondary"
-                          style={{ padding: '6px 10px', fontSize: '0.75rem', color: '#ef4444', textDecoration: 'none' }}
+                          className="action-btn action-btn-danger"
+                          style={{ textDecoration: 'none' }}
                           title="File Return"
                         >
-                          <Icon name="rotateCcw" size={14} />
+                          <Icon name="rotateCcw" size={13} />
+                          Return
                         </Link>
                       </div>
                     </td>

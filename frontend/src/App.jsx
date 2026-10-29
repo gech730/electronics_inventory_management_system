@@ -1,7 +1,42 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
+
+// Route to title map
+const routeTitles = {
+  '/': 'Executive Command Dashboard',
+  '/products': 'Electronics Product Catalog & SKUs',
+  '/categories': 'Category Taxonomy Master',
+  '/pos': 'Point of Sale Terminal & Cash Register',
+  '/shifts': 'Cashier Register Shifts & Drawer Audits',
+  '/sales': 'Sales Ledger & Cashier Receipts',
+  '/orders': 'Omni-Channel Customer Orders',
+  '/shipments': 'Logistics & Package Shipments',
+  '/customers': 'Customer Accounts & Credit Profiles',
+  '/stores': 'Stores & Physical Warehouse Locations',
+  '/balances': 'Stock Balances & Audit Movements Ledger',
+  '/units': 'Units of Measure & Packaging Standards',
+  '/transfers': 'Inter-Store Inventory Transfers',
+  '/adjustments': 'Inventory Variance Stock Adjustments',
+  '/suppliers': 'Vendors & Supplier Directory',
+  '/purchase-orders': 'Procurement & Purchase Orders',
+  '/goods-receipts': 'Inbound Goods Receiving (GRN)',
+  '/returns': 'Customer Returns & RMA Replacements',
+  '/finance-settings': 'Financial Ledger, Accounts & Currencies',
+  '/users': 'Staff Access & RBAC Identity Management',
+  '/login': 'Authentication Portal',
+};
+
+// Synchronize document.title with route changes
+function PageTitleManager() {
+  const location = useLocation();
+  useEffect(() => {
+    const title = routeTitles[location.pathname] || 'Enterprise Inventory';
+    document.title = `StockWise | ${title}`;
+  }, [location.pathname]);
+  return null;
+}
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import Categories from './pages/Categories';
@@ -58,10 +93,23 @@ const ProtectedRoute = ({ children }) => {
 };
 
 export default function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, showToast } = useAuth();
+
+  // Network offline / online recovery toast listener
+  useEffect(() => {
+    const handleOnline = () => showToast?.('Network connection restored. Syncing with backend.', 'success');
+    const handleOffline = () => showToast?.('Internet connection offline. Some actions may fail.', 'error');
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [showToast]);
 
   return (
     <>
+      <PageTitleManager />
       <Routes>
         {/* Public Login Route */}
         <Route
