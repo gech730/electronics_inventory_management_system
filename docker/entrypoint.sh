@@ -37,6 +37,11 @@ if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
     php artisan migrate --force --no-interaction || echo "==> Migrations failed or database not ready yet; continuing..."
 fi
 
+if [ "${RUN_SEEDERS:-false}" = "true" ]; then
+    echo "==> Running database seeders (StaffUserSeeder & essentials)..."
+    php artisan db:seed --force --no-interaction || echo "==> Seeders completed or skipped; continuing..."
+fi
+
 # 5. Production Optimization & Cache Rebuild
 echo "==> Optimizing Laravel routes and configuration..."
 php artisan config:clear

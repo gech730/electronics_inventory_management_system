@@ -3,7 +3,7 @@ services:
   # Render Web Service (Dockerized Laravel Backend)
   # ==============================================================================
   - type: web
-    name: electronics-inventory-api
+    name: ngus-electronics-api
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -12,7 +12,7 @@ services:
     autoDeploy: true
     envVars:
       - key: APP_NAME
-        value: "Ngus Electronics ERP"
+        value: "Ngus Electronics"
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
@@ -22,7 +22,7 @@ services:
       - key: APP_URL
         fromService:
           type: web
-          name: electronics-inventory-api
+          name: ngus-electronics-api
           property: host
       - key: LOG_CHANNEL
         value: stderr
