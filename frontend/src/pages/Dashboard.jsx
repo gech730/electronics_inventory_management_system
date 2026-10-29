@@ -48,7 +48,7 @@ export const Dashboard = () => {
       ] = await Promise.all([
         api.getProducts({ per_page: 100 }).catch(() => ({ data: [] })),
         api.getCategories({ per_page: 100 }).catch(() => ({ data: [] })),
-        api.getUsers().catch(() => ({ data: [] })),
+        hasRole(['admin']) ? api.getUsers().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         api.getOrders({ per_page: 100 }).catch(() => ({ data: [] })),
         api.getCashierShifts({ per_page: 50 }).catch(() => ({ data: [] })),
         api.getStockTransactions({ per_page: 20 }).catch(() => ({ data: [] })),
@@ -327,8 +327,8 @@ export const Dashboard = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          {/* Role Perspective Switcher Pill (for Admin / Manager) */}
-          {(hasRole(['admin', 'manager']) || true) && (
+          {/* Role Perspective Switcher Pill (for Admin & Manager) */}
+          {hasRole(['admin', 'manager']) && (
             <div
               style={{
                 display: 'inline-flex',
@@ -340,10 +340,10 @@ export const Dashboard = () => {
               }}
             >
               {[
-                { id: 'admin', label: 'Executive', icon: 'shield' },
+                { id: 'admin', label: 'Executive Overview', icon: 'shield' },
+                { id: 'manager', label: 'Store Manager', icon: 'clipboard' },
                 { id: 'cashier', label: 'Cashier Station', icon: 'cart' },
                 { id: 'storekeeper', label: 'Warehouse Hub', icon: 'truck' },
-                { id: 'manager', label: 'Manager Audits', icon: 'clipboard' },
               ].map((roleTab) => {
                 const isActive = selectedRoleView === roleTab.id;
                 return (

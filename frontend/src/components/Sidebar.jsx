@@ -6,10 +6,10 @@ import Icon from './Icons';
 export const Sidebar = ({ isOpen, onClose }) => {
   const { user, hasRole } = useAuth();
 
-  // Categorized Navigation Sections matching the 41-model enterprise scope
+  // Categorized Navigation Sections - Clean, understandable, and role-tailored
   const navSections = [
     {
-      title: 'Core',
+      title: 'Main',
       items: [
         {
           label: 'Dashboard',
@@ -18,7 +18,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           roles: ['admin', 'manager', 'cashier', 'storekeeper'],
         },
         {
-          label: 'Users & Staff',
+          label: 'Staff & Roles',
           path: '/users',
           icon: 'users',
           roles: ['admin'],
@@ -26,16 +26,16 @@ export const Sidebar = ({ isOpen, onClose }) => {
       ],
     },
     {
-      title: 'Point of Sale',
+      title: 'Cash Register & POS',
       items: [
         {
-          label: 'POS Register',
+          label: 'POS Checkout',
           path: '/pos',
           icon: 'cart',
           roles: ['cashier', 'admin', 'manager'],
         },
         {
-          label: 'Cashier Shifts',
+          label: 'Shift Drawers',
           path: '/shifts',
           icon: 'dollarSign',
           roles: ['cashier', 'admin', 'manager'],
@@ -52,30 +52,30 @@ export const Sidebar = ({ isOpen, onClose }) => {
       title: 'Orders & Customers',
       items: [
         {
-          label: 'Omni Orders',
+          label: 'Orders',
           path: '/orders',
           icon: 'clipboard',
           roles: ['admin', 'manager'],
         },
         {
-          label: 'Shipments',
+          label: 'Shipments & Deliveries',
           path: '/shipments',
           icon: 'truck',
           roles: ['admin', 'manager', 'storekeeper'],
         },
         {
-          label: 'Customer Directory',
+          label: 'Customers',
           path: '/customers',
           icon: 'users',
-          roles: ['admin', 'manager'],
+          roles: ['admin', 'manager', 'cashier'],
         },
       ],
     },
     {
-      title: 'Inventory & Warehousing',
+      title: 'Inventory & Stock',
       items: [
         {
-          label: 'Products Catalog',
+          label: 'Products',
           path: '/products',
           icon: 'package',
           roles: ['admin', 'manager'],
@@ -87,21 +87,15 @@ export const Sidebar = ({ isOpen, onClose }) => {
           roles: ['admin', 'manager'],
         },
         {
-          label: 'Stock Balances',
+          label: 'Stock Levels',
           path: '/balances',
           icon: 'cpu',
           roles: ['admin', 'manager', 'storekeeper'],
         },
         {
-          label: 'Warehouses & Stores',
+          label: 'Stores & Locations',
           path: '/stores',
           icon: 'store',
-          roles: ['admin', 'manager'],
-        },
-        {
-          label: 'Units of Measure',
-          path: '/units',
-          icon: 'tag',
           roles: ['admin', 'manager'],
         },
         {
@@ -116,10 +110,16 @@ export const Sidebar = ({ isOpen, onClose }) => {
           icon: 'filter',
           roles: ['admin', 'manager', 'storekeeper'],
         },
+        {
+          label: 'Units of Measure',
+          path: '/units',
+          icon: 'tag',
+          roles: ['admin', 'manager'],
+        },
       ],
     },
     {
-      title: 'Procurement & Vendors',
+      title: 'Purchasing & Suppliers',
       items: [
         {
           label: 'Suppliers',
@@ -134,7 +134,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           roles: ['admin', 'manager'],
         },
         {
-          label: 'Goods Receipts',
+          label: 'Goods Receiving (GRN)',
           path: '/goods-receipts',
           icon: 'package',
           roles: ['admin', 'manager', 'storekeeper'],
@@ -142,7 +142,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       ],
     },
     {
-      title: 'Finance & Returns',
+      title: 'Customer Service & Finance',
       items: [
         {
           label: 'Returns & Refunds',
@@ -151,7 +151,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           roles: ['admin', 'manager', 'cashier'],
         },
         {
-          label: 'Payment Methods & Taxes',
+          label: 'Taxes & Payment Methods',
           path: '/finance-settings',
           icon: 'creditCard',
           roles: ['admin', 'manager'],
