@@ -479,48 +479,8 @@ export const Home = () => {
             </button>
           </div>
 
-          {/* Right Controls: Bag + Login / User Console Button */}
+          {/* Right Controls: Login / User Console Button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* Customer Shopping Bag Button */}
-            <button
-              onClick={() => setIsCartOpen(true)}
-              style={{
-                background: totalCount > 0 ? 'rgba(245, 158, 11, 0.16)' : 'rgba(255, 255, 255, 0.05)',
-                border: `1px solid ${totalCount > 0 ? '#f59e0b' : 'rgba(255, 255, 255, 0.12)'}`,
-                borderRadius: '9999px',
-                padding: '7px 16px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                color: totalCount > 0 ? '#f59e0b' : '#ffffff',
-                fontSize: '0.84rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#f59e0b')}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = totalCount > 0 ? '#f59e0b' : 'rgba(255, 255, 255, 0.12)')}
-            >
-              <span>🛍️</span>
-              <span>Bag</span>
-              {totalCount > 0 && (
-                <span
-                  style={{
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
-                    color: '#090a0f',
-                    fontSize: '0.72rem',
-                    fontWeight: 900,
-                    borderRadius: '9999px',
-                    padding: '1px 7px',
-                    minWidth: 18,
-                    textAlign: 'center',
-                  }}
-                >
-                  {totalCount}
-                </span>
-              )}
-            </button>
-
             {isAuthenticated ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {user?.role === 'customer' ? (
