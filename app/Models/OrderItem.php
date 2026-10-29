@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class OrderItem extends Model
 {
@@ -46,6 +47,18 @@ class OrderItem extends Model
     public function productVariant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class);
+    }
+
+    /** Alias for productVariant */
+    public function variant(): BelongsTo
+    {
+        return $this->productVariant();
+    }
+
+    /** Direct product access via variant */
+    public function product(): HasOneThrough
+    {
+        return $this->hasOneThrough(Product::class, ProductVariant::class, 'id', 'id', 'product_variant_id', 'product_id');
     }
 
     /** Items shipped for this order line */

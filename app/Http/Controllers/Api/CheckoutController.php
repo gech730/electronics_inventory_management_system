@@ -12,6 +12,8 @@ use App\Models\PaymentAllocation;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Shipment;
+use App\Models\ShipmentItem;
 use App\Models\StockBalance;
 use App\Models\StockLocation;
 use App\Models\StockReservation;
@@ -233,9 +235,36 @@ class CheckoutController extends Controller
                 'notes'                 => 'Customer online self-checkout for order ' . $order->order_number . ' via ' . $payMethod->name,
             ]);
 
+            // 8. Create initial shipment and tracking for delivery orders
+            $shipment = null;
+            if ($fulfillmentType === 'delivery') {
+                $shipment = Shipment::create([
+                    'shipment_number'           => 'SHP-' . date('Ymd') . '-' . strtoupper(Str::random(5)),
+                    'order_id'                  => $order->id,
+                    'status'                    => Shipment::STATUS_PACKED,
+                    'shipping_provider'         => 'Ngus Express Courier (Addis Ababa)',
+                    'tracking_number'           => 'NGS-TRK-' . date('Ymd') . '-' . strtoupper(Str::random(5)),
+                    'recipient_name'            => $validated['customer_name'],
+                    'recipient_phone'           => $validated['phone'],
+                    'delivery_address_snapshot' => $validated['delivery_address'] . ', ' . ($validated['city'] ?? 'Addis Ababa'),
+                    'shipped_at'                => now(),
+                    'notes'                     => 'Standard priority dispatch with fragile electronics packaging.',
+                ]);
+
+                // Create shipment line items
+                foreach ($order->items as $orderItem) {
+                    ShipmentItem::create([
+                        'shipment_id'      => $shipment->id,
+                        'order_item_id'    => $orderItem->id,
+                        'quantity_shipped' => $orderItem->quantity_ordered,
+                    ]);
+                }
+            }
+
             return [
-                'order'    => $order->load(['customer', 'items', 'shippingAddress']),
+                'order'    => $order->load(['customer', 'items.product', 'items.variant', 'shippingAddress', 'shipments']),
                 'payment'  => $payment->load('paymentMethod'),
+                'shipment' => $shipment,
             ];
         });
 

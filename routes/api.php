@@ -30,10 +30,12 @@ use App\Http\Controllers\Api\TaxRateController;
 use App\Http\Controllers\Api\SaleReturnController;
 use App\Http\Controllers\Api\SaleRefundController;
 use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\CustomerPortalController;
 
 Route::post('/login', [ApiAuthController::class, 'login']);
 Route::post('/register', [ApiAuthController::class, 'register']);
 Route::post('/checkout', [CheckoutController::class, 'checkout']);
+Route::get('/tracking/{reference}', [CustomerPortalController::class, 'track']);
 
 // Public routes (catalog, stores, locations, units browsing)
 Route::get('/products', [ProductController::class, 'index']);
@@ -102,6 +104,11 @@ Route::get('/sale-refunds/{saleRefund}', [SaleRefundController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [ApiAuthController::class, 'logout']);
     Route::get('/user', [ApiAuthController::class, 'user']);
+
+    // Customer Portal routes
+    Route::get('/customer/profile', [CustomerPortalController::class, 'profile']);
+    Route::get('/customer/orders', [CustomerPortalController::class, 'orders']);
+    Route::get('/customer/shipments', [CustomerPortalController::class, 'shipments']);
 
     // Shift management, drawer movements, and payment collections (Available to all authorized staff)
     Route::post('/cashier-shifts', [CashierShiftController::class, 'store']);
