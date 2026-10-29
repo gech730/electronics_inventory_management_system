@@ -757,3 +757,168 @@ h1, h2, h3, h4, h5, h6 {
     display: none !important;
   }
 }
+
+/* ==========================================================================
+   Ngus Electronics - Imperial Luxury Design Tokens & Home Page System
+   ========================================================================== */
+:root {
+  --ngus-gold: #d4af37;
+  --ngus-gold-bright: #ffd700;
+  --ngus-gold-dark: #996515;
+  --ngus-gold-light: #fdf6e2;
+  --ngus-gold-gradient: linear-gradient(135deg, #f5d77f 0%, #d4af37 40%, #aa771c 100%);
+  --ngus-gold-gradient-text: linear-gradient(135deg, #fff2be 0%, #e5c158 35%, #bf8d2c 70%, #f7e6a7 100%);
+  --ngus-dark-bg: #07080b;
+  --ngus-dark-surface: #0e1117;
+  --ngus-dark-card: rgba(16, 20, 29, 0.82);
+  --ngus-dark-border: rgba(212, 175, 55, 0.18);
+  --ngus-dark-border-hover: rgba(212, 175, 55, 0.5);
+  --ngus-gold-glow: 0 0 30px rgba(212, 175, 55, 0.3);
+  --ngus-gold-glow-intense: 0 0 50px rgba(212, 175, 55, 0.55);
+}
+
+.ngus-gold-text {
+  background: var(--ngus-gold-gradient-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+
+.ngus-btn-gold {
+  background: var(--ngus-gold-gradient);
+  color: #0b0c10 !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 18px rgba(212, 175, 55, 0.35);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ngus-btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 26px rgba(212, 175, 55, 0.55);
+  filter: brightness(1.08);
+}
+
+.ngus-btn-outline-gold {
+  background: rgba(212, 175, 55, 0.08);
+  color: #f5d77f !important;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ngus-btn-outline-gold:hover {
+  background: rgba(212, 175, 55, 0.16);
+  border-color: rgba(212, 175, 55, 0.7);
+  transform: translateY(-2px);
+}
+
+.ngus-card {
+  background: var(--ngus-dark-card);
+  border: 1px solid var(--ngus-dark-border);
+  backdrop-filter: blur(14px);
+  border-radius: 20px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ngus-card:hover {
+  border-color: var(--ngus-dark-border-hover);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.7), 0 0 20px rgba(212, 175, 55, 0.15);
+}
+
+@keyframes ngusFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes ngusCrownGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.45));
+  }
+  50% {
+    filter: drop-shadow(0 0 35px rgba(255, 215, 0, 0.75));
+  }
+}
+
+.animate-ngus-float {
+  animation: ngusFloat 5s ease-in-out infinite;
+}
+
+.animate-ngus-glow {
+  animation: ngusCrownGlow 3.5s ease-in-out infinite;
+}
+
+/* Modern Colorful Ngus Design System Utilities */
+.ngus-hero-gradient {
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 35%, #f59e0b 80%, #fbbf24 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ngus-gold-gradient-text {
+  background: linear-gradient(135deg, #fef08a 0%, #f59e0b 50%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ngus-glass-nav {
+  background: rgba(11, 15, 23, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7), 0 0 20px rgba(99, 102, 241, 0.08);
+}
+
+.ngus-card-modern {
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.8) 0%, rgba(10, 14, 23, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  border-radius: 20px;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.ngus-card-modern:hover {
+  border-color: rgba(245, 158, 11, 0.5);
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8), 0 0 30px rgba(245, 158, 11, 0.2);
+}
+
+.ngus-pill-active {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #0b0f17 !important;
+  font-weight: 800;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+}
+
+.ngus-footer-link {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.2s;
+}
+
+.ngus-footer-link:hover {
+  color: #f59e0b;
+}

@@ -3,9 +3,12 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 
+import Home from './pages/Home';
+
 // Route to title map
 const routeTitles = {
-  '/': 'Executive Command Dashboard',
+  '/': 'The Royal Standard of Technology',
+  '/dashboard': 'Executive Command Dashboard',
   '/products': 'Electronics Product Catalog & SKUs',
   '/categories': 'Category Taxonomy Master',
   '/pos': 'Point of Sale Terminal & Cash Register',
@@ -25,15 +28,15 @@ const routeTitles = {
   '/returns': 'Customer Returns & RMA Replacements',
   '/finance-settings': 'Financial Ledger, Accounts & Currencies',
   '/users': 'Staff Access & RBAC Identity Management',
-  '/login': 'Authentication Portal',
+  '/login': 'Staff & Client Authentication Portal',
 };
 
 // Synchronize document.title with route changes
 function PageTitleManager() {
   const location = useLocation();
   useEffect(() => {
-    const title = routeTitles[location.pathname] || 'Enterprise Inventory';
-    document.title = `StockWise | ${title}`;
+    const title = routeTitles[location.pathname] || 'Imperial Enterprise';
+    document.title = `Ngus Electronics | ${title}`;
   }, [location.pathname]);
   return null;
 }
@@ -111,10 +114,13 @@ export default function App() {
     <>
       <PageTitleManager />
       <Routes>
+        {/* Public Impressive Home Route */}
+        <Route path="/" element={<Home />} />
+
         {/* Public Login Route */}
         <Route
           path="/login"
-          element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
+          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
         />
 
         {/* Protected Application Routes wrapped in Layout */}
@@ -125,7 +131,7 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/pos" element={<Pos />} />

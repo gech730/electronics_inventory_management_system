@@ -37,6 +37,8 @@ class Product extends Model
         'selling_price'   => 'decimal:2',
     ];
 
+    protected $appends = ['image_url'];
+
     // ── Relationships ──────────────────────────────────────────
 
     public function category(): BelongsTo
@@ -82,5 +84,22 @@ class Product extends Model
     public function primaryImage(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(ProductImage::class)->where('is_primary', true);
+    }
+
+    /** Accessor for primary image URL */
+    public function getImageUrlAttribute(): ?string
+    {
+        if ($this->relationLoaded('primaryImage') && $this->primaryImage) {
+            return $this->primaryImage->image_path;
+        }
+        if ($this->relationLoaded('images') && $this->images->isNotEmpty()) {
+            return $this->images->first()->image_path;
+        }
+        $primary = $this->primaryImage()->first();
+        if ($primary) {
+            return $primary->image_path;
+        }
+        $img = $this->images()->first();
+        return $img ? $img->image_path : null;
     }
 }

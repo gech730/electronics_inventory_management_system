@@ -13,7 +13,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       items: [
         {
           label: 'Dashboard',
-          path: '/',
+          path: '/dashboard',
           icon: 'dashboard',
           roles: ['admin', 'manager', 'cashier', 'storekeeper'],
         },
@@ -194,19 +194,24 @@ export const Sidebar = ({ isOpen, onClose }) => {
           scrollbarColor: 'rgba(255,255,255,0.15) transparent',
         }}
       >
-        {/* Brand Header: StockWise */}
+        {/* Brand Header: Ngus Electronics */}
         <div style={{ padding: '0 8px 18px', borderBottom: '1px solid var(--border-sidebar)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="stockwise" size={32} />
+            <div style={{ width: 38, height: 38, borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(212,175,55,0.4)', background: '#090b10', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src="/ngus-logo.png" alt="Ngus Electronics" style={{ width: '90%', height: '90%', objectFit: 'contain' }} />
             </div>
-            <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
-              StockWise
-            </span>
+            <div>
+              <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#ffffff', letterSpacing: '0.04em' }}>
+                <span className="ngus-gold-text">NGUS</span>
+              </span>
+              <div style={{ fontSize: '0.62rem', fontWeight: 800, color: '#d4af37', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                ELECTRONICS
+              </div>
+            </div>
           </div>
 
-          {/* Role Pill under logo */}
-          <div style={{ marginTop: 12 }}>
+          {/* Role Pill under logo & Quick link to store */}
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span
               style={{
                 display: 'inline-flex',
@@ -214,15 +219,31 @@ export const Sidebar = ({ isOpen, onClose }) => {
                 gap: 6,
                 padding: '3px 10px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(255, 255, 255, 0.08)',
-                color: '#94a3b8',
+                background: 'rgba(212, 175, 55, 0.12)',
+                border: '1px solid rgba(212, 175, 55, 0.25)',
+                color: '#f5d77f',
                 fontSize: '0.72rem',
-                fontWeight: 600,
+                fontWeight: 700,
               }}
             >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1677ff' }} />
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d4af37' }} />
               <span style={{ textTransform: 'capitalize' }}>{user?.role || 'Admin'}</span>
             </span>
+
+            <NavLink
+              to="/"
+              style={{
+                fontSize: '0.72rem',
+                color: '#94a3b8',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+              title="View Public Store"
+            >
+              <span>Store ↗</span>
+            </NavLink>
           </div>
         </div>
 

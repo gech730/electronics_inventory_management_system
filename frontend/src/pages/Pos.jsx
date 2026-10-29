@@ -625,6 +625,26 @@ export const Pos = () => {
                         </span>
                       </div>
 
+                      {/* Product Image Thumbnail */}
+                      {product.image_url && (
+                        <div
+                          style={{
+                            width: '100%',
+                            height: 90,
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            marginBottom: 10,
+                            background: 'rgba(0,0,0,0.04)',
+                          }}
+                        >
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                      )}
+
                       {/* Product Name */}
                       <h4
                         style={{

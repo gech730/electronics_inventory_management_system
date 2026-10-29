@@ -37,11 +37,14 @@ class ApiClient {
   }
 
   async request(endpoint, options = {}) {
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const headers = {
-      'Content-Type': 'application/json',
       'Accept': 'application/json',
       ...options.headers,
     };
+    if (!isFormData && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const authHeader = this.getAuthHeader();
     if (authHeader) {
@@ -178,21 +181,49 @@ class ApiClient {
   }
 
   createProduct(data) {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
     return this.request('/products', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: isFormData ? data : JSON.stringify(data),
     });
   }
 
   updateProduct(id, data) {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+    if (isFormData && !data.has('_method')) {
+      data.append('_method', 'PUT');
+    }
     return this.request(`/products/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
+      method: isFormData ? 'POST' : 'PATCH',
+      body: isFormData ? data : JSON.stringify(data),
     });
   }
 
   deleteProduct(id) {
     return this.request(`/products/${id}`, { method: 'DELETE' });
+  }
+
+  uploadProductImage(productId, fileOrFormData) {
+    const isFormData = typeof FormData !== 'undefined' && fileOrFormData instanceof FormData;
+    const headers = {};
+    const authHeader = this.getAuthHeader();
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+      headers['Accept'] = 'application/json';
+    }
+
+    return fetch(`${API_BASE}/products/${productId}/images`, {
+      method: 'POST',
+      headers,
+      body: isFormData ? fileOrFormData : JSON.stringify(fileOrFormData),
+    }).then((res) => res.json());
+  }
+
+  deleteProductImage(imageId) {
+    return this.request(`/product-images/${imageId}`, { method: 'DELETE' });
   }
 
   // ── Warehousing & Multi-Store APIs ───────────────────────────

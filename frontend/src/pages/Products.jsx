@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icons';
@@ -24,6 +24,12 @@ export const Products = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [productToDelete, setProductToDelete] = useState(null);
 
+  // Image Upload State
+  const fileInputRef = useRef(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+
   // Form State
   const initialForm = {
     name: '',
@@ -37,6 +43,7 @@ export const Products = () => {
     selling_price: '',
     quantity: '',
     minimum_stock: '',
+    image_url: '',
     track_inventory: true,
     is_sellable: true,
   };
@@ -72,6 +79,8 @@ export const Products = () => {
   // Open Create Modal
   const handleOpenCreate = () => {
     setEditingProduct(null);
+    setImageFile(null);
+    setImagePreview('');
     setFormData({
       ...initialForm,
       category_id: categories.length > 0 ? categories[0].id : '',
@@ -85,23 +94,55 @@ export const Products = () => {
   // Open Edit Modal
   const handleOpenEdit = (product) => {
     setEditingProduct(product);
+    setImageFile(null);
+    setImagePreview(product.image_url || '');
     setFormData({
       name: product.name || '',
       sku: product.sku || '',
       category_id: product.category_id || '',
       brand_id: product.brand_id || '',
       base_unit_id: product.base_unit_id || '',
-      brand: product.brand || (product.brand?.name || ''),
+      brand: typeof product.brand === 'object' && product.brand !== null ? (product.brand.name || '') : (product.brand || ''),
       model_number: product.model_number || '',
       cost_price: product.cost_price || '',
       selling_price: product.selling_price || '',
       quantity: product.quantity || '',
       minimum_stock: product.minimum_stock || '',
+      image_url: product.image_url || '',
       track_inventory: product.track_inventory ?? true,
       is_sellable: product.is_sellable ?? true,
     });
     setFormError('');
     setIsModalOpen(true);
+  };
+
+  // Drag & Drop and File Selection Handlers
+  const handleFileDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        setImageFile(file);
+        setImagePreview(URL.createObjectURL(file));
+      } else {
+        addToast('Please upload an image file (PNG, JPG, WEBP, etc.)', 'warning');
+      }
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview('');
+    setFormData((prev) => ({ ...prev, image_url: '' }));
   };
 
   // Handle Input Changes
@@ -125,27 +166,50 @@ export const Products = () => {
       selling_price: parseFloat(formData.selling_price),
       quantity: parseInt(formData.quantity, 10),
       minimum_stock: parseInt(formData.minimum_stock, 10),
+      image_url: formData.image_url || undefined,
     };
 
     setSubmitting(true);
     try {
+      let savedProduct;
+
+      if (imageFile) {
+        // Send as FormData for direct Cloudinary/backend upload
+        const data = new FormData();
+        Object.entries(payload).forEach(([k, v]) => {
+          if (v !== undefined && v !== null && k !== 'image_url') {
+            data.append(k, v);
+          }
+        });
+        data.append('image', imageFile);
+
+        if (editingProduct) {
+          savedProduct = await api.updateProduct(editingProduct.id, data);
+        } else {
+          savedProduct = await api.createProduct(data);
+        }
+      } else {
+        if (editingProduct) {
+          savedProduct = await api.updateProduct(editingProduct.id, payload);
+        } else {
+          savedProduct = await api.createProduct(payload);
+        }
+      }
+
       if (editingProduct) {
-        // Update existing product
-        const updated = await api.updateProduct(editingProduct.id, payload);
         setProducts((prev) =>
-          prev.map((p) => (p.id === editingProduct.id ? (updated || { ...p, ...payload }) : p))
+          prev.map((p) => (p.id === editingProduct.id ? (savedProduct || { ...p, ...payload }) : p))
         );
         addToast(`Product "${payload.name}" updated successfully!`, 'success');
       } else {
-        // Create new product
-        const created = await api.createProduct(payload);
-        if (created) {
-          setProducts((prev) => [created, ...prev]);
+        if (savedProduct) {
+          setProducts((prev) => [savedProduct, ...prev]);
         } else {
           fetchData();
         }
         addToast(`Product "${payload.name}" added to catalog!`, 'success');
       }
+
       setIsModalOpen(false);
     } catch (err) {
       setFormError(err.data?.message || err.message || 'Failed to save product.');
@@ -170,10 +234,11 @@ export const Products = () => {
 
   // Filtered Products
   const filteredProducts = products.filter((p) => {
+    const bName = typeof p.brand === 'object' && p.brand !== null ? p.brand.name : (p.brand || '');
     const matchesSearch =
       p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.brand && p.brand.toLowerCase().includes(searchQuery.toLowerCase()));
+      (bName && bName.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesCategory =
       selectedCategory === 'all' || String(p.category_id) === String(selectedCategory);
@@ -411,25 +476,34 @@ export const Products = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div
                             style={{
-                              width: 40,
-                              height: 40,
+                              width: 44,
+                              height: 44,
                               borderRadius: '10px',
                               background: 'rgba(22, 119, 255, 0.08)',
-                              color: '#1677ff',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               flexShrink: 0,
+                              overflow: 'hidden',
+                              border: '1px solid rgba(0,0,0,0.06)',
                             }}
                           >
-                            <Icon name="package" size={20} color="#1677ff" />
+                            {p.image_url ? (
+                              <img
+                                src={p.image_url}
+                                alt={p.name}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <Icon name="package" size={20} color="#1677ff" />
+                            )}
                           </div>
                           <div>
                             <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.92rem' }}>
                               {p.name}
                             </div>
                             <span style={{ fontSize: '0.76rem', color: '#64748b' }}>
-                              {p.brand ? p.brand : 'Generic'} {p.model_number ? `• ${p.model_number}` : ''}
+                              {typeof p.brand === 'object' && p.brand !== null ? (p.brand.name || 'Generic') : (p.brand || 'Generic')} {p.model_number ? `• ${p.model_number}` : ''}
                             </span>
                           </div>
                         </div>
@@ -780,6 +854,92 @@ export const Products = () => {
                 required
               />
             </div>
+          </div>
+
+          {/* Row 6: Drag & Drop Product Image Upload */}
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" style={{ color: '#475569', fontSize: '0.82rem', fontWeight: 700 }}>
+              Product Image (Upload / Drag & Drop)
+            </label>
+
+            {imagePreview ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                }}
+              >
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    flexShrink: 0,
+                  }}
+                >
+                  <img
+                    src={imagePreview}
+                    alt="Product preview"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {imageFile ? imageFile.name : 'Current Product Image'}
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 2 }}>
+                    {imageFile ? `${(imageFile.size / 1024).toFixed(1)} KB • Ready to save to Cloudinary` : 'Active Cloudinary image'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.78rem', padding: '6px 12px', color: '#ef4444' }}
+                >
+                  ✕ Remove
+                </button>
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleFileDrop}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: `2px dashed ${isDragging ? '#1677ff' : '#cbd5e1'}`,
+                  borderRadius: '14px',
+                  padding: '24px 16px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: isDragging ? 'rgba(22, 119, 255, 0.05)' : '#f8fafc',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={handleFileSelect}
+                />
+                <div style={{ fontSize: '2rem', marginBottom: 8 }}>📷</div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>
+                  Drag & drop product image here, or <span style={{ color: '#1677ff' }}>click to browse</span>
+                </div>
+                <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: 4 }}>
+                  Supports PNG, JPG, WEBP • Saves directly via Cloudinary & inventory storage
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Modal Actions */}

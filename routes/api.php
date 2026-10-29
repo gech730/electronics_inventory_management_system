@@ -110,6 +110,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin,manager')->group(function () {
         Route::post('/products', [ProductController::class, 'store']);
         Route::match(['put', 'patch'], '/products/{product}', [ProductController::class, 'update']);
+        Route::post('/products/{product}/images', [ProductController::class, 'uploadImage']);
+        Route::delete('/product-images/{productImage}', [ProductController::class, 'deleteImage']);
         Route::post('/brands', [BrandController::class, 'store']);
         Route::match(['put', 'patch'], '/brands/{brand}', [BrandController::class, 'update']);
 
