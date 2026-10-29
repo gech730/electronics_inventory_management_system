@@ -17,6 +17,11 @@ import Units from './pages/Units';
 import Suppliers from './pages/Suppliers';
 import PurchaseOrders from './pages/PurchaseOrders';
 import GoodsReceipts from './pages/GoodsReceipts';
+import Transfers from './pages/Transfers';
+import Adjustments from './pages/Adjustments';
+import Returns from './pages/Returns';
+import FinanceSettings from './pages/FinanceSettings';
+import Sales from './pages/Sales';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
 import Icon from './components/Icons';
@@ -52,31 +57,6 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Section Placeholder for upcoming features
-const SectionPlaceholder = ({ title, description, icon }) => (
-  <div className="glass-card" style={{ padding: '48px 32px', textAlign: 'center' }}>
-    <div
-      style={{
-        width: 64,
-        height: 64,
-        borderRadius: 'var(--radius-md)',
-        background: 'var(--primary-light)',
-        color: 'var(--primary)',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
-      }}
-    >
-      <Icon name={icon || 'bolt'} size={32} />
-    </div>
-    <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>{title}</h2>
-    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: 460, margin: '8px auto 0' }}>
-      {description}
-    </p>
-  </div>
-);
-
 export default function App() {
   const { isAuthenticated } = useAuth();
 
@@ -102,25 +82,20 @@ export default function App() {
           <Route path="/categories" element={<Categories />} />
           <Route path="/pos" element={<Pos />} />
           <Route path="/shifts" element={<Shifts />} />
+          <Route path="/sales" element={<Sales />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/shipments" element={<Shipments />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/stores" element={<Stores />} />
           <Route path="/balances" element={<Balances />} />
           <Route path="/units" element={<Units />} />
+          <Route path="/transfers" element={<Transfers />} />
+          <Route path="/adjustments" element={<Adjustments />} />
           <Route path="/suppliers" element={<Suppliers />} />
           <Route path="/purchase-orders" element={<PurchaseOrders />} />
           <Route path="/goods-receipts" element={<GoodsReceipts />} />
-          <Route
-            path="/sales"
-            element={
-              <SectionPlaceholder
-                title="Sales History"
-                description="View completed transaction receipts, cashier records, and revenue breakdowns."
-                icon="receipt"
-              />
-            }
-          />
+          <Route path="/returns" element={<Returns />} />
+          <Route path="/finance-settings" element={<FinanceSettings />} />
           <Route path="/users" element={<Users />} />
         </Route>
 
