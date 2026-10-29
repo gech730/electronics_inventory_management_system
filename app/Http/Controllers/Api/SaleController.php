@@ -16,11 +16,33 @@ class SaleController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $sales = Sale::query()
-            ->where('user_id', $request->user()->id)
-            ->latest()
-            ->paginate()
-            ->through(fn (Sale $sale) => $sale->only(['id', 'total_amount', 'created_at']));
+        $user = $request->user();
+        $query = Sale::query()->with(['customer', 'cashierShift', 'order'])->latest();
+
+        if ($user && $user->role === 'cashier') {
+            $query->where(function ($q) use ($user) {
+                $q->where('cashier_id', $user->id)
+                  ->orWhere('user_id', $user->id);
+            });
+        }
+
+        $sales = $query->paginate()
+            ->through(function (Sale $sale) {
+                $amount = $sale->grand_total ?: $sale->total_amount;
+                return [
+                    'id'             => $sale->id,
+                    'sale_number'    => $sale->sale_number ?: ('SALE-' . str_pad($sale->id, 5, '0', STR_PAD_LEFT)),
+                    'order_id'       => $sale->order_id,
+                    'customer_id'    => $sale->customer_id,
+                    'customer_name'  => $sale->customer?->display_name ?? 'Walk-in Customer',
+                    'cashier_id'     => $sale->cashier_id ?: $sale->user_id,
+                    'status'         => $sale->status ?: 'posted',
+                    'payment_status' => $sale->payment_status ?: 'paid',
+                    'grand_total'    => (float) $amount,
+                    'total_amount'   => (float) $amount,
+                    'created_at'     => $sale->created_at,
+                ];
+            });
 
         return response()->json($sales);
     }
@@ -121,8 +143,11 @@ class SaleController extends Controller
 
     public function show(Request $request, Sale $sale): JsonResponse
     {
-        abort_unless($sale->user_id === $request->user()->id, 404);
+        $user = $request->user();
+        if ($user->role === 'cashier') {
+            abort_unless($sale->user_id === $user->id || $sale->cashier_id === $user->id, 403);
+        }
 
-        return response()->json($sale->only(['id', 'total_amount', 'created_at']));
+        return response()->json($sale->load(['customer', 'cashierShift', 'order']));
     }
 }

@@ -220,8 +220,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/sale-refunds/{saleRefund}', [SaleRefundController::class, 'destroy']);
     });
 
-    // Cashier routes
-    Route::middleware('role:cashier')->group(function () {
+    // Sales routes (Cashier, Manager & Admin access)
+    Route::middleware('role:cashier,manager,admin')->group(function () {
         Route::get('/sales', [SaleController::class, 'index']);
         Route::post('/sales', [SaleController::class, 'store']);
         Route::get('/sales/{sale}', [SaleController::class, 'show']);
