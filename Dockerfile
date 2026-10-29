@@ -1,7 +1,7 @@
 # ==============================================================================
 # Production Dockerfile for Laravel Backend on Render (PHP-FPM + Nginx)
 # ==============================================================================
-FROM php:8.3-fpm-bookworm
+FROM php:8.4-fpm-bookworm
 
 LABEL maintainer="Ngus Electronics Engineering Team"
 LABEL description="Production container for Laravel backend on Render"
@@ -52,7 +52,7 @@ WORKDIR /var/www/html
 
 # 5. Leverage Docker Layer Caching for Composer Dependencies
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --ignore-platform-req=php+
 
 # 6. Copy Application Source Code
 COPY . .
