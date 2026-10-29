@@ -1,0 +1,48 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+.github
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Dependencies
+vendor/
+node_modules/
+
+# Frontend application (deployed separately or built outside)
+frontend/
+
+# Local cache & storage artifacts
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+!storage/framework/cache/.gitignore
+!storage/framework/sessions/.gitignore
+!storage/framework/views/.gitignore
+!storage/logs/.gitignore
+
+# Test & scratch files
+tests/
+scratch/
+.phpunit.result.cache
+phpunit.xml
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+npm-debug.log
+yarn-error.log
+
+# Postman & documentation collections
+postman/
+postman_collection.json
+.postman/

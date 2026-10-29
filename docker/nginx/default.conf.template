@@ -1,0 +1,61 @@
+server {
+    listen ${PORT} default_server;
+    listen [::]:${PORT} default_server;
+
+    server_name _;
+    root /var/www/html/public;
+    index index.php index.html;
+
+    charset utf-8;
+    client_max_body_size 64M;
+
+    # Gzip Compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/xml application/json application/javascript application/rss+xml application/atom+xml image/svg+xml;
+
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # API and web routing to Laravel index.php
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # Static assets caching
+    location ~* \.(ico|css|js|gif|jpe?g|png|webp|svg|woff|woff2|ttf|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+        access_log off;
+        log_not_found off;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    # Pass PHP scripts to PHP-FPM FastCGI server
+    location ~ \.php$ {
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+
+        fastcgi_hide_header X-Powered-By;
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+        fastcgi_connect_timeout 300s;
+        fastcgi_send_timeout 300s;
+        fastcgi_read_timeout 300s;
+    }
+
+    # Deny access to hidden files (e.g. .env, .git)
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
