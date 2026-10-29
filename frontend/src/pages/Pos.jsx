@@ -35,21 +35,36 @@ export const Pos = () => {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [completedSale, setCompletedSale] = useState(null);
 
+  // In-terminal Shift Opening Modal state
+  const [isOpenShiftModalOpen, setIsOpenShiftModalOpen] = useState(false);
+  const [openingFloat, setOpeningFloat] = useState('500.00');
+  const [posRegisters, setPosRegisters] = useState([]);
+  const [selectedRegisterId, setSelectedRegisterId] = useState('');
+  const [shiftNotes, setShiftNotes] = useState('');
+  const [openingShiftSubmitting, setOpeningShiftSubmitting] = useState(false);
+
   // Fetch initial data
   useEffect(() => {
     const fetchPosData = async () => {
       try {
         setLoading(true);
-        const [prodRes, catRes, pmRes, shiftsRes] = await Promise.all([
+        const [prodRes, catRes, pmRes, shiftsRes, regsRes] = await Promise.all([
           api.getProducts({ per_page: 150 }).catch(() => ({ data: [] })),
           api.getCategories({ per_page: 50 }).catch(() => ({ data: [] })),
           api.getPaymentMethods({ per_page: 20 }).catch(() => ({ data: [] })),
           api.getCashierShifts({ status: 'open' }).catch(() => ({ data: [] })),
+          api.getPosRegisters({ is_active: 1 }).catch(() => ({ data: [] })),
         ]);
 
         const prodList = prodRes?.data || [];
         setProducts(prodList);
         setCategories(catRes?.data || []);
+
+        const regs = regsRes?.data || [];
+        setPosRegisters(regs);
+        if (regs.length > 0) {
+          setSelectedRegisterId(String(regs[0].id));
+        }
 
         const pms = pmRes?.data || [];
         setPaymentMethods(pms);
@@ -72,6 +87,37 @@ export const Pos = () => {
 
     fetchPosData();
   }, [user?.id]);
+
+  // In-terminal Shift Opening Handler
+  const handleQuickOpenShift = async (e) => {
+    e.preventDefault();
+    if (!selectedRegisterId) {
+      showToast('Please select a physical register terminal', 'warning');
+      return;
+    }
+    const floatNum = parseFloat(openingFloat);
+    if (isNaN(floatNum) || floatNum < 0) {
+      showToast('Please enter a valid opening float amount', 'warning');
+      return;
+    }
+
+    try {
+      setOpeningShiftSubmitting(true);
+      const res = await api.createCashierShift({
+        pos_register_id: selectedRegisterId,
+        opening_float: floatNum,
+        notes: shiftNotes || 'Opened via POS Terminal Quick Launch',
+      });
+      const created = res?.cashier_shift || res?.data || res;
+      setActiveShift(created);
+      setIsOpenShiftModalOpen(false);
+      showToast(`Shift #${created.id || ''} successfully opened! Float: ETB ${floatNum.toFixed(2)}`, 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to open cashier shift', 'error');
+    } finally {
+      setOpeningShiftSubmitting(false);
+    }
+  };
 
   // Filtered products list
   const filteredProducts = useMemo(() => {
@@ -326,13 +372,14 @@ export const Pos = () => {
               <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--warning)' }}>
                 No Active Shift Opened
               </span>
-              <Link
-                to="/shifts"
+              <button
+                type="button"
+                onClick={() => setIsOpenShiftModalOpen(true)}
                 className="btn btn-primary"
-                style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6, textDecoration: 'none' }}
+                style={{ padding: '4px 12px', fontSize: '0.76rem', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
               >
-                Open Register
-              </Link>
+                Open Drawer Float
+              </button>
             </div>
           )}
         </div>
@@ -872,6 +919,11 @@ export const Pos = () => {
               {/* Checkout Button */}
               <button
                 onClick={() => {
+                  if (!activeShift) {
+                    showToast('Please open a cashier shift drawer before processing checkout', 'warning');
+                    setIsOpenShiftModalOpen(true);
+                    return;
+                  }
                   setTenderAmount(grandTotal.toFixed(2));
                   setIsCheckoutOpen(true);
                 }}
@@ -1240,6 +1292,14 @@ export const Pos = () => {
               >
                 Close
               </button>
+              <Link
+                to="/sales"
+                className="btn btn-secondary"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600 }}
+              >
+                <Icon name="fileText" size={16} />
+                View in Sales Ledger
+              </Link>
               <button
                 type="button"
                 onClick={() => window.print()}
@@ -1252,6 +1312,149 @@ export const Pos = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* MODAL 3: In-Terminal Quick Open Shift Drawer Modal */}
+      <Modal
+        isOpen={isOpenShiftModalOpen}
+        onClose={() => setIsOpenShiftModalOpen(false)}
+        title="Open POS Register Drawer"
+        maxWidth={480}
+      >
+        <form onSubmit={handleQuickOpenShift} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div
+            style={{
+              background: 'var(--brand-blue-light)',
+              padding: '14px',
+              borderRadius: 8,
+              fontSize: '0.82rem',
+              color: 'var(--brand-blue)',
+              border: '1px solid rgba(22, 119, 255, 0.2)',
+            }}
+          >
+            Assign this register terminal to your session and initialize your opening cash drawer balance to start processing sales.
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
+              Select Physical Register Terminal *
+            </label>
+            <select
+              value={selectedRegisterId}
+              onChange={(e) => setSelectedRegisterId(e.target.value)}
+              required
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-app)',
+                color: 'var(--text-main)',
+                fontSize: '0.9rem',
+              }}
+            >
+              {posRegisters.length === 0 ? (
+                <option value="">No active registers configured</option>
+              ) : (
+                posRegisters.map((reg) => (
+                  <option key={reg.id} value={reg.id}>
+                    {reg.name || reg.code || `Register #${reg.id}`} - {reg.location || 'Store Counter'}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
+              Opening Cash Float (ETB) *
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              value={openingFloat}
+              onChange={(e) => setOpeningFloat(e.target.value)}
+              placeholder="500.00"
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: '1px solid var(--border-subtle)',
+                fontSize: '1rem',
+                fontWeight: 700,
+              }}
+            />
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              {[0, 200, 500, 1000].map((amt) => (
+                <button
+                  type="button"
+                  key={amt}
+                  onClick={() => setOpeningFloat(amt.toFixed(2))}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.74rem',
+                    borderRadius: 4,
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-app)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ETB {amt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-muted)' }}>
+              Opening Notes (Optional)
+            </label>
+            <input
+              type="text"
+              value={shiftNotes}
+              onChange={(e) => setShiftNotes(e.target.value)}
+              placeholder="e.g. Morning counter shift, float counted & verified"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border-subtle)',
+                fontSize: '0.85rem',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => setIsOpenShiftModalOpen(false)}
+              className="btn btn-secondary"
+              disabled={openingShiftSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={openingShiftSubmitting}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}
+            >
+              {openingShiftSubmitting ? (
+                <>
+                  <Icon name="refresh" size={16} />
+                  Opening Drawer...
+                </>
+              ) : (
+                <>
+                  <Icon name="check" size={16} />
+                  Open Shift Drawer
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

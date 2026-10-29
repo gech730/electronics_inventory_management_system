@@ -208,14 +208,13 @@ export const Shifts = () => {
               </button>
               <button
                 onClick={() => setIsCloseShiftModalOpen(true)}
-                className="btn btn-primary"
+                className="btn btn-danger"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
                   fontSize: '0.85rem',
                   fontWeight: 700,
-                  background: 'var(--danger)',
                 }}
               >
                 <Icon name="power" size={16} />
