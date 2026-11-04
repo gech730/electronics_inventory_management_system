@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\Shipment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CustomerPortalController extends Controller
 {
@@ -19,11 +20,23 @@ class CustomerPortalController extends Controller
     {
         $user = $request->user();
 
-        // Retrieve customer record linked by user_id or email
+        // Retrieve customer record linked by user_id or email, or auto-create if missing
         $customer = Customer::where('user_id', $user->id)
             ->orWhere('email', $user->email)
             ->with(['addresses', 'defaultAddress'])
             ->first();
+
+        if (!$customer) {
+            $customer = Customer::create([
+                'user_id'       => $user->id,
+                'customer_code' => 'CUST-' . strtoupper(Str::random(6)),
+                'display_name'  => $user->name,
+                'email'         => $user->email,
+                'customer_type' => Customer::TYPE_INDIVIDUAL,
+                'is_active'     => true,
+            ]);
+            $customer->load(['addresses', 'defaultAddress']);
+        }
 
         // Get customer orders to compute stats
         $ordersQuery = Order::where(function ($q) use ($user, $customer) {

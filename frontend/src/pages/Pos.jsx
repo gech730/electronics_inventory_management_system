@@ -5,13 +5,20 @@ import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icons';
 import Modal from '../components/Modal';
 
+const DEFAULT_PAYMENT_METHODS = [
+  { id: 1, name: 'Cash', method_type: 'cash', code: 'CASH', requires_reference: false },
+  { id: 2, name: 'Telebirr', method_type: 'mobile_money', code: 'TELEBIRR', requires_reference: true },
+  { id: 3, name: 'CBE Birr', method_type: 'mobile_money', code: 'CBEBIRR', requires_reference: true },
+  { id: 4, name: 'Card / POS', method_type: 'card', code: 'CARD', requires_reference: true },
+];
+
 export const Pos = () => {
   const { user, showToast } = useAuth();
 
   // Data states
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState(DEFAULT_PAYMENT_METHODS);
   const [activeShift, setActiveShift] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +32,7 @@ export const Pos = () => {
 
   // Checkout modal states
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(DEFAULT_PAYMENT_METHODS[0]);
   const [tenderAmount, setTenderAmount] = useState('');
   const [transactionRef, setTransactionRef] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
@@ -66,13 +73,11 @@ export const Pos = () => {
           setSelectedRegisterId(String(regs[0].id));
         }
 
-        const pms = pmRes?.data || [];
+        const rawPms = Array.isArray(pmRes) ? pmRes : (pmRes?.data || []);
+        const pms = rawPms.length > 0 ? rawPms : DEFAULT_PAYMENT_METHODS;
         setPaymentMethods(pms);
-        if (pms.length > 0) {
-          // Default to Cash or first available
-          const defaultPm = pms.find((m) => m.method_type === 'cash' || m.code?.toLowerCase() === 'cash') || pms[0];
-          setSelectedPaymentMethod(defaultPm);
-        }
+        const defaultPm = pms.find((m) => m.method_type === 'cash' || m.code?.toLowerCase() === 'cash') || pms[0];
+        setSelectedPaymentMethod(defaultPm);
 
         // Check if cashier has active open shift
         const openShifts = shiftsRes?.data || [];
@@ -91,20 +96,15 @@ export const Pos = () => {
   // In-terminal Shift Opening Handler
   const handleQuickOpenShift = async (e) => {
     e.preventDefault();
-    if (!selectedRegisterId) {
-      showToast('Please select a physical register terminal', 'warning');
-      return;
-    }
-    const floatNum = parseFloat(openingFloat);
-    if (isNaN(floatNum) || floatNum < 0) {
-      showToast('Please enter a valid opening float amount', 'warning');
-      return;
-    }
+    const regId = selectedRegisterId || (posRegisters[0]?.id) || 1;
+    const cleanedStr = String(openingFloat || '').replace(/,/g, '').replace(/[oO]/g, '0');
+    const floatNum = parseFloat(cleanedStr) || 0;
 
     try {
       setOpeningShiftSubmitting(true);
       const res = await api.createCashierShift({
-        pos_register_id: selectedRegisterId,
+        pos_register_id: regId,
+        opening_cash: floatNum,
         opening_float: floatNum,
         notes: shiftNotes || 'Opened via POS Terminal Quick Launch',
       });
@@ -939,10 +939,9 @@ export const Pos = () => {
               {/* Checkout Button */}
               <button
                 onClick={() => {
-                  if (!activeShift) {
-                    showToast('Please open a cashier shift drawer before processing checkout', 'warning');
-                    setIsOpenShiftModalOpen(true);
-                    return;
+                  if (!selectedPaymentMethod && paymentMethods.length > 0) {
+                    const defaultPm = paymentMethods.find((m) => m.method_type === 'cash' || m.code?.toLowerCase() === 'cash') || paymentMethods[0];
+                    setSelectedPaymentMethod(defaultPm);
                   }
                   setTenderAmount(grandTotal.toFixed(2));
                   setIsCheckoutOpen(true);
@@ -999,31 +998,53 @@ export const Pos = () => {
 
           {/* Payment Method Selector */}
           <div>
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 8 }}>
-              Select Payment Tender
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                Select Payment Tender
+              </label>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Active: <strong style={{ color: 'var(--brand-blue)' }}>{selectedPaymentMethod?.name || 'Cash'}</strong>
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
               {paymentMethods.map((pm) => {
-                const isSelected = selectedPaymentMethod?.id === pm.id;
+                const isSelected = (selectedPaymentMethod?.id === pm.id) || (!selectedPaymentMethod && pm.method_type === 'cash');
+                const isCash = pm.method_type === 'cash' || pm.code?.toLowerCase() === 'cash';
+                const isMobile = pm.method_type === 'mobile_money' || pm.code?.toLowerCase().includes('birr');
+                const isCard = pm.method_type === 'card' || pm.code?.toLowerCase() === 'card';
+
                 return (
                   <button
                     type="button"
                     key={pm.id}
                     onClick={() => setSelectedPaymentMethod(pm)}
                     style={{
-                      padding: '10px 8px',
-                      borderRadius: 8,
-                      border: isSelected ? '2px solid var(--brand-blue)' : '1px solid var(--border-subtle)',
-                      background: isSelected ? 'var(--brand-blue-light)' : 'var(--bg-app)',
+                      padding: '12px 10px',
+                      borderRadius: 10,
+                      border: isSelected
+                        ? '2px solid var(--brand-blue)'
+                        : '1px solid var(--border-subtle)',
+                      background: isSelected
+                        ? 'var(--brand-blue-light)'
+                        : 'var(--bg-app)',
                       color: isSelected ? 'var(--brand-blue)' : 'var(--text-main)',
                       fontWeight: 700,
-                      fontSize: '0.82rem',
+                      fontSize: '0.85rem',
                       cursor: 'pointer',
-                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 4,
+                      boxShadow: isSelected ? '0 2px 8px rgba(22, 119, 255, 0.2)' : 'none',
                       transition: 'all 150ms ease',
                     }}
                   >
-                    {pm.name}
+                    <Icon
+                      name={isCash ? 'dollarSign' : isMobile ? 'phone' : isCard ? 'creditCard' : 'check'}
+                      size={20}
+                      color={isSelected ? 'var(--brand-blue)' : 'var(--text-muted)'}
+                    />
+                    <span>{pm.name}</span>
                   </button>
                 );
               })}
@@ -1031,7 +1052,7 @@ export const Pos = () => {
           </div>
 
           {/* Dynamic Tender Options depending on Method */}
-          {selectedPaymentMethod?.method_type === 'cash' || selectedPaymentMethod?.code?.toLowerCase() === 'cash' ? (
+          {(!selectedPaymentMethod || selectedPaymentMethod?.method_type === 'cash' || selectedPaymentMethod?.code?.toLowerCase() === 'cash') ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
@@ -1341,7 +1362,7 @@ export const Pos = () => {
         title="Open POS Register Drawer"
         maxWidth={480}
       >
-        <form onSubmit={handleQuickOpenShift} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); handleQuickOpenShift(e); }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div
             style={{
               background: 'var(--brand-blue-light)',
@@ -1390,13 +1411,12 @@ export const Pos = () => {
               Opening Cash Float (ETB) *
             </label>
             <input
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
+              inputMode="decimal"
               required
               value={openingFloat}
-              onChange={(e) => setOpeningFloat(e.target.value)}
-              placeholder="500.00"
+              onChange={(e) => setOpeningFloat(e.target.value.replace(/[oO]/g, '0'))}
+              placeholder="2000.00"
               style={{
                 width: '100%',
                 padding: '10px 14px',
@@ -1406,8 +1426,8 @@ export const Pos = () => {
                 fontWeight: 700,
               }}
             />
-            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-              {[0, 200, 500, 1000].map((amt) => (
+            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+              {[0, 500, 1000, 2000].map((amt) => (
                 <button
                   type="button"
                   key={amt}
@@ -1456,7 +1476,8 @@ export const Pos = () => {
               Cancel
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={(e) => handleQuickOpenShift(e)}
               className="btn btn-primary"
               disabled={openingShiftSubmitting}
               style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}

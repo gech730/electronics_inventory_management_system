@@ -14,12 +14,16 @@ export const Customers = () => {
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Modals
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [viewCustomer, setViewCustomer] = useState(null);
+  const [customerOrders, setCustomerOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Customer Form State
@@ -32,6 +36,7 @@ export const Customers = () => {
     tax_number: '',
     credit_limit: '0.00',
     default_credit_days: 0,
+    is_active: true,
     notes: '',
     address: {
       label: 'Main Office',
@@ -61,7 +66,7 @@ export const Customers = () => {
   const loadCustomers = async () => {
     try {
       setLoading(true);
-      const res = await api.getCustomers({ per_page: 100 });
+      const res = await api.getCustomers({ per_page: 150 });
       setCustomers(res?.data || []);
     } catch (err) {
       showToast(err.message || 'Failed to load customers', 'error');
@@ -86,19 +91,24 @@ export const Customers = () => {
         c.tax_number?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchType = typeFilter === 'all' || c.customer_type === typeFilter;
+      const matchStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'active' && (c.is_active === 1 || c.is_active === true)) ||
+        (statusFilter === 'inactive' && (c.is_active === 0 || c.is_active === false));
 
-      return matchSearch && matchType;
+      return matchSearch && matchType && matchStatus;
     });
-  }, [customers, searchQuery, typeFilter]);
+  }, [customers, searchQuery, typeFilter, statusFilter]);
 
   // Metrics
   const metrics = useMemo(() => {
     const total = customers.length;
     const individual = customers.filter((c) => c.customer_type === 'individual').length;
     const corporate = customers.filter((c) => c.customer_type === 'corporate').length;
+    const active = customers.filter((c) => c.is_active === 1 || c.is_active === true).length;
     const totalCreditLimit = customers.reduce((sum, c) => sum + Number(c.credit_limit || 0), 0);
 
-    return { total, individual, corporate, totalCreditLimit };
+    return { total, individual, corporate, active, totalCreditLimit };
   }, [customers]);
 
   // Open Create Customer
@@ -113,6 +123,7 @@ export const Customers = () => {
       tax_number: '',
       credit_limit: '0.00',
       default_credit_days: 0,
+      is_active: true,
       notes: '',
       address: {
         label: 'Primary Location',
@@ -140,9 +151,42 @@ export const Customers = () => {
       tax_number: customer.tax_number || '',
       credit_limit: String(customer.credit_limit || '0.00'),
       default_credit_days: customer.default_credit_days || 0,
+      is_active: customer.is_active === 1 || customer.is_active === true,
       notes: customer.notes || '',
     });
     setIsCustomerModalOpen(true);
+  };
+
+  // Open View Profile Modal & load customer order history
+  const handleOpenView = async (customer) => {
+    setViewCustomer(customer);
+    setCustomerOrders([]);
+    setLoadingOrders(true);
+    try {
+      const res = await api.getOrders({ customer_id: customer.id, per_page: 20 });
+      setCustomerOrders(res?.data || []);
+    } catch {
+      setCustomerOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  // Toggle Active / Deactivated
+  const handleToggleActive = async (customer) => {
+    const nextState = !(customer.is_active === 1 || customer.is_active === true);
+    try {
+      await api.updateCustomer(customer.id, { is_active: nextState });
+      showToast(`Customer '${customer.display_name}' ${nextState ? 'activated' : 'deactivated'}`, 'success');
+      setCustomers((prev) =>
+        prev.map((c) => (c.id === customer.id ? { ...c, is_active: nextState } : c))
+      );
+      if (viewCustomer?.id === customer.id) {
+        setViewCustomer({ ...viewCustomer, is_active: nextState });
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to update customer status', 'error');
+    }
   };
 
   // Submit Customer Create / Update
@@ -159,6 +203,7 @@ export const Customers = () => {
           tax_number: customerForm.tax_number || null,
           credit_limit: parseFloat(customerForm.credit_limit) || 0,
           default_credit_days: parseInt(customerForm.default_credit_days) || 0,
+          is_active: customerForm.is_active,
           notes: customerForm.notes || null,
         });
         showToast('Customer profile updated successfully!', 'success');
@@ -180,8 +225,13 @@ export const Customers = () => {
     }
   };
 
-  // Delete Customer
+  // Delete Customer (Admin Permission Guard + Safe Deactivate fallback)
   const handleDeleteCustomer = async (customer) => {
+    if (user?.role !== 'admin') {
+      showToast('Permission Denied: Only Administrators can delete customer records.', 'error');
+      return;
+    }
+
     if (!window.confirm(`Are you sure you want to delete customer '${customer.display_name}'?`)) return;
 
     try {
@@ -189,7 +239,13 @@ export const Customers = () => {
       showToast('Customer deleted successfully', 'success');
       await loadCustomers();
     } catch (err) {
-      showToast(err.message || 'Cannot delete customer with order records', 'error');
+      // 409 means customer has associated order history
+      const willDeactivate = window.confirm(
+        `Cannot delete customer '${customer.display_name}' because they have associated order history.\n\nWould you like to deactivate this customer account instead?`
+      );
+      if (willDeactivate) {
+        await handleToggleActive(customer);
+      }
     }
   };
 
@@ -218,7 +274,6 @@ export const Customers = () => {
       setSubmitting(true);
       await api.createCustomerAddress(selectedCustomer.id, addressForm);
       showToast('Address added to customer profile!', 'success');
-      // Reload customer data
       const updated = await api.getCustomer(selectedCustomer.id);
       setSelectedCustomer(updated?.data || updated);
       await loadCustomers();
@@ -272,10 +327,10 @@ export const Customers = () => {
         <div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <Icon name="users" size={24} color="var(--brand-blue)" />
-            Customer Directory & Credit Accounts
+            Customer Directory & Accounts
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Manage individual and corporate wholesale customer accounts, credit limits, and delivery address books
+            Real-time customer account profiles, credit lines, delivery addresses, and past order ledgers
           </p>
         </div>
 
@@ -345,26 +400,53 @@ export const Customers = () => {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 6 }}>
-          {['all', 'individual', 'corporate'].map((t) => (
-            <button
-              key={t}
-              onClick={() => setTypeFilter(t)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: typeFilter === t ? '1px solid var(--brand-blue)' : '1px solid var(--border-subtle)',
-                background: typeFilter === t ? 'var(--brand-blue)' : 'var(--bg-surface)',
-                color: typeFilter === t ? '#ffffff' : 'var(--text-muted)',
-                textTransform: 'capitalize',
-              }}
-            >
-              {t}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {['all', 'individual', 'corporate'].map((t) => (
+              <button
+                key={t}
+                onClick={() => setTypeFilter(t)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: typeFilter === t ? '1px solid var(--brand-blue)' : '1px solid var(--border-subtle)',
+                  background: typeFilter === t ? 'var(--brand-blue)' : 'var(--bg-surface)',
+                  color: typeFilter === t ? '#ffffff' : 'var(--text-muted)',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[
+              { id: 'all', label: 'All Status' },
+              { id: 'active', label: 'Active' },
+              { id: 'inactive', label: 'Deactivated' },
+            ].map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setStatusFilter(s.id)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: statusFilter === s.id ? '1px solid var(--brand-purple)' : '1px solid var(--border-subtle)',
+                  background: statusFilter === s.id ? 'var(--brand-purple)' : 'var(--bg-surface)',
+                  color: statusFilter === s.id ? '#ffffff' : 'var(--text-muted)',
+                }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -386,7 +468,7 @@ export const Customers = () => {
                 <th style={{ padding: '12px 18px', fontWeight: 700 }}>Display Name</th>
                 <th style={{ padding: '12px 18px', fontWeight: 700 }}>Type</th>
                 <th style={{ padding: '12px 18px', fontWeight: 700 }}>Phone / Contact</th>
-                <th style={{ padding: '12px 18px', fontWeight: 700 }}>TIN #</th>
+                <th style={{ padding: '12px 18px', fontWeight: 700 }}>Status</th>
                 <th style={{ padding: '12px 18px', fontWeight: 700 }}>Credit Limit</th>
                 <th style={{ padding: '12px 18px', fontWeight: 700 }}>Addresses</th>
                 <th style={{ padding: '12px 18px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
@@ -406,78 +488,281 @@ export const Customers = () => {
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((cust) => (
-                  <tr key={cust.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '12px 18px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.78rem', fontWeight: 700, color: 'var(--brand-blue)' }}>
-                      {cust.customer_code}
-                    </td>
-                    <td style={{ padding: '12px 18px' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{cust.display_name}</div>
-                      {cust.email && <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{cust.email}</div>}
-                    </td>
-                    <td style={{ padding: '12px 18px' }}>
-                      <span
-                        style={{
-                          padding: '3px 8px',
-                          borderRadius: 'var(--radius-full)',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          background: cust.customer_type === 'corporate' ? 'rgba(99, 102, 241, 0.12)' : 'rgba(0, 176, 116, 0.1)',
-                          color: cust.customer_type === 'corporate' ? 'var(--brand-purple)' : 'var(--success)',
-                        }}
-                      >
-                        {cust.customer_type}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 18px', fontWeight: 500 }}>
-                      {cust.phone || '—'}
-                    </td>
-                    <td style={{ padding: '12px 18px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                      {cust.tax_number || '—'}
-                    </td>
-                    <td style={{ padding: '12px 18px', fontWeight: 700 }}>
-                      {Number(cust.credit_limit) > 0 ? `ETB ${Number(cust.credit_limit).toFixed(2)}` : 'None'}
-                    </td>
-                    <td style={{ padding: '12px 18px' }}>
-                      <button
-                        onClick={() => handleOpenAddresses(cust)}
-                        className="action-btn action-btn-view"
-                        style={{ fontSize: '0.74rem' }}
-                      >
-                        <Icon name="mapPin" size={12} />
-                        {cust.addresses?.length ?? 1} Addresses
-                      </button>
-                    </td>
-                    <td style={{ padding: '12px 18px', textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
-                        <button
-                          onClick={() => handleOpenEdit(cust)}
-                          className="action-btn action-btn-primary"
-                          title="Edit Profile"
+                filteredCustomers.map((cust) => {
+                  const isActive = cust.is_active === 1 || cust.is_active === true;
+                  return (
+                    <tr key={cust.id} style={{ borderBottom: '1px solid var(--border-subtle)', opacity: isActive ? 1 : 0.65 }}>
+                      <td style={{ padding: '12px 18px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.78rem', fontWeight: 700, color: 'var(--brand-blue)' }}>
+                        {cust.customer_code}
+                      </td>
+                      <td style={{ padding: '12px 18px' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{cust.display_name}</div>
+                        {cust.email && <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{cust.email}</div>}
+                      </td>
+                      <td style={{ padding: '12px 18px' }}>
+                        <span
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            background: cust.customer_type === 'corporate' ? 'rgba(99, 102, 241, 0.12)' : 'rgba(0, 176, 116, 0.1)',
+                            color: cust.customer_type === 'corporate' ? 'var(--brand-purple)' : 'var(--success)',
+                          }}
                         >
-                          <Icon name="edit" size={13} />
-                          Edit
-                        </button>
+                          {cust.customer_type}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 18px', fontWeight: 500 }}>
+                        {cust.phone || '—'}
+                      </td>
+                      <td style={{ padding: '12px 18px' }}>
                         <button
-                          onClick={() => handleDeleteCustomer(cust)}
-                          className="action-btn action-btn-danger"
-                          title="Delete Profile"
+                          onClick={() => handleToggleActive(cust)}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            border: 'none',
+                            cursor: 'pointer',
+                            background: isActive ? 'rgba(0, 176, 116, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                            color: isActive ? '#00b074' : '#ef4444',
+                          }}
+                          title="Click to toggle status"
                         >
-                          <Icon name="trash" size={13} />
-                          Delete
+                          {isActive ? '● Active' : '○ Deactivated'}
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td style={{ padding: '12px 18px', fontWeight: 700 }}>
+                        {Number(cust.credit_limit) > 0 ? `ETB ${Number(cust.credit_limit).toFixed(2)}` : 'None'}
+                      </td>
+                      <td style={{ padding: '12px 18px' }}>
+                        <button
+                          onClick={() => handleOpenAddresses(cust)}
+                          className="action-btn action-btn-view"
+                          style={{ fontSize: '0.74rem' }}
+                        >
+                          <Icon name="mapPin" size={12} />
+                          {cust.addresses?.length ?? 1} Addresses
+                        </button>
+                      </td>
+                      <td style={{ padding: '12px 18px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => handleOpenView(cust)}
+                            className="action-btn action-btn-secondary"
+                            style={{ background: 'var(--bg-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-main)' }}
+                            title="View Full Profile & Order History"
+                          >
+                            <Icon name="eye" size={13} />
+                            View
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(cust)}
+                            className="action-btn action-btn-primary"
+                            title="Edit Profile"
+                          >
+                            <Icon name="edit" size={13} />
+                            Edit
+                          </button>
+                          {user?.role === 'admin' && (
+                            <button
+                              onClick={() => handleDeleteCustomer(cust)}
+                              className="action-btn action-btn-danger"
+                              title="Delete Profile (Admin Only)"
+                            >
+                              <Icon name="trash" size={13} />
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* MODAL 1: Create / Edit Customer Profile */}
+      {/* MODAL 1: View Customer Profile & History */}
+      <Modal
+        isOpen={!!viewCustomer}
+        onClose={() => setViewCustomer(null)}
+        title={viewCustomer ? `Customer Account: ${viewCustomer.display_name}` : 'Customer Profile'}
+        maxWidth={700}
+      >
+        {viewCustomer && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {/* Top Details Grid */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: 12,
+                background: 'var(--bg-app)',
+                padding: '16px',
+                borderRadius: 10,
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Customer Code</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, fontFamily: 'monospace', color: 'var(--brand-blue)' }}>{viewCustomer.customer_code}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Account Type</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, textTransform: 'capitalize' }}>{viewCustomer.customer_type}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Contact Phone</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>{viewCustomer.phone || '—'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Email Address</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>{viewCustomer.email || '—'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Credit Limit</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--success)' }}>
+                  ETB {Number(viewCustomer.credit_limit || 0).toFixed(2)} ({viewCustomer.default_credit_days || 0} days)
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Account Status</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: viewCustomer.is_active ? 'var(--success)' : 'var(--danger)' }}>
+                  {viewCustomer.is_active ? 'Active Customer' : 'Deactivated'}
+                </div>
+              </div>
+            </div>
+
+            {/* Saved Addresses */}
+            <div>
+              <div style={{ fontSize: '0.84rem', fontWeight: 800, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="mapPin" size={14} color="var(--brand-blue)" />
+                Registered Delivery Locations
+              </div>
+              {viewCustomer.addresses?.length === 0 ? (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '10px 14px', background: 'var(--bg-app)', borderRadius: 8 }}>
+                  No saved physical addresses recorded for this client.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
+                  {viewCustomer.addresses?.map((addr) => (
+                    <div
+                      key={addr.id}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 8,
+                        background: 'var(--bg-app)',
+                        border: '1px solid var(--border-subtle)',
+                        fontSize: '0.82rem',
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>{addr.label || 'Delivery Location'}</span>
+                        {addr.is_default && (
+                          <span style={{ fontSize: '0.66rem', padding: '1px 6px', background: 'var(--brand-blue-light)', color: 'var(--brand-blue)', borderRadius: 4 }}>
+                            DEFAULT
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>
+                        {addr.address_line}, {addr.sub_city}, {addr.city}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Recent Orders Ledger */}
+            <div>
+              <div style={{ fontSize: '0.84rem', fontWeight: 800, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="receipt" size={14} color="var(--brand-blue)" />
+                Recent Orders Ledger
+              </div>
+              {loadingOrders ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
+                  Loading client order history...
+                </div>
+              ) : customerOrders.length === 0 ? (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '12px 14px', background: 'var(--bg-app)', borderRadius: 8 }}>
+                  No previous orders placed by this customer yet.
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 8 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-app)', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)' }}>
+                        <th style={{ padding: '8px 12px' }}>Order #</th>
+                        <th style={{ padding: '8px 12px' }}>Date</th>
+                        <th style={{ padding: '8px 12px' }}>Status</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right' }}>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {customerOrders.map((ord) => (
+                        <tr key={ord.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: 700, fontFamily: 'monospace', color: 'var(--brand-blue)' }}>
+                            {ord.order_number || `#${ord.id}`}
+                          </td>
+                          <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>
+                            {new Date(ord.created_at).toLocaleDateString()}
+                          </td>
+                          <td style={{ padding: '8px 12px' }}>
+                            <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(22, 119, 255, 0.1)', color: '#1677ff', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 700 }}>
+                              {ord.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800 }}>
+                            ETB {parseFloat(ord.total_amount || ord.grand_total || 0).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+              <button
+                onClick={() => handleToggleActive(viewCustomer)}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 6,
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  background: viewCustomer.is_active ? 'rgba(239, 68, 68, 0.15)' : 'rgba(0, 176, 116, 0.15)',
+                  color: viewCustomer.is_active ? '#ef4444' : '#00b074',
+                }}
+              >
+                {viewCustomer.is_active ? 'Deactivate Customer' : 'Activate Customer'}
+              </button>
+
+              <button
+                onClick={() => {
+                  const target = viewCustomer;
+                  setViewCustomer(null);
+                  handleOpenEdit(target);
+                }}
+                className="btn btn-primary"
+                style={{ fontSize: '0.82rem', padding: '7px 16px', fontWeight: 700 }}
+              >
+                Edit Account Details
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* MODAL 2: Create / Edit Customer Profile */}
       <Modal
         isOpen={isCustomerModalOpen}
         onClose={() => setIsCustomerModalOpen(false)}
@@ -602,6 +887,20 @@ export const Customers = () => {
             </div>
           </div>
 
+          {editingCustomer && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <input
+                type="checkbox"
+                id="edit_is_active"
+                checked={customerForm.is_active}
+                onChange={(e) => setCustomerForm({ ...customerForm, is_active: e.target.checked })}
+              />
+              <label htmlFor="edit_is_active" style={{ fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+                Account Active (Client eligible for sales & orders)
+              </label>
+            </div>
+          )}
+
           {/* Embedded Address if Creating */}
           {!editingCustomer && (
             <div style={{ background: 'var(--bg-app)', padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', marginTop: 4 }}>
@@ -655,7 +954,7 @@ export const Customers = () => {
         </form>
       </Modal>
 
-      {/* MODAL 2: Address Book Manager */}
+      {/* MODAL 3: Address Book Manager */}
       <Modal
         isOpen={isAddressModalOpen}
         onClose={() => setIsAddressModalOpen(false)}

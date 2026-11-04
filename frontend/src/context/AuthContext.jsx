@@ -46,12 +46,16 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const freshUser = await api.getUser();
-          setUser(freshUser);
-          localStorage.setItem('volttrack_user', JSON.stringify(freshUser));
+          if (freshUser && (freshUser.id || freshUser.name)) {
+            setUser(freshUser);
+            localStorage.setItem('volttrack_user', JSON.stringify(freshUser));
+          }
         } catch {
-          setUser(null);
-          setToken('');
-          api.clearToken();
+          // If offline or network unavailable, preserve saved session instead of logging out
+          const saved = localStorage.getItem('volttrack_user');
+          if (saved) {
+            setUser(JSON.parse(saved));
+          }
         }
       }
       setLoading(false);

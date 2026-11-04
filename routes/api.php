@@ -81,17 +81,21 @@ Route::get('/orders/{order}', [OrderController::class, 'show']);
 Route::get('/shipments', [ShipmentController::class, 'index']);
 Route::get('/shipments/{shipment}', [ShipmentController::class, 'show']);
 
-// POS, Cash Drawer, and Financial public read routes
+// POS, Cash Drawer, and Financial staff routes
 Route::get('/pos-registers', [PosRegisterController::class, 'index']);
 Route::get('/pos-registers/{posRegister}', [PosRegisterController::class, 'show']);
 Route::get('/cashier-shifts', [CashierShiftController::class, 'index']);
 Route::get('/cashier-shifts/{cashierShift}', [CashierShiftController::class, 'show']);
+Route::post('/cashier-shifts', [CashierShiftController::class, 'store']);
+Route::match(['put', 'patch'], '/cashier-shifts/{cashierShift}', [CashierShiftController::class, 'update']);
 Route::get('/cash-movements', [CashMovementController::class, 'index']);
 Route::get('/cash-movements/{cashMovement}', [CashMovementController::class, 'show']);
+Route::post('/cash-movements', [CashMovementController::class, 'store']);
 Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
 Route::get('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'show']);
 Route::get('/payments', [PaymentController::class, 'index']);
 Route::get('/payments/{payment}', [PaymentController::class, 'show']);
+Route::post('/payments', [PaymentController::class, 'store']);
 Route::get('/tax-rates', [TaxRateController::class, 'index']);
 Route::get('/tax-rates/{taxRate}', [TaxRateController::class, 'show']);
 
@@ -109,12 +113,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customer/profile', [CustomerPortalController::class, 'profile']);
     Route::get('/customer/orders', [CustomerPortalController::class, 'orders']);
     Route::get('/customer/shipments', [CustomerPortalController::class, 'shipments']);
-
-    // Shift management, drawer movements, and payment collections (Available to all authorized staff)
-    Route::post('/cashier-shifts', [CashierShiftController::class, 'store']);
-    Route::match(['put', 'patch'], '/cashier-shifts/{cashierShift}', [CashierShiftController::class, 'update']);
-    Route::post('/cash-movements', [CashMovementController::class, 'store']);
-    Route::post('/payments', [PaymentController::class, 'store']);
 
     // Admin & Manager management routes
     Route::middleware('role:admin,manager')->group(function () {
@@ -151,12 +149,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::match(['put', 'patch'], '/stock-adjustments/{stockAdjustment}', [StockAdjustmentController::class, 'update']);
         Route::post('/stock-transactions', [StockTransactionController::class, 'store']);
 
-        // Customer & Order operations
-        Route::post('/customers', [CustomerController::class, 'store']);
-        Route::match(['put', 'patch'], '/customers/{customer}', [CustomerController::class, 'update']);
-        Route::post('/customers/{customer}/addresses', [CustomerController::class, 'storeAddress']);
-        Route::match(['put', 'patch'], '/customers/{customer}/addresses/{address}', [CustomerController::class, 'updateAddress']);
-        Route::delete('/customers/{customer}/addresses/{address}', [CustomerController::class, 'destroyAddress']);
+        // Order operations
         Route::post('/orders', [OrderController::class, 'store']);
         Route::match(['put', 'patch'], '/orders/{order}', [OrderController::class, 'update']);
         Route::post('/shipments', [ShipmentController::class, 'store']);
@@ -220,8 +213,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/sale-refunds/{saleRefund}', [SaleRefundController::class, 'destroy']);
     });
 
-    // Sales routes (Cashier, Manager & Admin access)
+    // Customer, Order & Sales routes (Cashier, Manager & Admin access)
     Route::middleware('role:cashier,manager,admin')->group(function () {
+        Route::post('/customers', [CustomerController::class, 'store']);
+        Route::match(['put', 'patch'], '/customers/{customer}', [CustomerController::class, 'update']);
+        Route::post('/customers/{customer}/addresses', [CustomerController::class, 'storeAddress']);
+        Route::match(['put', 'patch'], '/customers/{customer}/addresses/{address}', [CustomerController::class, 'updateAddress']);
+        Route::delete('/customers/{customer}/addresses/{address}', [CustomerController::class, 'destroyAddress']);
+
         Route::get('/sales', [SaleController::class, 'index']);
         Route::post('/sales', [SaleController::class, 'store']);
         Route::get('/sales/{sale}', [SaleController::class, 'show']);

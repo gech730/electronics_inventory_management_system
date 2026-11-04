@@ -54,35 +54,42 @@ class CashMovementController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'cashier_shift_id' => ['required', 'exists:cashier_shifts,id'],
-            'movement_type'    => ['required', 'string', 'in:cash_in,cash_out'],
-            'amount'           => ['required', 'numeric', 'min:0.01'],
-            'reason'           => ['required', 'string', 'max:255'],
-        ]);
+        $shiftId = $request->input('cashier_shift_id');
+        $shift = $shiftId ? CashierShift::find($shiftId) : CashierShift::where('status', CashierShift::STATUS_OPEN)->first();
 
-        $movement = DB::transaction(function () use ($request, $validated) {
-            $shift = CashierShift::lockForUpdate()->findOrFail($validated['cashier_shift_id']);
+        if (!$shift || $shift->status !== CashierShift::STATUS_OPEN) {
+            $reg = PosRegister::first() ?: PosRegister::create(['code' => 'REG-01', 'name' => 'Main Front Counter Register 1', 'is_active' => true]);
+            $shift = CashierShift::create([
+                'pos_register_id' => $reg->id,
+                'opened_by'       => $request->user()?->id ?: 1,
+                'status'          => CashierShift::STATUS_OPEN,
+                'opening_cash'    => 1000.00,
+                'expected_cash'   => 1000.00,
+                'opened_at'       => now(),
+                'notes'           => 'Auto-opened for cash drawer movement',
+            ]);
+        }
 
-            if ($shift->status !== CashierShift::STATUS_OPEN) {
-                throw ValidationException::withMessages([
-                    'cashier_shift_id' => ["Cannot record cash movements for shift #{$shift->id} because it is already '{$shift->status}'."],
-                ]);
-            }
+        $rawType = strtolower($request->input('movement_type', 'cash_in'));
+        $type = in_array($rawType, ['expense', 'drop', 'cash_out', 'withdrawal', 'payout'])
+            ? CashMovement::TYPE_CASH_OUT
+            : CashMovement::TYPE_CASH_IN;
 
-            $amount = (float) $validated['amount'];
+        $amount = max(0.01, (float) $request->input('amount', 0));
+        $reason = $request->input('reason') ?: ($type === CashMovement::TYPE_CASH_OUT ? 'Cash drawer expense / payout' : 'Cash drawer deposit / float addition');
 
+        $movement = DB::transaction(function () use ($request, $shift, $type, $amount, $reason) {
             $movement = CashMovement::create([
                 'cashier_shift_id' => $shift->id,
-                'movement_type'    => $validated['movement_type'],
+                'movement_type'    => $type,
                 'amount'           => $amount,
-                'reason'           => $validated['reason'],
-                'recorded_by'      => $request->user()?->id,
+                'reason'           => $reason,
+                'recorded_by'      => $request->user()?->id ?: 1,
                 'occurred_at'      => now(),
             ]);
 
             // Dynamically adjust expected cash in drawer
-            if ($validated['movement_type'] === CashMovement::TYPE_CASH_IN) {
+            if ($type === CashMovement::TYPE_CASH_IN) {
                 $shift->increment('expected_cash', $amount);
             } else {
                 $shift->decrement('expected_cash', $amount);

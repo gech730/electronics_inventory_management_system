@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icons';
@@ -7,9 +7,13 @@ import Modal from '../components/Modal';
 
 export const Orders = () => {
   const { user, showToast } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'shipments' ? 'shipments' : 'orders';
+  const [activeTab, setActiveTab] = useState(initialTab); // 'orders' | 'shipments'
 
   // Data states
   const [orders, setOrders] = useState([]);
+  const [shipments, setShipments] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [stores, setStores] = useState([]);
@@ -25,6 +29,9 @@ export const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
+  const [selectedShipment, setSelectedShipment] = useState(null);
+  const [isShipmentDetailOpen, setIsShipmentDetailOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // New Order Form State
@@ -40,19 +47,31 @@ export const Orders = () => {
     items: [{ product_id: '', quantity: 1, unit_price: 0 }],
   });
 
-  // Load orders and dependencies
-  const loadOrdersData = async () => {
+  // Dispatch Package Form State
+  const [dispatchForm, setDispatchForm] = useState({
+    order_id: '',
+    shipping_provider: 'DHL Express Ethiopia',
+    tracking_number: '',
+    recipient_name: '',
+    recipient_phone: '',
+    notes: '',
+  });
+
+  // Load orders, shipments, and dependencies
+  const loadData = async () => {
     try {
       setLoading(true);
-      const [ordRes, custRes, prodRes, storeRes, locRes] = await Promise.all([
-        api.getOrders({ per_page: 50 }).catch(() => ({ data: [] })),
-        api.getCustomers({ per_page: 100 }).catch(() => ({ data: [] })),
-        api.getProducts({ per_page: 100 }).catch(() => ({ data: [] })),
+      const [ordRes, shipRes, custRes, prodRes, storeRes, locRes] = await Promise.all([
+        api.getOrders({ per_page: 100 }).catch(() => ({ data: [] })),
+        api.getShipments({ per_page: 100 }).catch(() => ({ data: [] })),
+        api.getCustomers({ per_page: 150 }).catch(() => ({ data: [] })),
+        api.getProducts({ per_page: 150 }).catch(() => ({ data: [] })),
         api.getStores({ is_active: 1 }).catch(() => ({ data: [] })),
         api.getStockLocations({ is_active: 1 }).catch(() => ({ data: [] })),
       ]);
 
       setOrders(ordRes?.data || []);
+      setShipments(shipRes?.data || []);
       setCustomers(custRes?.data || []);
       setProducts(prodRes?.data || []);
       setStores(storeRes?.data || []);
@@ -65,17 +84,22 @@ export const Orders = () => {
         setNewOrder((prev) => ({ ...prev, stock_location_id: locRes.data[0].id }));
       }
     } catch (err) {
-      showToast(err.message || 'Failed to load orders', 'error');
+      showToast(err.message || 'Failed to load order & shipment data', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadOrdersData();
+    loadData();
   }, []);
 
-  // Filtered orders list
+  const switchTab = (tab) => {
+    setActiveTab(tab);
+    setSearchParams(tab === 'shipments' ? { tab: 'shipments' } : {});
+  };
+
+  // Filtered orders
   const filteredOrders = useMemo(() => {
     return orders.filter((ord) => {
       const matchSearch =
@@ -91,17 +115,39 @@ export const Orders = () => {
     });
   }, [orders, searchQuery, statusFilter, sourceFilter]);
 
-  // Order summary metrics
-  const metrics = useMemo(() => {
+  // Filtered shipments
+  const filteredShipments = useMemo(() => {
+    return shipments.filter((shp) => {
+      const matchSearch =
+        searchQuery === '' ||
+        shp.shipment_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        shp.tracking_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        shp.recipient_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        shp.order?.order_number?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchStatus = statusFilter === 'all' || shp.status === statusFilter;
+
+      return matchSearch && matchStatus;
+    });
+  }, [shipments, searchQuery, statusFilter]);
+
+  // Metrics
+  const orderMetrics = useMemo(() => {
     const total = orders.length;
     const confirmed = orders.filter((o) => o.status === 'confirmed').length;
     const processing = orders.filter((o) => o.status === 'processing').length;
     const shipped = orders.filter((o) => o.status === 'shipped').length;
     const completed = orders.filter((o) => o.status === 'completed').length;
     const totalVolume = orders.reduce((sum, o) => sum + Number(o.grand_total || 0), 0);
-
     return { total, confirmed, processing, shipped, completed, totalVolume };
   }, [orders]);
+
+  const shipmentMetrics = useMemo(() => {
+    const total = shipments.length;
+    const inTransit = shipments.filter((s) => s.status === 'shipped' || s.status === 'in_transit').length;
+    const delivered = shipments.filter((s) => s.status === 'delivered').length;
+    return { total, inTransit, delivered };
+  }, [shipments]);
 
   // View order details
   const handleViewDetails = async (order) => {
@@ -115,13 +161,13 @@ export const Orders = () => {
     }
   };
 
-  // Update order status transition
+  // Update order status
   const handleUpdateStatus = async (orderId, newStatus) => {
     try {
       setSubmitting(true);
       await api.updateOrder(orderId, { status: newStatus });
       showToast(`Order status updated to '${newStatus}'`, 'success');
-      await loadOrdersData();
+      await loadData();
       if (selectedOrder?.id === orderId) {
         setSelectedOrder((prev) => ({ ...prev, status: newStatus }));
       }
@@ -132,7 +178,78 @@ export const Orders = () => {
     }
   };
 
-  // Add line item to form
+  // Open Dispatch Modal for an Order
+  const handleOpenDispatch = (order) => {
+    const defaultTracking = `TRK-${Date.now().toString().slice(-6)}`;
+    setDispatchForm({
+      order_id: String(order.id),
+      shipping_provider: 'DHL Express Ethiopia',
+      tracking_number: defaultTracking,
+      recipient_name: order.customer?.display_name || 'Retail Client',
+      recipient_phone: order.customer?.phone || '',
+      notes: `Courier package dispatch for Order #${order.order_number || order.id}`,
+    });
+    setIsDispatchModalOpen(true);
+  };
+
+  // Submit Package Dispatch
+  const handleCreateShipment = async (e) => {
+    e.preventDefault();
+    if (!dispatchForm.order_id) {
+      showToast('Please select a valid order to dispatch', 'warning');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const targetOrd = orders.find((o) => String(o.id) === String(dispatchForm.order_id));
+      const itemsPayload = (targetOrd?.items || [{ id: 1, quantity_ordered: 1 }]).map((it) => ({
+        order_item_id: it.id,
+        quantity_shipped: it.quantity_ordered || 1,
+      }));
+
+      await api.createShipment({
+        order_id: dispatchForm.order_id,
+        shipping_provider: dispatchForm.shipping_provider,
+        tracking_number: dispatchForm.tracking_number,
+        recipient_name: dispatchForm.recipient_name,
+        recipient_phone: dispatchForm.recipient_phone,
+        notes: dispatchForm.notes || null,
+        items: itemsPayload,
+      });
+
+      // Advance order status to 'shipped'
+      await api.updateOrder(dispatchForm.order_id, { status: 'shipped' }).catch(() => {});
+
+      showToast(`Package successfully dispatched! Tracking: ${dispatchForm.tracking_number}`, 'success');
+      setIsDispatchModalOpen(false);
+      await loadData();
+      setActiveTab('shipments');
+    } catch (err) {
+      showToast(err.message || 'Failed to dispatch shipment', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Mark Shipment as Delivered
+  const handleMarkDelivered = async (shipment) => {
+    try {
+      setSubmitting(true);
+      await api.updateShipment(shipment.id, { status: 'delivered' });
+      if (shipment.order_id) {
+        await api.updateOrder(shipment.order_id, { status: 'completed' }).catch(() => {});
+      }
+      showToast(`Shipment #${shipment.shipment_number || shipment.id} marked as DELIVERED!`, 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err.message || 'Failed to update shipment', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Add line item to order form
   const addLineItem = () => {
     setNewOrder((prev) => ({
       ...prev,
@@ -156,7 +273,6 @@ export const Orders = () => {
       const prod = products.find((p) => String(p.id) === String(value));
       if (prod) {
         updated[index].unit_price = Number(prod.selling_price || 0);
-        // Default variant if available
         if (prod.variants?.length > 0) {
           updated[index].product_variant_id = prod.variants[0].id;
         }
@@ -166,7 +282,6 @@ export const Orders = () => {
     setNewOrder((prev) => ({ ...prev, items: updated }));
   };
 
-  // Calculate new order estimated totals
   const formSubtotal = useMemo(() => {
     return newOrder.items.reduce(
       (sum, item) => sum + (Number(item.unit_price) || 0) * (Number(item.quantity) || 0),
@@ -180,7 +295,6 @@ export const Orders = () => {
   // Submit new order creation
   const handleCreateOrder = async (e) => {
     e.preventDefault();
-
     const validItems = newOrder.items.filter((item) => item.product_id && item.quantity > 0);
     if (validItems.length === 0) {
       showToast('Please add at least one valid product line item', 'warning');
@@ -206,7 +320,7 @@ export const Orders = () => {
       };
 
       await api.createOrder(payload);
-      showToast('Multi-channel order created successfully!', 'success');
+      showToast('Customer order created successfully!', 'success');
       setIsCreateModalOpen(false);
       setNewOrder({
         source: 'backoffice',
@@ -219,7 +333,7 @@ export const Orders = () => {
         internal_notes: '',
         items: [{ product_id: '', quantity: 1, unit_price: 0 }],
       });
-      await loadOrdersData();
+      await loadData();
     } catch (err) {
       showToast(err.message || 'Failed to create order', 'error');
     } finally {
@@ -227,9 +341,19 @@ export const Orders = () => {
     }
   };
 
+  const statusConfig = {
+    pending: { label: 'Pending', bg: 'rgba(234, 179, 8, 0.12)', color: '#ca8a04' },
+    confirmed: { label: 'Confirmed', bg: 'rgba(56, 189, 248, 0.12)', color: '#0284c7' },
+    processing: { label: 'Processing', bg: 'rgba(168, 85, 247, 0.12)', color: '#9333ea' },
+    shipped: { label: 'Shipped', bg: 'rgba(59, 130, 246, 0.12)', color: '#2563eb' },
+    completed: { label: 'Completed', bg: 'rgba(34, 197, 94, 0.12)', color: '#16a34a' },
+    delivered: { label: 'Delivered', bg: 'rgba(34, 197, 94, 0.12)', color: '#16a34a' },
+    cancelled: { label: 'Cancelled', bg: 'rgba(239, 68, 68, 0.12)', color: '#dc2626' },
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Top Header & New Order Button */}
+      {/* Top Header with Unified Tab Switcher */}
       <div
         style={{
           display: 'flex',
@@ -245,358 +369,686 @@ export const Orders = () => {
         }}
       >
         <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Icon name="clipboard" size={24} color="var(--brand-blue)" />
-            Omni-Channel Customer Orders
-          </h1>
-          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Manage POS, Web Store, and Backoffice wholesale orders with automated inventory reservations
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Icon name="clipboard" size={24} color="var(--brand-blue)" />
+              Orders & Delivery Logistics
+            </h1>
+          </div>
+          <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: 'var(--text-muted)' }}>
+            Customer orders, package dispatches, courier tracking, and fulfillment in one unified tab
           </p>
         </div>
 
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="btn btn-primary"
-          style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.88rem', fontWeight: 700 }}
-        >
-          <Icon name="plus" size={18} />
-          Create New Order
-        </button>
-      </div>
-
-      {/* KPI Metrics Row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 14,
-        }}
-      >
-        <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Orders</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)', marginTop: 4 }}>{metrics.total}</div>
-        </div>
-        <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--info)', textTransform: 'uppercase' }}>Confirmed</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--info)', marginTop: 4 }}>{metrics.confirmed}</div>
-        </div>
-        <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--warning)', textTransform: 'uppercase' }}>In Processing</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--warning)', marginTop: 4 }}>{metrics.processing}</div>
-        </div>
-        <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--brand-purple)', textTransform: 'uppercase' }}>Dispatched</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--brand-purple)', marginTop: 4 }}>{metrics.shipped}</div>
-        </div>
-        <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--success)', textTransform: 'uppercase' }}>Completed Sales</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--success)', marginTop: 4 }}>{metrics.completed}</div>
-        </div>
-        <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Order Volume</div>
-          <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--brand-blue)', marginTop: 8 }}>ETB {metrics.totalVolume.toFixed(2)}</div>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
-      <div
-        style={{
-          background: 'var(--bg-surface)',
-          padding: 16,
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border-subtle)',
-          boxShadow: 'var(--shadow-sm)',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 14,
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        {/* Search */}
-        <div style={{ position: 'relative', flex: '1', minWidth: 260 }}>
-          <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', display: 'flex' }}>
-            <Icon name="search" size={17} />
-          </div>
-          <input
-            type="text"
-            placeholder="Search by order #, customer display name, phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+        {/* View Switcher Pills */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div
             style={{
-              width: '100%',
-              padding: '9px 12px 9px 38px',
-              borderRadius: 8,
-              border: '1px solid var(--border-subtle)',
+              display: 'inline-flex',
               background: 'var(--bg-app)',
-              fontSize: '0.88rem',
-              color: 'var(--text-main)',
-            }}
-          />
-        </div>
-
-        {/* Source Channel Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Channel:</span>
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: 8,
+              padding: 4,
+              borderRadius: 'var(--radius-md)',
               border: '1px solid var(--border-subtle)',
-              background: 'var(--bg-app)',
-              fontSize: '0.85rem',
-              fontWeight: 600,
             }}
           >
-            <option value="all">All Channels</option>
-            <option value="backoffice">Backoffice (Wholesale)</option>
-            <option value="online">Online E-commerce</option>
-            <option value="pos">POS Register</option>
-          </select>
-        </div>
-
-        {/* Status Filter Tabs */}
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
-          {['all', 'confirmed', 'processing', 'shipped', 'completed', 'cancelled'].map((st) => (
             <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
+              onClick={() => switchTab('orders')}
               style={{
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.78rem',
-                fontWeight: 600,
+                padding: '7px 16px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                background: activeTab === 'orders' ? 'var(--brand-blue)' : 'transparent',
+                color: activeTab === 'orders' ? '#ffffff' : 'var(--text-muted)',
+                fontWeight: 700,
+                fontSize: '0.86rem',
                 cursor: 'pointer',
-                border: statusFilter === st ? '1px solid var(--brand-blue)' : '1px solid var(--border-subtle)',
-                background: statusFilter === st ? 'var(--brand-blue)' : 'var(--bg-surface)',
-                color: statusFilter === st ? '#ffffff' : 'var(--text-muted)',
-                textTransform: 'capitalize',
-                transition: 'all 150ms ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
               }}
             >
-              {st}
+              <Icon name="clipboard" size={15} />
+              Customer Orders ({orderMetrics.total})
             </button>
-          ))}
+            <button
+              onClick={() => switchTab('shipments')}
+              style={{
+                padding: '7px 16px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                background: activeTab === 'shipments' ? 'var(--brand-blue)' : 'transparent',
+                color: activeTab === 'shipments' ? '#ffffff' : 'var(--text-muted)',
+                fontWeight: 700,
+                fontSize: '0.86rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <Icon name="truck" size={15} />
+              Shipments & Deliveries ({shipmentMetrics.total})
+            </button>
+          </div>
+
+          {activeTab === 'orders' ? (
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.88rem', fontWeight: 700 }}
+            >
+              <Icon name="plus" size={16} />
+              + New Order
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                const pendingOrd = orders.find((o) => ['confirmed', 'processing'].includes(o.status)) || orders[0];
+                if (pendingOrd) handleOpenDispatch(pendingOrd);
+                else setIsDispatchModalOpen(true);
+              }}
+              className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.88rem', fontWeight: 700 }}
+            >
+              <Icon name="truck" size={16} />
+              + Dispatch Package
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Orders Table */}
+      {/* Guide Banner */}
       <div
         style={{
-          background: 'var(--bg-surface)',
+          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95))',
+          border: '1px solid rgba(56, 189, 248, 0.25)',
           borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border-subtle)',
+          padding: '14px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
           boxShadow: 'var(--shadow-sm)',
-          overflow: 'hidden',
         }}
       >
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-app)', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)' }}>
-                <th style={{ padding: '12px 18px', fontWeight: 700 }}>Order #</th>
-                <th style={{ padding: '12px 18px', fontWeight: 700 }}>Date</th>
-                <th style={{ padding: '12px 18px', fontWeight: 700 }}>Channel</th>
-                <th style={{ padding: '12px 18px', fontWeight: 700 }}>Customer</th>
-                <th style={{ padding: '12px 18px', fontWeight: 700 }}>Items</th>
-                <th style={{ padding: '12px 18px', fontWeight: 700 }}>Grand Total</th>
-                <th style={{ padding: '12px 18px', fontWeight: 700 }}>Status</th>
-                <th style={{ padding: '12px 18px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                    Loading orders directory...
-                  </td>
-                </tr>
-              ) : filteredOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                    No orders match your criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredOrders.map((ord) => {
-                  const statusColors = {
-                    draft: { bg: 'rgba(100, 116, 139, 0.1)', text: 'var(--text-muted)' },
-                    confirmed: { bg: 'rgba(22, 119, 255, 0.1)', text: 'var(--info)' },
-                    processing: { bg: 'rgba(255, 159, 67, 0.15)', text: 'var(--warning)' },
-                    shipped: { bg: 'rgba(99, 102, 241, 0.12)', text: 'var(--brand-purple)' },
-                    completed: { bg: 'rgba(0, 176, 116, 0.1)', text: 'var(--success)' },
-                    cancelled: { bg: 'rgba(239, 68, 68, 0.1)', text: 'var(--danger)' },
-                  };
-
-                  const color = statusColors[ord.status] || statusColors.draft;
-
-                  return (
-                    <tr key={ord.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td style={{ padding: '12px 18px', fontWeight: 700, color: 'var(--brand-blue)' }}>
-                        {ord.order_number}
-                      </td>
-                      <td style={{ padding: '12px 18px', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                        {new Date(ord.created_at).toLocaleDateString()}
-                      </td>
-                      <td style={{ padding: '12px 18px' }}>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: 'var(--radius-full)',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            background: 'var(--bg-app)',
-                            border: '1px solid var(--border-subtle)',
-                            color: 'var(--text-main)',
-                          }}
-                        >
-                          {ord.source}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 18px' }}>
-                        <div style={{ fontWeight: 600 }}>{ord.customer?.display_name || 'Walk-in Retail Customer'}</div>
-                        {ord.customer?.phone && (
-                          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{ord.customer.phone}</div>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px 18px', fontWeight: 600 }}>
-                        {ord.items_count ?? ord.items?.length ?? 1} lines
-                      </td>
-                      <td style={{ padding: '12px 18px', fontWeight: 800, color: 'var(--text-main)' }}>
-                        ETB {Number(ord.grand_total || 0).toFixed(2)}
-                      </td>
-                      <td style={{ padding: '12px 18px' }}>
-                        <span
-                          style={{
-                            padding: '3px 10px',
-                            borderRadius: 'var(--radius-full)',
-                            fontSize: '0.74rem',
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            background: color.bg,
-                            color: color.text,
-                          }}
-                        >
-                          {ord.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 18px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => handleViewDetails(ord)}
-                            className="action-btn action-btn-primary"
-                          >
-                            <Icon name="eye" size={13} />
-                            View
-                          </button>
-                          {(ord.status === 'confirmed' || ord.status === 'processing') && (
-                            <Link
-                              to={`/shipments?order_id=${ord.id}`}
-                              className="action-btn action-btn-success"
-                              style={{ textDecoration: 'none' }}
-                              title="Create Shipment for this Order"
-                            >
-                              <Icon name="truck" size={13} />
-                              Dispatch
-                            </Link>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: '1.2rem' }}>🚚</span>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, color: '#38bdf8' }}>
+              Unified Order-to-Delivery Process
+            </h4>
+            <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#cbd5e1' }}>
+              <strong>1. Receive Order</strong> ➔ <strong>2. Confirm & Pack</strong> ➔ <strong>3. Click "Dispatch Package"</strong> to generate tracking code ➔ <strong>4. Mark Delivered</strong> when customer signs.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* MODAL 1: Order Details Slide-Over / Modal */}
-      <Modal
-        isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
-        title={selectedOrder ? `Order Details: ${selectedOrder.order_number}` : 'Order Details'}
-        maxWidth={680}
-      >
-        {selectedOrder && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Order Header Meta */}
-            <div
+      {/* TAB 1: Customer Orders */}
+      {activeTab === 'orders' && (
+        <>
+          {/* Order Metrics Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+            <div style={{ background: 'var(--bg-surface)', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>TOTAL ORDERS</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 4 }}>{orderMetrics.total}</div>
+            </div>
+            <div style={{ background: 'var(--bg-surface)', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ fontSize: '0.78rem', color: '#ca8a04', fontWeight: 600 }}>CONFIRMED & READY</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 4, color: '#ca8a04' }}>{orderMetrics.confirmed + orderMetrics.processing}</div>
+            </div>
+            <div style={{ background: 'var(--bg-surface)', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: 600 }}>OUT FOR DELIVERY</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 4, color: '#2563eb' }}>{orderMetrics.shipped}</div>
+            </div>
+            <div style={{ background: 'var(--bg-surface)', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 600 }}>COMPLETED SALES</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 4, color: '#16a34a' }}>{orderMetrics.completed}</div>
+            </div>
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 12,
+              flexWrap: 'wrap',
+              background: 'var(--bg-surface)',
+              padding: '14px 18px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
+            <input
+              type="text"
+              placeholder="Search by Order #, Customer name, or Phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                gap: 12,
-                background: 'var(--bg-app)',
-                padding: '14px 16px',
+                flex: 1,
+                minWidth: 260,
+                padding: '9px 14px',
                 borderRadius: 8,
                 border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-app)',
+                fontSize: '0.88rem',
+              }}
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                padding: '9px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-app)',
+                fontSize: '0.88rem',
+                fontWeight: 600,
               }}
             >
+              <option value="all">All Order Statuses</option>
+              <option value="pending">Pending Approval</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="processing">Processing / Packing</option>
+              <option value="shipped">Shipped / Dispatched</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          {/* Orders Table */}
+          <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-app)', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Order #</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Customer</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Date</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Fulfillment</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Total Amount</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Status</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                        No orders found matching the filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredOrders.map((ord) => {
+                      const st = statusConfig[ord.status] || { label: ord.status, bg: 'rgba(100, 116, 139, 0.12)', color: 'var(--text-muted)' };
+                      const canDispatch = ['confirmed', 'processing', 'pending'].includes(ord.status);
+
+                      return (
+                        <tr key={ord.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                          <td style={{ padding: '12px 18px', fontWeight: 700 }}>
+                            <button
+                              onClick={() => handleViewDetails(ord)}
+                              style={{ background: 'none', border: 'none', color: 'var(--brand-blue)', fontWeight: 800, cursor: 'pointer', padding: 0 }}
+                            >
+                              {ord.order_number || `ORD-${ord.id}`}
+                            </button>
+                          </td>
+                          <td style={{ padding: '12px 18px' }}>
+                            <div style={{ fontWeight: 600 }}>{ord.customer?.display_name || 'Walk-in Retail Client'}</div>
+                            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{ord.customer?.phone || 'No phone'}</div>
+                          </td>
+                          <td style={{ padding: '12px 18px', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                            {new Date(ord.created_at).toLocaleDateString()}
+                          </td>
+                          <td style={{ padding: '12px 18px' }}>
+                            <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>
+                              {ord.fulfillment_type || 'Delivery'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 18px', fontWeight: 800, color: 'var(--text-main)' }}>
+                            ETB {Number(ord.grand_total || ord.total_amount || 0).toFixed(2)}
+                          </td>
+                          <td style={{ padding: '12px 18px' }}>
+                            <span
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: 'var(--radius-full)',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                background: st.bg,
+                                color: st.color,
+                              }}
+                            >
+                              {st.label}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 18px', textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => handleViewDetails(ord)}
+                                className="action-btn action-btn-view"
+                                title="View Order Line Items"
+                              >
+                                View
+                              </button>
+
+                              {canDispatch && (
+                                <button
+                                  onClick={() => handleOpenDispatch(ord)}
+                                  className="action-btn action-btn-primary"
+                                  style={{ background: '#2563eb', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                                  title="Dispatch Package & Generate Tracking"
+                                >
+                                  <Icon name="truck" size={12} />
+                                  Dispatch
+                                </button>
+                              )}
+
+                              {ord.status === 'pending' && (
+                                <button
+                                  onClick={() => handleUpdateStatus(ord.id, 'confirmed')}
+                                  className="action-btn action-btn-primary"
+                                  style={{ background: '#16a34a', color: '#fff', border: 'none' }}
+                                >
+                                  Approve
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* TAB 2: Shipments & Deliveries */}
+      {activeTab === 'shipments' && (
+        <>
+          {/* Shipment Metrics */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+            <div style={{ background: 'var(--bg-surface)', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>TOTAL DISPATCHED</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 4 }}>{shipmentMetrics.total}</div>
+            </div>
+            <div style={{ background: 'var(--bg-surface)', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: 600 }}>IN TRANSIT / ON THE ROAD</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 4, color: '#2563eb' }}>{shipmentMetrics.inTransit}</div>
+            </div>
+            <div style={{ background: 'var(--bg-surface)', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 600 }}>SUCCESSFULLY DELIVERED</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 4, color: '#16a34a' }}>{shipmentMetrics.delivered}</div>
+            </div>
+          </div>
+
+          {/* Shipments Table */}
+          <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>STATUS</div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--brand-blue)' }}>
-                  {selectedOrder.status}
-                </div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Dispatched Delivery Packages</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Courier waybills, tracking codes, and customer package deliveries
+                </p>
               </div>
-              <div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>SOURCE CHANNEL</div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                  {selectedOrder.source}
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-app)', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Shipment #</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Tracking Code</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Carrier</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Recipient</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Date Dispatched</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700 }}>Status</th>
+                    <th style={{ padding: '12px 18px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredShipments.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                        No dispatched packages recorded yet. Click "+ Dispatch Package" to ship confirmed orders.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredShipments.map((shp) => {
+                      const isDelivered = shp.status === 'delivered';
+
+                      return (
+                        <tr key={shp.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                          <td style={{ padding: '12px 18px', fontWeight: 700 }}>
+                            {shp.shipment_number || `SHP-${shp.id}`}
+                          </td>
+                          <td style={{ padding: '12px 18px' }}>
+                            <span
+                              style={{
+                                fontFamily: 'monospace',
+                                fontWeight: 800,
+                                background: 'rgba(56, 189, 248, 0.1)',
+                                color: '#0284c7',
+                                padding: '3px 8px',
+                                borderRadius: 6,
+                              }}
+                            >
+                              {shp.tracking_number || 'TRK-PENDING'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 18px', fontWeight: 600 }}>
+                            {shp.shipping_provider || 'Local Delivery'}
+                          </td>
+                          <td style={{ padding: '12px 18px' }}>
+                            <div style={{ fontWeight: 600 }}>{shp.recipient_name}</div>
+                            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{shp.recipient_phone}</div>
+                          </td>
+                          <td style={{ padding: '12px 18px', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                            {new Date(shp.shipped_at || shp.created_at).toLocaleString()}
+                          </td>
+                          <td style={{ padding: '12px 18px' }}>
+                            <span
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: 'var(--radius-full)',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                background: isDelivered ? 'rgba(34, 197, 94, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+                                color: isDelivered ? '#16a34a' : '#2563eb',
+                              }}
+                            >
+                              {shp.status?.replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 18px', textAlign: 'right' }}>
+                            {!isDelivered ? (
+                              <button
+                                onClick={() => handleMarkDelivered(shp)}
+                                className="action-btn action-btn-primary"
+                                style={{ background: '#16a34a', color: '#fff', border: 'none' }}
+                                title="Confirm Customer Received Package"
+                              >
+                                Mark Delivered
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 700 }}>
+                                Completed
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* MODAL 1: Create Order */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create Customer Order"
+        maxWidth={700}
+      >
+        <form onSubmit={handleCreateOrder} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
+                Customer Account
+              </label>
+              <select
+                value={newOrder.customer_id}
+                onChange={(e) => setNewOrder({ ...newOrder, customer_id: e.target.value })}
+                required
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)' }}
+              >
+                <option value="">Select Customer...</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.display_name} ({c.phone || c.customer_code})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
+                Fulfillment Type
+              </label>
+              <select
+                value={newOrder.fulfillment_type}
+                onChange={(e) => setNewOrder({ ...newOrder, fulfillment_type: e.target.value })}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)' }}
+              >
+                <option value="delivery">Courier Delivery</option>
+                <option value="pickup">Store Counter Pickup</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Line items */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <label style={{ fontSize: '0.84rem', fontWeight: 700 }}>Order Items</label>
+              <button
+                type="button"
+                onClick={addLineItem}
+                style={{ background: 'none', border: 'none', color: 'var(--brand-blue)', fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem' }}
+              >
+                + Add Item
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {newOrder.items.map((item, idx) => (
+                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'center' }}>
+                  <select
+                    value={item.product_id}
+                    onChange={(e) => updateLineItem(idx, 'product_id', e.target.value)}
+                    required
+                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)', fontSize: '0.85rem' }}
+                  >
+                    <option value="">Select Electronics Product...</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} - ETB {Number(p.selling_price).toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={(e) => updateLineItem(idx, 'quantity', e.target.value)}
+                    placeholder="Qty"
+                    style={{ padding: '8px', borderRadius: 6, border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={item.unit_price}
+                    onChange={(e) => updateLineItem(idx, 'unit_price', e.target.value)}
+                    placeholder="Price"
+                    style={{ padding: '8px', borderRadius: 6, border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}
+                  />
+                  {newOrder.items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeLineItem(idx)}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4 }}
+                    >
+                      <Icon name="trash" size={16} />
+                    </button>
+                  )}
                 </div>
-              </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg-app)', padding: '12px', borderRadius: 8, textAlign: 'right', fontWeight: 800, fontSize: '1.05rem', color: 'var(--brand-blue)' }}>
+            Estimated Grand Total: ETB {formGrandTotal.toFixed(2)}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+            <button type="button" onClick={() => setIsCreateModalOpen(false)} className="btn btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? 'Creating...' : 'Create Order'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL 2: Dispatch Shipment */}
+      <Modal
+        isOpen={isDispatchModalOpen}
+        onClose={() => setIsDispatchModalOpen(false)}
+        title="Dispatch Delivery Package"
+        maxWidth={550}
+      >
+        <form onSubmit={handleCreateShipment} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
+              Select Order to Ship
+            </label>
+            <select
+              value={dispatchForm.order_id}
+              onChange={(e) => {
+                const targetOrd = orders.find((o) => String(o.id) === String(e.target.value));
+                if (targetOrd) handleOpenDispatch(targetOrd);
+                else setDispatchForm({ ...dispatchForm, order_id: e.target.value });
+              }}
+              required
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)' }}
+            >
+              <option value="">Select Order...</option>
+              {orders.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.order_number || `ORD-${o.id}`} - {o.customer?.display_name || 'Retail Client'} (ETB {Number(o.grand_total || 0).toFixed(2)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
+                Courier / Carrier
+              </label>
+              <select
+                value={dispatchForm.shipping_provider}
+                onChange={(e) => setDispatchForm({ ...dispatchForm, shipping_provider: e.target.value })}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)' }}
+              >
+                <option value="DHL Express Ethiopia">DHL Express Ethiopia</option>
+                <option value="Local Addis Dispatch Courier">Local Addis Dispatch Courier</option>
+                <option value="EMS Post Ethiopia">EMS Post Ethiopia</option>
+                <option value="Customer In-Store Pickup">Customer In-Store Pickup</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
+                Tracking Code
+              </label>
+              <input
+                type="text"
+                required
+                value={dispatchForm.tracking_number}
+                onChange={(e) => setDispatchForm({ ...dispatchForm, tracking_number: e.target.value })}
+                placeholder="TRK-XXXX"
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', fontWeight: 700 }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
+                Recipient Name
+              </label>
+              <input
+                type="text"
+                required
+                value={dispatchForm.recipient_name}
+                onChange={(e) => setDispatchForm({ ...dispatchForm, recipient_name: e.target.value })}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
+                Recipient Phone
+              </label>
+              <input
+                type="text"
+                required
+                value={dispatchForm.recipient_phone}
+                onChange={(e) => setDispatchForm({ ...dispatchForm, recipient_phone: e.target.value })}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+            <button type="button" onClick={() => setIsDispatchModalOpen(false)} className="btn btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? 'Dispatching...' : 'Dispatch & Ship Package'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL 3: Order Details */}
+      {selectedOrder && (
+        <Modal
+          isOpen={isDetailModalOpen}
+          onClose={() => setIsDetailModalOpen(false)}
+          title={`Order #${selectedOrder.order_number || selectedOrder.id}`}
+          maxWidth={650}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, background: 'var(--bg-app)', padding: 14, borderRadius: 8 }}>
               <div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>FULFILLMENT</div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, textTransform: 'capitalize' }}>
-                  {selectedOrder.fulfillment_type || 'Delivery'}
-                </div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>CUSTOMER</div>
+                <div style={{ fontWeight: 800 }}>{selectedOrder.customer?.display_name || 'Retail Client'}</div>
+                <div style={{ fontSize: '0.8rem' }}>{selectedOrder.customer?.phone || 'No phone'}</div>
               </div>
-              <div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>CREATED AT</div>
-                <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                  {new Date(selectedOrder.created_at).toLocaleString()}
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>GRAND TOTAL</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--brand-blue)' }}>
+                  ETB {Number(selectedOrder.grand_total || selectedOrder.total_amount || 0).toFixed(2)}
                 </div>
               </div>
             </div>
 
-            {/* Customer Details */}
-            {selectedOrder.customer && (
-              <div style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-                  Customer Profile
-                </div>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{selectedOrder.customer.display_name}</div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                  Phone: {selectedOrder.customer.phone || 'N/A'} | Email: {selectedOrder.customer.email || 'N/A'}
-                </div>
-              </div>
-            )}
-
-            {/* Line Items Table */}
             <div>
-              <div style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: 8 }}>Order Line Items</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+              <h4 style={{ margin: '0 0 8px', fontSize: '0.88rem' }}>Ordered Items</h4>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                 <thead>
-                  <tr style={{ background: 'var(--bg-app)', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <th style={{ padding: '8px 10px' }}>Item Description</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Qty</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Price</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Line Total</th>
+                  <tr style={{ background: 'var(--bg-app)', textAlign: 'left' }}>
+                    <th style={{ padding: '8px' }}>Item</th>
+                    <th style={{ padding: '8px' }}>Qty</th>
+                    <th style={{ padding: '8px' }}>Price</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedOrder.items?.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td style={{ padding: '8px 10px' }}>
-                        <div style={{ fontWeight: 600 }}>{item.product_name_snapshot || item.product?.name || `Variant #${item.product_variant_id}`}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.sku_snapshot || item.product?.sku}</div>
-                      </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>{item.quantity_ordered || item.quantity}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right' }}>ETB {Number(item.unit_price).toFixed(2)}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>
-                        ETB {Number(item.line_total || ((item.quantity_ordered || item.quantity) * item.unit_price)).toFixed(2)}
+                  {(selectedOrder.items || []).map((it) => (
+                    <tr key={it.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <td style={{ padding: '8px' }}>{it.product_variant?.name || it.product?.name || `Product #${it.product_id}`}</td>
+                      <td style={{ padding: '8px' }}>{it.quantity_ordered}</td>
+                      <td style={{ padding: '8px' }}>ETB {Number(it.unit_price).toFixed(2)}</td>
+                      <td style={{ padding: '8px', textAlign: 'right', fontWeight: 700 }}>
+                        ETB {Number(it.subtotal || it.quantity_ordered * it.unit_price).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -604,285 +1056,27 @@ export const Orders = () => {
               </table>
             </div>
 
-            {/* Order Totals */}
-            <div style={{ background: 'var(--bg-app)', padding: '12px 16px', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.84rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Subtotal:</span>
-                <span>ETB {Number(selectedOrder.subtotal || 0).toFixed(2)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>VAT (15%):</span>
-                <span>ETB {Number(selectedOrder.tax_total || 0).toFixed(2)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Shipping Fee:</span>
-                <span>ETB {Number(selectedOrder.shipping_fee || 0).toFixed(2)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.05rem', borderTop: '1px solid var(--border-subtle)', paddingTop: 6, color: 'var(--brand-blue)' }}>
-                <span>Grand Total:</span>
-                <span>ETB {Number(selectedOrder.grand_total || 0).toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Order Lifecycle Progression Actions */}
-            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 14 }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>
-                Order Lifecycle Actions
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {selectedOrder.status === 'draft' && (
-                  <button
-                    onClick={() => handleUpdateStatus(selectedOrder.id, 'confirmed')}
-                    disabled={submitting}
-                    className="btn btn-primary"
-                    style={{ fontSize: '0.8rem', padding: '6px 14px' }}
-                  >
-                    Confirm Order & Reserve Stock
-                  </button>
-                )}
-
-                {selectedOrder.status === 'confirmed' && (
-                  <button
-                    onClick={() => handleUpdateStatus(selectedOrder.id, 'processing')}
-                    disabled={submitting}
-                    className="btn btn-primary"
-                    style={{ fontSize: '0.8rem', padding: '6px 14px', background: 'var(--warning)' }}
-                  >
-                    Mark Processing / Picking
-                  </button>
-                )}
-
-                {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'processing') && (
-                  <Link
-                    to={`/shipments?order_id=${selectedOrder.id}`}
-                    className="btn btn-primary"
-                    style={{ fontSize: '0.8rem', padding: '6px 14px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
-                  >
-                    <Icon name="truck" size={15} />
-                    Dispatch Shipment &rarr;
-                  </Link>
-                )}
-
-                {['draft', 'confirmed', 'processing'].includes(selectedOrder.status) && (
-                  <button
-                    onClick={() => handleUpdateStatus(selectedOrder.id, 'cancelled')}
-                    disabled={submitting}
-                    className="btn btn-danger"
-                    style={{ fontSize: '0.8rem', padding: '6px 14px' }}
-                  >
-                    Cancel Order (Release Holds)
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* MODAL 2: Create Multi-Channel Order */}
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="Create Multi-Channel Order"
-        maxWidth={640}
-      >
-        <form onSubmit={handleCreateOrder} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Order Channel & Customer */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 4 }}>
-                Source Channel
-              </label>
-              <select
-                value={newOrder.source}
-                onChange={(e) => setNewOrder({ ...newOrder, source: e.target.value })}
-                required
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)', fontSize: '0.85rem' }}
-              >
-                <option value="backoffice">Backoffice (Wholesale)</option>
-                <option value="online">Online Web Store</option>
-                <option value="pos">POS Terminal</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 4 }}>
-                Customer Account
-              </label>
-              <select
-                value={newOrder.customer_id}
-                onChange={(e) => setNewOrder({ ...newOrder, customer_id: e.target.value })}
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)', fontSize: '0.85rem' }}
-              >
-                <option value="">Walk-in Retail Customer</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.display_name} ({c.customer_type})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Fulfillment & Location */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 4 }}>
-                Fulfillment Type
-              </label>
-              <select
-                value={newOrder.fulfillment_type}
-                onChange={(e) => setNewOrder({ ...newOrder, fulfillment_type: e.target.value })}
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)', fontSize: '0.85rem' }}
-              >
-                <option value="delivery">Courier Delivery</option>
-                <option value="pickup">Store Counter Pickup</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 4 }}>
-                Warehouse Location
-              </label>
-              <select
-                value={newOrder.stock_location_id}
-                onChange={(e) => setNewOrder({ ...newOrder, stock_location_id: e.target.value })}
-                required
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)', fontSize: '0.85rem' }}
-              >
-                {stockLocations.map((loc) => (
-                  <option key={loc.id} value={loc.id}>
-                    {loc.name} ({loc.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Dynamic Order Line Items */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>Order Line Items</span>
-              <button
-                type="button"
-                onClick={addLineItem}
-                style={{ background: 'none', border: 'none', color: 'var(--brand-blue)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
-              >
-                + Add Another Product
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+              {['confirmed', 'processing', 'pending'].includes(selectedOrder.status) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDetailModalOpen(false);
+                    handleOpenDispatch(selectedOrder);
+                  }}
+                  className="btn btn-primary"
+                  style={{ background: '#2563eb' }}
+                >
+                  <Icon name="truck" size={14} /> Dispatch Package
+                </button>
+              )}
+              <button type="button" onClick={() => setIsDetailModalOpen(false)} className="btn btn-secondary">
+                Close
               </button>
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {newOrder.items.map((item, index) => (
-                <div
-                  key={index}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr) 90px 110px 32px',
-                    gap: 8,
-                    alignItems: 'center',
-                    background: 'var(--bg-app)',
-                    padding: 8,
-                    borderRadius: 8,
-                  }}
-                >
-                  <select
-                    value={item.product_id}
-                    onChange={(e) => updateLineItem(index, 'product_id', e.target.value)}
-                    required
-                    style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border-subtle)', fontSize: '0.82rem' }}
-                  >
-                    <option value="">Select Electronic Item...</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} (Stock: {p.quantity}) - ETB {Number(p.selling_price).toFixed(2)}
-                      </option>
-                    ))}
-                  </select>
-
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    placeholder="Qty"
-                    value={item.quantity}
-                    onChange={(e) => updateLineItem(index, 'quantity', e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border-subtle)', fontSize: '0.82rem' }}
-                  />
-
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, textAlign: 'right' }}>
-                    ETB {((Number(item.unit_price) || 0) * (Number(item.quantity) || 0)).toFixed(2)}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => removeLineItem(index)}
-                    disabled={newOrder.items.length <= 1}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', padding: 4 }}
-                  >
-                    <Icon name="x" size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
           </div>
-
-          {/* Shipping & Notes */}
-          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 4 }}>
-                Shipping Fee
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={newOrder.shipping_fee}
-                onChange={(e) => setNewOrder({ ...newOrder, shipping_fee: e.target.value })}
-                style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 4 }}>
-                Order Notes / Reference
-              </label>
-              <input
-                type="text"
-                value={newOrder.internal_notes}
-                onChange={(e) => setNewOrder({ ...newOrder, internal_notes: e.target.value })}
-                placeholder="e.g. PO reference, delivery gate instructions"
-                style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}
-              />
-            </div>
-          </div>
-
-          {/* Live Order Estimate Total */}
-          <div style={{ background: 'var(--brand-blue-light)', padding: '10px 14px', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--brand-blue)' }}>ESTIMATED TOTAL (INC. 15% VAT):</span>
-            <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--brand-blue)' }}>ETB {formGrandTotal.toFixed(2)}</span>
-          </div>
-
-          {/* Actions */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
-            <button
-              type="button"
-              onClick={() => setIsCreateModalOpen(false)}
-              className="btn btn-secondary"
-              disabled={submitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={submitting}
-              style={{ fontWeight: 700 }}
-            >
-              {submitting ? 'Placing Order...' : 'Place Order & Hold Stock'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+        </Modal>
+      )}
     </div>
   );
 };

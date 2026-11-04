@@ -182,7 +182,7 @@ export default function App() {
           <Route path="/shifts" element={<Shifts />} />
           <Route path="/sales" element={<Sales />} />
           <Route path="/orders" element={<Orders />} />
-          <Route path="/shipments" element={<Shipments />} />
+          <Route path="/shipments" element={<Navigate to="/orders?tab=shipments" replace />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/stores" element={<Stores />} />
           <Route path="/balances" element={<Balances />} />
