@@ -14,12 +14,12 @@ class ProductController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Product::with(['category', 'brand', 'images', 'primaryImage'])->latest()->paginate());
+        return response()->json(Product::with(['category', 'brand', 'images', 'primaryImage', 'variants'])->latest()->paginate());
     }
 
     public function show(Product $product): JsonResponse
     {
-        return response()->json($product->load(['category', 'brand', 'images', 'primaryImage']));
+        return response()->json($product->load(['category', 'brand', 'images', 'primaryImage', 'variants']));
     }
 
     public function store(Request $request, CloudinaryService $cloudinaryService): JsonResponse
@@ -42,6 +42,17 @@ class ProductController extends Controller
         $productData = collect($validated)->except(['image', 'image_url'])->toArray();
         $product = Product::create($productData);
 
+        // Ensure default variant exists for orders & inventory management
+        $product->variants()->firstOrCreate(
+            ['sku' => $product->sku],
+            [
+                'variant_name'  => 'Standard',
+                'cost_price'    => $product->cost_price ?? 0,
+                'selling_price' => $product->selling_price ?? 0,
+                'is_active'     => true,
+            ]
+        );
+
         // Process image upload if provided
         $imageFile = $request->file('image') ?? $request->input('image') ?? $request->input('image_url');
         if ($imageFile) {
@@ -56,7 +67,7 @@ class ProductController extends Controller
             }
         }
 
-        return response()->json($product->load(['category', 'brand', 'images', 'primaryImage']), 201);
+        return response()->json($product->load(['category', 'brand', 'images', 'primaryImage', 'variants']), 201);
     }
 
     public function update(Request $request, Product $product, CloudinaryService $cloudinaryService): JsonResponse

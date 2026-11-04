@@ -94,6 +94,33 @@ class OrderController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // Auto-resolve product_id to product_variant_id if variant not explicitly provided
+        if ($request->has('items') && is_array($request->items)) {
+            $items = $request->items;
+            foreach ($items as &$item) {
+                if (empty($item['product_variant_id']) && !empty($item['product_id'])) {
+                    $variant = ProductVariant::where('product_id', $item['product_id'])->first();
+                    if (!$variant) {
+                        $prod = Product::find($item['product_id']);
+                        if ($prod) {
+                            $variant = ProductVariant::create([
+                                'product_id'    => $prod->id,
+                                'sku'           => $prod->sku,
+                                'variant_name'  => 'Standard',
+                                'cost_price'    => $prod->cost_price ?? 0,
+                                'selling_price' => $prod->selling_price ?? 0,
+                                'is_active'     => true,
+                            ]);
+                        }
+                    }
+                    if ($variant) {
+                        $item['product_variant_id'] = $variant->id;
+                    }
+                }
+            }
+            $request->merge(['items' => $items]);
+        }
+
         $validated = $request->validate([
             'order_number'        => ['nullable', 'string', 'max:50', 'unique:orders,order_number'],
             'source'              => ['required', 'string', 'in:online,pos,backoffice'],

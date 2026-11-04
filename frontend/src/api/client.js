@@ -1,5 +1,3 @@
-import MockStore from './mockData';
-
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 class ApiClient {
@@ -53,300 +51,34 @@ class ApiClient {
       headers['Authorization'] = authHeader;
     }
 
-    try {
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers,
-      });
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-      if (response.status === 401) {
-        // Only clear if genuine auth failure from active backend
-        this.clearToken();
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
-        throw new Error('Unauthenticated');
+    if (response.status === 401) {
+      this.clearToken();
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
       }
-
-      if (response.status === 204) {
-        return null;
-      }
-
-      if (!response.ok) {
-        // If backend returns 404, 500, or 502, seamlessly fall back to local mock store
-        return this.handleMockFallback(endpoint, options);
-      }
-
-      const data = await response.json().catch(() => null);
-      return data || this.handleMockFallback(endpoint, options);
-    } catch {
-      // Network failure / offline / backend down -> smooth fallback
-      return this.handleMockFallback(endpoint, options);
-    }
-  }
-
-  handleMockFallback(endpoint, options = {}) {
-    const store = MockStore.getStore();
-    const method = (options.method || 'GET').toUpperCase();
-    let body = {};
-    try {
-      if (options.body) {
-        body = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
-      }
-    } catch {
-      body = {};
+      throw new Error('Unauthenticated');
     }
 
-    const [rawPath] = endpoint.split('?');
-    const path = rawPath.replace(/^\/api/, '');
-
-    // Products
-    if (path === '/products') {
-      if (method === 'GET') return { data: store.products };
-      if (method === 'POST') {
-        const cat = store.categories.find(c => String(c.id) === String(body.category_id)) || { name: 'Electronics' };
-        const br = store.brands.find(b => String(b.id) === String(body.brand_id)) || { name: 'Generic' };
-        const newProduct = {
-          id: Date.now(),
-          name: body.name || 'New Electronics SKU',
-          sku: body.sku || `SKU-${Date.now().toString().slice(-4)}`,
-          barcode: body.barcode || String(Date.now()),
-          price: parseFloat(body.price || 0),
-          cost_price: parseFloat(body.cost_price || 0),
-          quantity: parseInt(body.quantity || 10, 10),
-          minimum_stock: parseInt(body.minimum_stock || 5, 10),
-          category: cat,
-          brand: br,
-          category_id: body.category_id || 1,
-          brand_id: body.brand_id || 1,
-          is_active: 1,
-          image_url: body.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=60',
-          description: body.description || '',
-          created_at: new Date().toISOString(),
-        };
-        store.products.unshift(newProduct);
-        MockStore.saveStore(store);
-        return { data: newProduct, message: 'Product created successfully' };
-      }
+    if (response.status === 204) {
+      return null;
     }
 
-    if (path.startsWith('/products/')) {
-      const id = parseInt(path.split('/')[2], 10);
-      if (method === 'DELETE') {
-        store.products = store.products.filter(p => p.id !== id);
-        MockStore.saveStore(store);
-        return { message: 'Product deleted successfully' };
-      }
-      if (method === 'PATCH' || method === 'PUT') {
-        store.products = store.products.map(p => p.id === id ? { ...p, ...body } : p);
-        MockStore.saveStore(store);
-        return { data: store.products.find(p => p.id === id), message: 'Product updated' };
-      }
-      return { data: store.products.find(p => p.id === id) || store.products[0] };
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const message = data?.message || data?.error || `Request failed with status ${response.status}`;
+      const error = new Error(message);
+      error.status = response.status;
+      error.data = data;
+      throw error;
     }
 
-    // Categories & Brands
-    if (path === '/categories') {
-      if (method === 'GET') return { data: store.categories };
-      if (method === 'POST') {
-        const newCat = { id: Date.now(), name: body.name || 'Category', slug: body.name?.toLowerCase().replace(/\s+/g, '-'), products_count: 0 };
-        store.categories.push(newCat);
-        MockStore.saveStore(store);
-        return { data: newCat, message: 'Category added' };
-      }
-    }
-
-    if (path === '/brands') {
-      if (method === 'GET') return { data: store.brands };
-      if (method === 'POST') {
-        const newBrand = { id: Date.now(), name: body.name || 'Brand' };
-        store.brands.push(newBrand);
-        MockStore.saveStore(store);
-        return { data: newBrand, message: 'Brand added' };
-      }
-    }
-
-    // Registers & Shifts
-    if (path === '/pos-registers') {
-      return { data: store.posRegisters };
-    }
-
-    if (path === '/cashier-shifts') {
-      if (method === 'GET') return { data: store.shifts };
-      if (method === 'POST') {
-        const floatVal = parseFloat(body.opening_float || body.opening_cash || 1000);
-        const newShift = {
-          id: Date.now(),
-          pos_register_id: body.pos_register_id || 1,
-          pos_register: store.posRegisters[0] || { id: 1, name: 'Main Register 1' },
-          status: 'open',
-          opening_float: floatVal,
-          opening_cash: floatVal,
-          expected_cash: floatVal,
-          opened_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          user: store.users[0],
-        };
-        store.shifts = [newShift, ...store.shifts.map(s => ({ ...s, status: 'closed' }))];
-        MockStore.saveStore(store);
-        return { data: newShift, message: 'Cashier shift drawer opened' };
-      }
-    }
-
-    if (path.startsWith('/cashier-shifts/')) {
-      const id = parseInt(path.split('/')[2], 10);
-      if (method === 'PATCH' || method === 'PUT') {
-        store.shifts = store.shifts.map(s => s.id === id ? { ...s, ...body } : s);
-        MockStore.saveStore(store);
-        return { message: 'Shift updated successfully' };
-      }
-    }
-
-    // POS Checkout / Sales
-    if (path === '/sales' || path === '/checkout') {
-      if (method === 'GET') return { data: store.sales };
-      if (method === 'POST') {
-        const total = parseFloat(body.total_amount || body.grand_total || body.paid_amount || 0);
-        const items = Array.isArray(body.items) ? body.items : [];
-        const newSale = {
-          id: Date.now(),
-          receipt_number: `RCP-${Date.now().toString().slice(-4)}`,
-          total_amount: total,
-          grand_total: total,
-          payment_method: body.payment_method || 'cash',
-          items: items.map(item => ({
-            ...item,
-            product: store.products.find(p => p.id === (item.product_id || item.id)) || { name: 'Item' },
-          })),
-          items_count: items.length || 1,
-          created_at: new Date().toISOString(),
-        };
-
-        // Deduct inventory
-        items.forEach(item => {
-          const prod = store.products.find(p => p.id === (item.product_id || item.id));
-          if (prod) {
-            prod.quantity = Math.max(0, prod.quantity - (parseInt(item.quantity || 1, 10)));
-          }
-        });
-
-        store.sales.unshift(newSale);
-        MockStore.saveStore(store);
-        return { data: newSale, sale: newSale, order: newSale, message: 'Sale completed & receipt issued' };
-      }
-    }
-
-    // Orders
-    if (path === '/orders') {
-      if (method === 'GET') return { data: store.orders };
-      if (method === 'POST') {
-        const cust = store.customers.find(c => String(c.id) === String(body.customer_id)) || { name: 'Retail Client', display_name: 'Retail Client' };
-        const newOrder = {
-          id: Date.now(),
-          order_number: `ORD-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-          customer: cust,
-          status: 'confirmed',
-          total_amount: parseFloat(body.total_amount || body.grand_total || 25000),
-          grand_total: parseFloat(body.total_amount || body.grand_total || 25000),
-          fulfillment_type: body.fulfillment_type || 'delivery',
-          payment_method: body.payment_method || 'telebirr',
-          items: body.items || [{ product_id: 1, quantity: 1, unit_price: 25000 }],
-          items_count: body.items?.length || 1,
-          created_at: new Date().toISOString(),
-        };
-        store.orders.unshift(newOrder);
-        MockStore.saveStore(store);
-        return { data: newOrder, message: 'Order created successfully' };
-      }
-    }
-
-    if (path.startsWith('/orders/')) {
-      const id = parseInt(path.split('/')[2], 10);
-      if (method === 'PATCH' || method === 'PUT') {
-        store.orders = store.orders.map(o => o.id === id ? { ...o, ...body } : o);
-        MockStore.saveStore(store);
-        return { message: 'Order updated successfully' };
-      }
-      return { data: store.orders.find(o => o.id === id) || store.orders[0] };
-    }
-
-    // Customers
-    if (path === '/customers') {
-      if (method === 'GET') return { data: store.customers };
-      if (method === 'POST') {
-        const newCust = {
-          id: Date.now(),
-          display_name: body.display_name || body.name || 'New Customer',
-          name: body.name || body.display_name || 'New Customer',
-          email: body.email || '',
-          phone: body.phone || '+251 900 000000',
-          total_orders: 0,
-          total_spent: 0,
-        };
-        store.customers.unshift(newCust);
-        MockStore.saveStore(store);
-        return { data: newCust, message: 'Customer added successfully' };
-      }
-    }
-
-    // Suppliers & Purchase Orders
-    if (path === '/suppliers') return { data: store.suppliers };
-    if (path === '/purchase-orders') {
-      if (method === 'GET') return { data: store.purchaseOrders };
-      if (method === 'POST') {
-        const sup = store.suppliers.find(s => String(s.id) === String(body.supplier_id)) || store.suppliers[0];
-        const newPO = {
-          id: Date.now(),
-          purchase_order_number: `PO-2026-${Math.floor(100 + Math.random() * 900)}`,
-          supplier: sup,
-          status: 'submitted',
-          grand_total: parseFloat(body.grand_total || 50000),
-          created_at: new Date().toISOString(),
-        };
-        store.purchaseOrders.unshift(newPO);
-        MockStore.saveStore(store);
-        return { data: newPO, message: 'Purchase Order created' };
-      }
-    }
-
-    if (path.startsWith('/purchase-orders/')) {
-      const id = parseInt(path.split('/')[2], 10);
-      if (method === 'PATCH' || method === 'PUT') {
-        store.purchaseOrders = store.purchaseOrders.map(p => p.id === id ? { ...p, ...body } : p);
-        MockStore.saveStore(store);
-        return { message: 'Purchase Order updated' };
-      }
-    }
-
-    // Stores & Balances
-    if (path === '/stores') return { data: store.stores };
-    if (path === '/stock-balances') {
-      const balances = store.products.map(p => ({
-        id: p.id,
-        product: p,
-        store: store.stores[0],
-        quantity_on_hand: p.quantity,
-        reorder_point: p.minimum_stock,
-      }));
-      return { data: balances };
-    }
-
-    if (path === '/payment-methods') return { data: store.paymentMethods };
-    if (path === '/tax-rates') return { data: [{ id: 1, name: 'VAT Standard 15%', rate: 15, is_active: 1 }] };
-    if (path === '/units') return { data: store.units };
-    if (path === '/admin/users') return { data: store.users };
-
-    if (path === '/user') {
-      const saved = localStorage.getItem('volttrack_user');
-      return saved ? JSON.parse(saved) : store.users[0];
-    }
-
-    if (path === '/login') {
-      const user = store.users[0];
-      return { token: 'mock_bearer_volttrack_token_auth', user };
-    }
-
-    return { data: [] };
+    return data;
   }
 
   async login(email, password) {
