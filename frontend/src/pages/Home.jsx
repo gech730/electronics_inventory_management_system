@@ -1,26 +1,171 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import api from '../api/client';
 import Modal from '../components/Modal';
+import Icon from '../components/Icons';
+
+// ── Cinematic Full-Screen Advertising Slides (Rosa-Style) ────────────
+const HERO_SLIDES = [
+  {
+    id: 'slide-flagships',
+    tag: 'Flagship Collection 2026',
+    title: 'Aerospace Titanium.',
+    highlight: 'Pure Bionic Power.',
+    subtitle: 'The new iPhone 15 Pro Max and Galaxy S24 Ultra — cinematic periscope optics, aerospace titanium, and official warranty.',
+    categoryTarget: 'Smartphones & Tablets',
+    image: 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=2000&q=85',
+  },
+  {
+    id: 'slide-workstations',
+    tag: 'Pro Creator Workstations',
+    title: 'Extreme Computing.',
+    highlight: 'Built for Visionaries.',
+    subtitle: 'Apple MacBook Pro 16" M3 Max and Dell XPS 15 OLED — Liquid Retina XDR displays and 36GB unified memory for architecture and 8K workflows.',
+    categoryTarget: 'Laptops & Computers',
+    image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=2000&q=85',
+  },
+  {
+    id: 'slide-audio',
+    tag: 'Studio Acoustics & Wearables',
+    title: 'Pure Silence.',
+    highlight: 'Acoustic Precision.',
+    subtitle: 'Sony WH-1000XM5 wireless noise cancellation and Apple Watch Ultra 2 with sapphire crystal and multi-day battery.',
+    categoryTarget: 'Audio & Wearables',
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=2000&q=85',
+  },
+  {
+    id: 'slide-displays',
+    tag: 'Modern Workspaces',
+    title: 'Visual Perfection.',
+    highlight: 'Seamless Power.',
+    subtitle: 'LG UltraFine 4K UHD displays and Anker GaN 140W fast chargers for high-velocity teams across Addis Ababa.',
+    categoryTarget: 'Monitors & Accessories',
+    image: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=2000&q=85',
+  },
+];
+
+// ── Value proposition ribbon ─────────────────────────────────────────
+const VALUE_HIGHLIGHTS = [
+  {
+    icon: '🛡️',
+    title: '100% Genuine Certified',
+    description: 'Factory sealed direct imports with official manufacturer serial verification.',
+  },
+  {
+    icon: '🚀',
+    title: 'Addis Express Dispatch',
+    description: 'Same-day courier delivery across Addis Ababa; insured regional transit.',
+  },
+  {
+    icon: '💳',
+    title: 'Multi-Tender Payments',
+    description: 'Support for Telebirr, CBE Birr, Visa/Mastercard, and Cash on Delivery.',
+  },
+  {
+    icon: '🔄',
+    title: '7-Day Return & Support',
+    description: 'Hassle-free replacement policy and certified local technical assistance.',
+  },
+];
+
+// ── Customer testimonials ────────────────────────────────────────────
+const CUSTOMER_REVIEWS = [
+  {
+    name: 'Henok Tadesse',
+    role: 'Lead Architect, Urban Design Studio',
+    location: 'Bole, Addis Ababa',
+    rating: 5,
+    comment:
+      'Purchased 3 MacBook Pro M3 workstations for our design office. Delivery was completed within 3 hours with official Ethiopian VAT receipts. Absolutely genuine products.',
+  },
+  {
+    name: 'Dr. Selamawit Bekele',
+    role: 'Medical Director',
+    location: 'Kazanchis, Addis Ababa',
+    rating: 5,
+    comment:
+      'Upgraded to the iPhone 15 Pro Max Natural Titanium. The Telebirr checkout was instant and seamless. Highly recommend Ngus Electronics for genuine tech.',
+  },
+  {
+    name: 'Kidus Yohannes',
+    role: 'Software Engineer',
+    location: 'Sarbet, Addis Ababa',
+    rating: 5,
+    comment:
+      'The Sony XM5 headphones are phenomenal for deep focus. Best pricing in Addis Ababa with full manufacturer warranty and serial verification.',
+  },
+];
 
 export const Home = () => {
-  const navigate = useNavigate();
   const { isAuthenticated, user, login, register, logout } = useAuth();
   const { addToCart, setIsCartOpen, totalCount } = useCart();
 
-  // State
+  // Light / Dark mode state (Inspired by Rosa)
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('ngus_theme') || 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('ngus_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  const isDark = theme === 'dark';
+
+  // Scroll detection for navbar
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 40);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Theme-aware design tokens (Rosa Minimalist Palette)
+  const colors = {
+    bgApp: isDark ? '#070810' : '#FCF9F7',
+    bgSurface: isDark ? '#0e121d' : '#FFFFFF',
+    bgCardSubtle: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC',
+    border: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.9)',
+    borderHover: isDark ? 'rgba(245, 158, 11, 0.5)' : '#F59E0B',
+    textMain: isDark ? '#FFFFFF' : '#18181B',
+    textMuted: isDark ? '#94A3B8' : '#64748B',
+    textDim: isDark ? '#64748B' : '#94A3B8',
+    navBg: scrolled
+      ? isDark ? 'rgba(7, 8, 16, 0.92)' : 'rgba(252, 249, 247, 0.92)'
+      : isDark ? 'rgba(7, 8, 16, 0.45)' : 'rgba(252, 249, 247, 0.65)',
+    primaryAccent: '#f59e0b',
+    primaryHover: '#d97706',
+    cardShadow: isDark
+      ? '0 10px 30px rgba(0, 0, 0, 0.45)'
+      : '0 8px 24px rgba(15, 23, 42, 0.05)',
+  };
+
+  // Live Database States (Real DB Only - NO MOCK DATA)
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [catalogCategory, setCatalogCategory] = useState('all');
   const [catalogSearch, setCatalogSearch] = useState('');
   const [addedItemNotice, setAddedItemNotice] = useState(null);
 
-  // Auth Enforcement Modal State
+  // Rotating Full-Screen Hero Slider State
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isHeroPaused, setIsHeroPaused] = useState(false);
+  const heroTimerRef = useRef(null);
+
+  // Modals state
+  const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalPendingItem, setAuthModalPendingItem] = useState(null);
-  const [authModalTab, setAuthModalTab] = useState('login'); // 'login' | 'register'
+  const [authModalTab, setAuthModalTab] = useState('login');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authName, setAuthName] = useState('');
@@ -29,7 +174,7 @@ export const Home = () => {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
 
-  // Inquiry Modal State
+  // Inquiry modal state
   const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
   const [selectedProductForInquiry, setSelectedProductForInquiry] = useState(null);
   const [inquiryForm, setInquiryForm] = useState({
@@ -42,30 +187,90 @@ export const Home = () => {
   });
   const [inquirySubmitted, setInquirySubmitted] = useState(false);
 
-  // Order Tracking Modal State
+  // Tracking modal state
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
   const [trackingQuery, setTrackingQuery] = useState('');
   const [trackingLoading, setTrackingLoading] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState(null);
   const [trackingError, setTrackingError] = useState('');
 
-  // Load real catalog data from backend API
+  // Fetch 100% Real Database Products and Categories
   useEffect(() => {
-    const fetchPublicData = async () => {
+    const fetchCatalogFromDB = async () => {
       try {
         setLoading(true);
-        const prodRes = await api.getProducts({ per_page: 50 }).catch(() => ({ data: [] }));
+        const [prodRes, catRes] = await Promise.all([
+          api.getProducts({ per_page: 60 }).catch(() => ({ data: [] })),
+          api.getCategories({ per_page: 30 }).catch(() => ({ data: [] })),
+        ]);
+
         const rawProds = Array.isArray(prodRes) ? prodRes : prodRes?.data || [];
+        const rawCats = Array.isArray(catRes) ? catRes : catRes?.data || [];
+
         setProducts(rawProds);
+        setCategories(rawCats);
       } catch (err) {
-        console.error('Failed to load public showcase data', err);
+        console.error('Failed to load real catalog data from DB', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPublicData();
+    fetchCatalogFromDB();
   }, []);
+
+  // Hero Carousel Auto-Rotate (every 5.5s, pause on hover)
+  useEffect(() => {
+    if (isHeroPaused) return;
+
+    heroTimerRef.current = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 5500);
+
+    return () => {
+      if (heroTimerRef.current) clearInterval(heroTimerRef.current);
+    };
+  }, [isHeroPaused]);
+
+  const handleNextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+  };
+
+  const handlePrevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+  };
+
+  const handleSlideJumpToCategory = (catTarget) => {
+    const match = categories.find((c) =>
+      c.name.toLowerCase().includes(catTarget.toLowerCase()) ||
+      catTarget.toLowerCase().includes(c.name.toLowerCase())
+    );
+    if (match) {
+      setCatalogCategory(String(match.id));
+    } else {
+      setCatalogCategory('all');
+    }
+    const targetEl = document.getElementById('catalog');
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Add to cart with auth protection
+  const handleAddToCartWithFeedback = (item) => {
+    if (!isAuthenticated) {
+      setAuthModalPendingItem(item);
+      setAuthError('');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    addToCart(item);
+    setAddedItemNotice(item.id);
+    setTimeout(() => {
+      setAddedItemNotice(null);
+    }, 1800);
+  };
 
   const handleOpenInquiry = (product = null) => {
     setSelectedProductForInquiry(product);
@@ -88,21 +293,6 @@ export const Home = () => {
         notes: '',
       });
     }, 2000);
-  };
-
-  const handleAddToCartWithFeedback = (item) => {
-    if (!isAuthenticated) {
-      setAuthModalPendingItem(item);
-      setAuthError('');
-      setIsAuthModalOpen(true);
-      return;
-    }
-
-    addToCart(item);
-    setAddedItemNotice(item.id);
-    setTimeout(() => {
-      setAddedItemNotice(null);
-    }, 1800);
   };
 
   const handleAuthModalLogin = async (e) => {
@@ -196,293 +386,241 @@ export const Home = () => {
     }
   };
 
-  // Find dynamic matching products from DB or fallback to reference defaults
-  const dbLaptop = products.find((p) => {
-    const n = (p.name || '').toLowerCase();
-    return n.includes('macbook') || n.includes('laptop') || p.category_id === 2;
-  });
+  // Filtered public products purely from Database
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      const matchCat =
+        catalogCategory === 'all'
+          ? true
+          : String(p.category_id) === String(catalogCategory) ||
+            (p.category?.name && p.category.name.toLowerCase() === catalogCategory.toLowerCase());
 
-  const dbPhone = products.find((p) => {
-    const n = (p.name || '').toLowerCase();
-    return n.includes('iphone') || n.includes('galaxy') || n.includes('phone') || p.category_id === 1;
-  });
+      const q = catalogSearch.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.sku || '').toLowerCase().includes(q) ||
+        (p.brand || '').toLowerCase().includes(q) ||
+        (p.model_number || '').toLowerCase().includes(q);
 
-  const dbAccessory = products.find((p) => {
-    const n = (p.name || '').toLowerCase();
-    return n.includes('watch') || n.includes('headphone') || n.includes('buds') || p.category_id === 3;
-  });
+      return matchCat && matchSearch;
+    });
+  }, [products, catalogCategory, catalogSearch]);
 
-  // Featured 3 main showcase cards (100% matched to reference image)
-  const featuredCards = [
-    {
-      id: dbLaptop?.id || 1,
-      category: 'LAPTOP',
-      categoryColor: '#c084fc',
-      name: dbLaptop?.name || 'Aurora 16 Pro',
-      specs: ['Core Ultra 9', '32GB RAM', '1TB SSD', '16" OLED'],
-      price: dbLaptop?.selling_price ? `ETB ${Number(dbLaptop.selling_price).toLocaleString()}` : 'ETB 219,900',
-      raw_price: dbLaptop?.selling_price || 219900,
-      image_url: dbLaptop?.image_url || null,
-      type: 'laptop',
-      sku: dbLaptop?.sku || 'NGS-LAPTOP-PRO',
-    },
-    {
-      id: dbPhone?.id || 2,
-      category: 'SMARTPHONE',
-      categoryColor: '#fb923c',
-      name: dbPhone?.name || 'Nova X Ultra',
-      specs: ['6.8" AMOLED', '256GB', '200MP camera', '5G'],
-      price: dbPhone?.selling_price ? `ETB ${Number(dbPhone.selling_price).toLocaleString()}` : 'ETB 149,900',
-      raw_price: dbPhone?.selling_price || 149900,
-      image_url: dbPhone?.image_url || null,
-      type: 'phone',
-      sku: dbPhone?.sku || 'NGS-PHONE-ULTRA',
-    },
-    {
-      id: dbAccessory?.id || 3,
-      category: 'ACCESSORY',
-      categoryColor: '#c084fc',
-      name: dbAccessory?.name || 'Echo Max Headphones',
-      specs: ['Active noise cancelling', '40h battery', 'Bluetooth 5.3'],
-      price: dbAccessory?.selling_price ? `ETB ${Number(dbAccessory.selling_price).toLocaleString()}` : 'ETB 24,900',
-      raw_price: dbAccessory?.selling_price || 24900,
-      image_url: dbAccessory?.image_url || null,
-      type: 'headphones',
-      sku: dbAccessory?.sku || 'NGS-ACC-ECHO',
-    },
-  ];
-
-  // 3 "Trending now" items (100% matched to reference image)
-  const trendingItems = [
-    {
-      id: 'trend-watch',
-      name: 'Pulse Watch S2',
-      specs: 'AMOLED • GPS • 7-day battery',
-      price: 'ETB 18,500',
-      raw_price: 18500,
-      gradient: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)',
-      shape: 'rounded-square',
-    },
-    {
-      id: 'trend-tablet',
-      name: 'Slate 12 Pro Tablet',
-      specs: '12.4" OLED • 256GB • Stylus',
-      price: 'ETB 64,900',
-      raw_price: 64900,
-      gradient: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
-      shape: 'rect',
-    },
-    {
-      id: 'trend-buds',
-      name: 'Echo Buds Pro',
-      specs: 'ANC • 30h case • IPX5',
-      price: 'ETB 12,900',
-      raw_price: 12900,
-      gradient: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #a855f7 100%)',
-      shape: 'buds',
-    },
-  ];
-
-  // Filtered public products
-  const filteredProducts = products.filter((p) => {
-    const matchCat =
-      catalogCategory === 'all'
-        ? true
-        : catalogCategory === 'laptops'
-        ? (p.name || '').toLowerCase().includes('macbook') || (p.name || '').toLowerCase().includes('laptop') || p.category_id === 2
-        : catalogCategory === 'phones'
-        ? (p.name || '').toLowerCase().includes('iphone') || (p.name || '').toLowerCase().includes('galaxy') || (p.name || '').toLowerCase().includes('phone') || p.category_id === 1
-        : catalogCategory === 'accessories'
-        ? (p.name || '').toLowerCase().includes('watch') || (p.name || '').toLowerCase().includes('headphone') || (p.name || '').toLowerCase().includes('buds') || p.category_id === 3
-        : true;
-
-    const matchSearch =
-      !catalogSearch ||
-      (p.name || '').toLowerCase().includes(catalogSearch.toLowerCase()) ||
-      (p.sku || '').toLowerCase().includes(catalogSearch.toLowerCase());
-
-    return matchCat && matchSearch;
-  });
+  const activeSlide = HERO_SLIDES[currentSlide];
 
   return (
     <div
       style={{
-        background: '#070810',
-        color: '#f8fafc',
+        background: colors.bgApp,
+        color: colors.textMain,
         minHeight: '100vh',
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         position: 'relative',
         overflowX: 'hidden',
+        transition: 'background-color 0.3s ease, color 0.3s ease',
       }}
     >
-      {/* 🌌 Atmospheric Nebulas & Ambient Light Orbs (100% matching Homepage@1x.png) */}
-      <div
+      {/* 🧭 FIXED GLASSMORPHISM NAVBAR (Floats seamlessly over full-screen hero) */}
+      <header
         style={{
-          position: 'absolute',
+          position: 'fixed',
           top: 0,
-          left: '5%',
-          width: '650px',
-          height: '650px',
-          background: 'radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, rgba(59, 7, 100, 0.16) 45%, transparent 75%)',
-          pointerEvents: 'none',
-          zIndex: 0,
-          filter: 'blur(80px)',
+          left: 0,
+          right: 0,
+          zIndex: 50,
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          background: colors.navBg,
+          borderBottom: scrolled ? `1px solid ${colors.border}` : '1px solid rgba(255, 255, 255, 0.08)',
+          transition: 'all 0.3s ease',
         }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          top: '5%',
-          right: '5%',
-          width: '550px',
-          height: '550px',
-          background: 'radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 60%)',
-          pointerEvents: 'none',
-          zIndex: 0,
-          filter: 'blur(90px)',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          top: '40%',
-          right: '25%',
-          width: '10px',
-          height: '10px',
-          borderRadius: '50%',
-          background: '#818cf8',
-          boxShadow: '0 0 16px 4px rgba(129, 140, 248, 0.8)',
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* 🚀 FLOATING PILL NAVBAR (100% Match to Homepage@1x.png with Functional Bag & Tracking) */}
-      <header style={{ padding: '22px 24px 0', position: 'relative', zIndex: 50 }}>
+      >
         <nav
           style={{
-            maxWidth: 1180,
+            maxWidth: 1280,
             margin: '0 auto',
-            borderRadius: '9999px',
-            background: 'rgba(17, 21, 33, 0.75)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            padding: '10px 24px',
+            padding: '16px 28px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            boxShadow: '0 10px 30px -10px rgba(0, 0, 0, 0.5)',
+            gap: 20,
           }}
         >
-          {/* Brand Emblem: Golden Crown + NGUS ELECTRONICS */}
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-            <span style={{ fontSize: '1.25rem', color: '#f59e0b', display: 'flex', alignItems: 'center' }}>
-              👑
-            </span>
-            <span
+          {/* Brand Logo & Tag */}
+          <Link
+            to="/"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              textDecoration: 'none',
+              color: 'inherit',
+            }}
+          >
+            <div
               style={{
-                fontSize: '1.05rem',
-                fontWeight: 900,
-                letterSpacing: '0.08em',
-                color: '#ffffff',
-                marginLeft: 10,
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.12)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(8px)',
               }}
             >
-              NGUS
-            </span>
-            <span
-              style={{
-                fontSize: '0.66rem',
-                letterSpacing: '0.16em',
-                color: '#64748b',
-                fontWeight: 600,
-                marginLeft: 8,
-                textTransform: 'uppercase',
-              }}
-            >
-              ELECTRONICS
-            </span>
+              <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>👑</span>
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '1.15rem', letterSpacing: '-0.02em', color: scrolled ? colors.textMain : '#FFFFFF', display: 'flex', alignItems: 'center', gap: 6 }}>
+                NGUS <span style={{ color: '#f59e0b', fontWeight: 800 }}>ELECTRONICS</span>
+              </div>
+              <div style={{ fontSize: '0.65rem', color: scrolled ? colors.textDim : 'rgba(255, 255, 255, 0.75)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                The Royal Standard of Tech
+              </div>
+            </div>
           </Link>
 
-          {/* Center Navigation Links */}
+          {/* Clean Navigation Links */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 28,
-              fontSize: '0.86rem',
+              fontSize: '0.9rem',
               fontWeight: 500,
             }}
+            className="hidden md:flex"
           >
-            <a href="#featured" style={{ color: '#cbd5e1', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}>
-              Laptops
+            <a href="#hero" style={{ color: scrolled ? colors.textMain : '#FFFFFF', textDecoration: 'none', transition: 'color 0.2s' }}>
+              Home
             </a>
-            <a href="#featured" style={{ color: '#cbd5e1', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}>
-              Smartphones
-            </a>
-            <a href="#collection" style={{ color: '#cbd5e1', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}>
+            <a href="#catalog" style={{ color: scrolled ? colors.textMuted : 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', transition: 'color 0.2s' }}>
               Catalog
             </a>
-            <a href="#trending" style={{ color: '#cbd5e1', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}>
-              Deals
+            <a href="#categories" style={{ color: scrolled ? colors.textMuted : 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', transition: 'color 0.2s' }}>
+              Categories
             </a>
-            <Link
-              to="/tracking"
-              style={{
-                color: '#cbd5e1',
-                textDecoration: 'none',
-                fontSize: '0.86rem',
-                fontWeight: 500,
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={(e) => (e.target.style.color = '#60a5fa')}
-              onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}
-            >
-              Track Order
-            </Link>
-            {isAuthenticated && user?.role === 'customer' && (
-              <Link
-                to="/customer/dashboard"
+            <a href="#about" style={{ color: scrolled ? colors.textMuted : 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', transition: 'color 0.2s' }}>
+              About
+            </a>
+            <a href="#reviews" style={{ color: scrolled ? colors.textMuted : 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', transition: 'color 0.2s' }}>
+              Reviews
+            </a>
+            {isAuthenticated && (
+              <button
+                onClick={() => setIsTrackingModalOpen(true)}
                 style={{
-                  color: '#fbbf24',
-                  textDecoration: 'none',
-                  fontSize: '0.86rem',
-                  fontWeight: 700,
+                  background: 'transparent',
+                  border: 'none',
+                  color: scrolled ? colors.textMuted : 'rgba(255, 255, 255, 0.8)',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  padding: 0,
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 5,
-                  transition: 'opacity 0.2s',
                 }}
-                onMouseEnter={(e) => (e.target.style.opacity = '0.8')}
-                onMouseLeave={(e) => (e.target.style.opacity = '1')}
               >
-                <span>👑</span>
-                <span>My Orders</span>
-              </Link>
+                <span>🚚</span> Track Order
+              </button>
             )}
-            <button
-              onClick={() => handleOpenInquiry()}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#cbd5e1',
-                cursor: 'pointer',
-                fontSize: '0.86rem',
-                fontWeight: 500,
-                padding: 0,
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
-              onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}
-            >
-              Support
-            </button>
+            <a href="#contact" style={{ color: scrolled ? colors.textMuted : 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', transition: 'color 0.2s' }}>
+              Contact
+            </a>
           </div>
 
-          {/* Right Controls: Login / User Console Button */}
+          {/* Right Header Actions: Theme Toggle, Cart Drawer & Portal/Sign In */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* ☀️ / 🌙 LIGHT & DARK THEME TOGGLE (Requested by user like Rosa) */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                background: scrolled
+                  ? isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'
+                  : 'rgba(0, 0, 0, 0.3)',
+                border: scrolled ? `1px solid ${colors.border}` : '1px solid rgba(255, 255, 255, 0.2)',
+                color: isDark ? '#fbbf24' : '#d97706',
+                cursor: 'pointer',
+                backdropFilter: 'blur(8px)',
+                transition: 'all 0.2s',
+              }}
+              title={`Switch to ${isDark ? 'Light' : 'Dark'} Mode`}
+            >
+              {isDark ? (
+                // Sun Icon
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              ) : (
+                // Moon Icon
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+            </button>
+
+            {/* Cart Trigger Button - Only displayed when user is logged in */}
+            {isAuthenticated && (
+              <button
+                onClick={() => setIsCartOpen(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 16px',
+                  borderRadius: '9999px',
+                  background: scrolled
+                    ? isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF'
+                    : 'rgba(0, 0, 0, 0.3)',
+                  border: scrolled ? `1px solid ${colors.border}` : '1px solid rgba(255, 255, 255, 0.25)',
+                  color: scrolled ? colors.textMain : '#FFFFFF',
+                  fontSize: '0.84rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(8px)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Icon name="cart" size={17} color="#f59e0b" />
+                <span>Bag</span>
+                <span
+                  style={{
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                    color: '#090a0f',
+                    fontSize: '0.72rem',
+                    fontWeight: 900,
+                    padding: '2px 7px',
+                    borderRadius: '9999px',
+                  }}
+                >
+                  {totalCount}
+                </span>
+              </button>
+            )}
+
+            {/* Auth Buttons */}
             {isAuthenticated ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {user?.role === 'customer' ? (
                   <Link
                     to="/customer/dashboard"
@@ -490,30 +628,17 @@ export const Home = () => {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
-                      padding: '6px 14px',
+                      padding: '7px 16px',
                       borderRadius: '9999px',
-                      background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(180, 83, 9, 0.15) 100%)',
-                      border: '1px solid rgba(245, 158, 11, 0.4)',
+                      background: 'rgba(245, 158, 11, 0.2)',
+                      border: '1px solid rgba(245, 158, 11, 0.5)',
                       color: '#fbbf24',
                       fontSize: '0.82rem',
                       fontWeight: 800,
                       textDecoration: 'none',
-                      boxShadow: '0 0 16px rgba(245, 158, 11, 0.25)',
-                      transition: 'all 0.2s',
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#fbbf24';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.4)';
-                    }}
-                    title="Open Customer Dashboard"
                   >
-                    <span>👑</span>
-                    <span style={{ maxWidth: 110, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {user?.name?.split(' ')[0] || 'Client'}
-                    </span>
-                    <span style={{ fontSize: '0.70rem', color: '#fef08a' }}>• Portal</span>
+                    <span>👑 {user?.name?.split(' ')[0] || 'Client'}</span>
                   </Link>
                 ) : (
                   <Link
@@ -521,15 +646,14 @@ export const Home = () => {
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 8,
+                      gap: 6,
                       background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
                       color: '#090a0f',
                       fontWeight: 800,
                       fontSize: '0.82rem',
-                      padding: '7px 18px',
+                      padding: '7px 16px',
                       borderRadius: '9999px',
                       textDecoration: 'none',
-                      boxShadow: '0 0 20px rgba(245, 158, 11, 0.4)',
                     }}
                   >
                     <span>Console</span>
@@ -540,17 +664,14 @@ export const Home = () => {
                   onClick={() => logout()}
                   style={{
                     background: 'transparent',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#94a3b8',
+                    border: scrolled ? `1px solid ${colors.border}` : '1px solid rgba(255, 255, 255, 0.2)',
+                    color: scrolled ? colors.textMuted : 'rgba(255, 255, 255, 0.8)',
                     fontSize: '0.76rem',
                     fontWeight: 600,
                     padding: '6px 12px',
                     borderRadius: '9999px',
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#ef4444'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'; }}
                 >
                   Sign Out
                 </button>
@@ -560,37 +681,27 @@ export const Home = () => {
                 <Link
                   to="/login"
                   style={{
-                    color: '#cbd5e1',
+                    color: scrolled ? colors.textMuted : '#FFFFFF',
                     fontSize: '0.84rem',
                     fontWeight: 600,
                     textDecoration: 'none',
                     padding: '6px 10px',
-                    transition: 'color 0.2s',
                   }}
-                  onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
-                  onMouseLeave={(e) => (e.target.style.color = '#cbd5e1')}
                 >
                   Sign In
                 </Link>
-
                 <Link
                   to="/register"
                   style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
                     color: '#090a0f',
                     fontWeight: 800,
                     fontSize: '0.84rem',
-                    padding: '7px 20px',
+                    padding: '7px 18px',
                     borderRadius: '9999px',
                     textDecoration: 'none',
-                    boxShadow: '0 0 20px rgba(245, 158, 11, 0.35)',
-                    transition: 'transform 0.2s, filter 0.2s',
+                    boxShadow: '0 0 18px rgba(245, 158, 11, 0.35)',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.filter = 'brightness(1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
                   Register
                 </Link>
@@ -600,636 +711,604 @@ export const Home = () => {
         </nav>
       </header>
 
-      {/* ⚡ CENTERED HERO SECTION (100% Match to Homepage@1x.png) */}
+      {/* 🚀 FULL-SCREEN CINEMATIC ROTATING HERO (100vh Full Viewport Rosa-style) */}
       <section
+        id="hero"
         style={{
           position: 'relative',
-          zIndex: 10,
-          maxWidth: 920,
-          margin: '64px auto 56px',
-          padding: '0 24px',
-          textAlign: 'center',
+          height: '100vh',
+          minHeight: '680px',
+          width: '100%',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
+        onMouseEnter={() => setIsHeroPaused(true)}
+        onMouseLeave={() => setIsHeroPaused(false)}
       >
-        {/* Top Flagship Pill */}
+        {/* Full-bleed background image with smooth fade */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+          <img
+            src={activeSlide.image}
+            alt={activeSlide.title}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              filter: 'brightness(0.52) contrast(1.12)',
+              transition: 'opacity 0.7s ease, transform 0.7s ease',
+            }}
+          />
+          {/* Rosa-style dark cinematic vignette gradient */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.2) 45%, rgba(0,0,0,0.8) 100%)',
+            }}
+          />
+        </div>
+
+        {/* Minimalist Left Arrow Button */}
+        <button
+          type="button"
+          onClick={handlePrevSlide}
+          aria-label="Previous slide"
+          style={{
+            position: 'absolute',
+            left: '28px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 20,
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            background: 'rgba(0, 0, 0, 0.25)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: '#FFFFFF',
+            fontSize: '1.8rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(245, 158, 11, 0.6)';
+            e.currentTarget.style.borderColor = '#f59e0b';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.25)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          }}
+        >
+          &#8249;
+        </button>
+
+        {/* Minimalist Right Arrow Button */}
+        <button
+          type="button"
+          onClick={handleNextSlide}
+          aria-label="Next slide"
+          style={{
+            position: 'absolute',
+            right: '28px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 20,
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            background: 'rgba(0, 0, 0, 0.25)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: '#FFFFFF',
+            fontSize: '1.8rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(245, 158, 11, 0.6)';
+            e.currentTarget.style.borderColor = '#f59e0b';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.25)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          }}
+        >
+          &#8250;
+        </button>
+
+        {/* Center Hero Content (Pure Rosa Elegance - No Messy Text) */}
         <div
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '6px 18px',
-            borderRadius: '9999px',
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            color: '#e2e8f0',
-            fontSize: '0.8rem',
-            fontWeight: 500,
-            marginBottom: 24,
+            position: 'relative',
+            zIndex: 10,
+            maxWidth: '920px',
+            margin: '0 auto',
+            textAlign: 'center',
+            padding: '0 24px',
           }}
         >
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }} />
-          <span>Flagship collection 2026</span>
-        </div>
-
-        {/* Hero Headline (Exact two-tone color from image) */}
-        <h1
-          style={{
-            fontSize: '3.8rem',
-            fontWeight: 900,
-            lineHeight: 1.1,
-            letterSpacing: '-0.035em',
-            margin: '0 auto 20px',
-          }}
-        >
-          <span style={{ color: '#f59e0b' }}>Premium tech,</span> <br />
-          <span style={{ color: '#818cf8' }}>engineered to inspire.</span>
-        </h1>
-
-        {/* Hero Subtitle */}
-        <p
-          style={{
-            fontSize: '1.05rem',
-            lineHeight: 1.6,
-            color: '#94a3b8',
-            maxWidth: 580,
-            margin: '0 auto 34px',
-          }}
-        >
-          Laptops, smartphones and accessories from the world's best brands, curated for people who expect more.
-        </p>
-
-        {/* Two Centered Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-          <a
-            href="#collection"
+          {/* Subtle Tagline */}
+          <span
             style={{
-              background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
-              color: '#090a0f',
-              fontWeight: 800,
-              fontSize: '0.92rem',
-              padding: '13px 30px',
-              borderRadius: '9999px',
-              textDecoration: 'none',
-              boxShadow: '0 0 25px rgba(245, 158, 11, 0.35)',
-              transition: 'transform 0.2s',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
-          >
-            Shop the collection
-          </a>
-
-          <a
-            href="#trending"
-            style={{
-              background: 'rgba(16, 20, 32, 0.85)',
-              border: '1px solid rgba(167, 139, 250, 0.35)',
-              color: '#ffffff',
+              display: 'inline-block',
+              fontSize: '0.78rem',
               fontWeight: 700,
-              fontSize: '0.92rem',
-              padding: '13px 30px',
-              borderRadius: '9999px',
-              textDecoration: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: '#fbbf24',
+              marginBottom: 16,
+              textShadow: '0 2px 8px rgba(0,0,0,0.6)',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(167, 139, 250, 0.8)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(167, 139, 250, 0.35)'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            View deals
-          </a>
-        </div>
-      </section>
+            {activeSlide.tag}
+          </span>
 
-      {/* 🛍️ FEATURED 3-COLUMN SHOWCASE (100% Match to Homepage@1x.png) */}
-      <section id="featured" style={{ maxWidth: 1180, margin: '0 auto 72px', padding: '0 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
-          {featuredCards.map((card) => (
-            <div
-              key={card.id}
+          {/* Majestic Hero Headline with Italic Font Contrast */}
+          <h1
+            style={{
+              fontSize: 'clamp(2.8rem, 6vw, 5.2rem)',
+              fontWeight: 700,
+              lineHeight: 1.1,
+              color: '#FFFFFF',
+              margin: '0 auto 20px',
+              letterSpacing: '-0.025em',
+              textShadow: '0 4px 24px rgba(0,0,0,0.7)',
+            }}
+          >
+            <span style={{ display: 'block' }}>{activeSlide.title}</span>
+            <span
               style={{
-                background: 'rgba(14, 18, 28, 0.82)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '24px',
-                padding: '24px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s, box-shadow 0.3s',
+                display: 'block',
+                marginTop: '8px',
+                fontStyle: 'italic',
+                fontWeight: 300,
+                color: '#f59e0b',
+                fontFamily: "'Playfair Display', Georgia, serif",
+                fontSize: 'clamp(2.4rem, 5.2vw, 4.8rem)',
+              }}
+            >
+              {activeSlide.highlight}
+            </span>
+          </h1>
+
+          {/* Refined Subtitle */}
+          <p
+            style={{
+              fontSize: 'clamp(1.05rem, 1.8vw, 1.3rem)',
+              lineHeight: 1.6,
+              color: 'rgba(255, 255, 255, 0.88)',
+              maxWidth: '640px',
+              margin: '0 auto 38px',
+              fontWeight: 400,
+              textShadow: '0 2px 10px rgba(0,0,0,0.6)',
+            }}
+          >
+            {activeSlide.subtitle}
+          </p>
+
+          {/* Dual Elegant Pill Action Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleSlideJumpToCategory(activeSlide.categoryTarget)}
+              style={{
+                padding: '16px 38px',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                color: '#090a0f',
+                fontWeight: 800,
+                fontSize: '1rem',
+                borderRadius: '9999px',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 10px 30px rgba(245, 158, 11, 0.45)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-5px)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
-                e.currentTarget.style.boxShadow = '0 20px 40px -15px rgba(0, 0, 0, 0.8), 0 0 25px rgba(99, 102, 241, 0.12)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 14px 40px rgba(245, 158, 11, 0.6)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                e.currentTarget.style.boxShadow = 'none';
+                e.currentTarget.style.boxShadow = '0 10px 30px rgba(245, 158, 11, 0.45)';
               }}
             >
-              <div>
-                {/* Device Screen / Showcase Frame */}
-                <div
-                  style={{
-                    height: 200,
-                    background: '#090b14',
-                    borderRadius: '16px',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: 22,
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* If product has Cloudinary image, display it with sleek presentation; else render exact neon hardware wallpaper from image */}
-                  {card.image_url ? (
-                    <img
-                      src={card.image_url}
-                      alt={card.name}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
-                    />
-                  ) : card.type === 'laptop' ? (
-                    // 100% Laptop graphic from Homepage@1x.png
-                    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <div
-                        style={{
-                          width: 170,
-                          height: 104,
-                          borderRadius: '8px 8px 3px 3px',
-                          border: '2px solid rgba(255, 255, 255, 0.25)',
-                          background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 35%, #ec4899 70%, #f97316 100%)',
-                          boxShadow: '0 0 35px rgba(168, 85, 247, 0.45)',
-                        }}
-                      />
-                      <div
-                        style={{
-                          width: 200,
-                          height: 6,
-                          borderRadius: '2px 2px 4px 4px',
-                          background: '#1e293b',
-                          border: '1px solid rgba(255, 255, 255, 0.15)',
-                          marginTop: 2,
-                        }}
-                      />
-                    </div>
-                  ) : card.type === 'phone' ? (
-                    // 100% Smartphone graphic from Homepage@1x.png
-                    <div
-                      style={{
-                        width: 76,
-                        height: 142,
-                        borderRadius: '20px',
-                        border: '3px solid rgba(255, 255, 255, 0.3)',
-                        background: 'linear-gradient(180deg, #f97316 0%, #fb923c 30%, #ec4899 70%, #8b5cf6 100%)',
-                        boxShadow: '0 0 35px rgba(249, 115, 22, 0.45)',
-                        position: 'relative',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 24,
-                          height: 4,
-                          borderRadius: '4px',
-                          background: '#090b14',
-                          position: 'absolute',
-                          top: 4,
-                          left: 'calc(50% - 12px)',
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    // 100% Headphones graphic from Homepage@1x.png
-                    <div style={{ position: 'relative', width: 140, height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {/* Headband arch */}
-                      <div
-                        style={{
-                          width: 110,
-                          height: 80,
-                          borderRadius: '60px 60px 0 0',
-                          border: '5px solid #4338ca',
-                          borderBottom: 'none',
-                          position: 'absolute',
-                          top: 15,
-                        }}
-                      />
-                      {/* Left earcup */}
-                      <div
-                        style={{
-                          width: 32,
-                          height: 52,
-                          borderRadius: '16px',
-                          background: 'linear-gradient(180deg, #c084fc 0%, #818cf8 100%)',
-                          boxShadow: '0 0 25px rgba(192, 132, 252, 0.5)',
-                          position: 'absolute',
-                          bottom: 15,
-                          left: 14,
-                        }}
-                      />
-                      {/* Right earcup */}
-                      <div
-                        style={{
-                          width: 32,
-                          height: 52,
-                          borderRadius: '16px',
-                          background: 'linear-gradient(180deg, #c084fc 0%, #818cf8 100%)',
-                          boxShadow: '0 0 25px rgba(192, 132, 252, 0.5)',
-                          position: 'absolute',
-                          bottom: 15,
-                          right: 14,
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
+              Explore Collection &rarr;
+            </button>
 
-                {/* Category Pill Tag */}
-                <div
-                  style={{
-                    fontSize: '0.68rem',
-                    fontWeight: 800,
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: card.categoryColor,
-                    marginBottom: 6,
-                  }}
-                >
-                  {card.category}
-                </div>
+            <button
+              type="button"
+              onClick={() => handleOpenInquiry({ name: activeSlide.title, price: '' })}
+              style={{
+                padding: '16px 34px',
+                background: 'rgba(255, 255, 255, 0.15)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                color: '#FFFFFF',
+                fontWeight: 600,
+                fontSize: '1rem',
+                borderRadius: '9999px',
+                cursor: 'pointer',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              Book Showroom Demo
+            </button>
+          </div>
+        </div>
 
-                {/* Product Title */}
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginBottom: 14 }}>
-                  {card.name}
-                </h3>
-
-                {/* Hardware Specs Pills (100% matching image) */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 24 }}>
-                  {card.specs.map((spec, i) => (
-                    <span
-                      key={i}
-                      style={{
-                        fontSize: '0.7rem',
-                        fontWeight: 500,
-                        padding: '4px 9px',
-                        borderRadius: '6px',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        color: '#cbd5e1',
-                      }}
-                    >
-                      {spec}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Bottom: Price in bold gold & Functional Add to Cart button */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingTop: 16,
-                  borderTop: '1px solid rgba(255, 255, 255, 0.07)',
-                }}
-              >
-                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#f59e0b' }}>
-                  {card.price}
-                </div>
-
-                <button
-                  onClick={() =>
-                    handleAddToCartWithFeedback({
-                      id: card.id,
-                      name: card.name,
-                      selling_price: card.raw_price,
-                      image_url: card.image_url,
-                      sku: card.sku,
-                      category: card.category,
-                    })
-                  }
-                  style={{
-                    background:
-                      addedItemNotice === card.id
-                        ? 'rgba(16, 185, 129, 0.25)'
-                        : 'rgba(255, 255, 255, 0.04)',
-                    border: `1px solid ${
-                      addedItemNotice === card.id ? '#10b981' : 'rgba(255, 255, 255, 0.16)'
-                    }`,
-                    color: addedItemNotice === card.id ? '#10b981' : '#ffffff',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    padding: '8px 18px',
-                    borderRadius: '9999px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (addedItemNotice !== card.id) {
-                      e.currentTarget.style.background = 'rgba(245, 158, 11, 0.15)';
-                      e.currentTarget.style.borderColor = '#f59e0b';
-                      e.currentTarget.style.color = '#f59e0b';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (addedItemNotice !== card.id) {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.16)';
-                      e.currentTarget.style.color = '#ffffff';
-                    }
-                  }}
-                >
-                  {addedItemNotice === card.id ? '✓ In Bag' : 'Add to cart'}
-                </button>
-              </div>
-            </div>
+        {/* Minimalist Bottom Slide Indicator Dots */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '36px',
+            left: 0,
+            right: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '12px',
+            zIndex: 20,
+          }}
+        >
+          {HERO_SLIDES.map((slide, idx) => (
+            <button
+              key={slide.id}
+              type="button"
+              onClick={() => setCurrentSlide(idx)}
+              aria-label={`Go to slide ${idx + 1}`}
+              style={{
+                height: 8,
+                width: idx === currentSlide ? 34 : 10,
+                borderRadius: '9999px',
+                background: idx === currentSlide ? '#FFFFFF' : 'rgba(255, 255, 255, 0.35)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                padding: 0,
+              }}
+            />
           ))}
         </div>
       </section>
 
-      {/* 🚀 "Trending now" SECTION (100% Match to Homepage@1x.png) */}
-      <section id="trending" style={{ maxWidth: 1180, margin: '0 auto 80px', padding: '0 24px' }}>
-        {/* Section Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20 }}>
-          <h2 style={{ fontSize: '1.65rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
-            Trending now
-          </h2>
-          <a
-            href="#collection"
-            style={{
-              color: '#f59e0b',
-              fontSize: '0.86rem',
-              fontWeight: 700,
-              textDecoration: 'none',
-              transition: 'opacity 0.2s',
-            }}
-            onMouseEnter={(e) => (e.target.style.opacity = '0.8')}
-            onMouseLeave={(e) => (e.target.style.opacity = '1')}
-          >
-            See all products &rarr;
-          </a>
-        </div>
-
-        {/* 3 Horizontal Mini Cards Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-          {trendingItems.map((item) => (
+      {/* 🛡️ VALUE PROPOSITION RIBBON (4 Clean Minimalist Highlight Cards) */}
+      <section style={{ maxWidth: 1240, margin: '60px auto 70px', padding: '0 24px' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+            gap: 20,
+          }}
+        >
+          {VALUE_HIGHLIGHTS.map((item, idx) => (
             <div
-              key={item.id}
+              key={idx}
               style={{
-                background: 'rgba(14, 18, 28, 0.82)',
-                border: '1px solid rgba(255, 255, 255, 0.07)',
-                borderRadius: '18px',
-                padding: '16px 20px',
+                background: colors.bgSurface,
+                border: `1px solid ${colors.border}`,
+                borderRadius: '20px',
+                padding: '24px 20px',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
+                alignItems: 'flex-start',
                 gap: 16,
+                boxShadow: colors.cardShadow,
                 transition: 'all 0.25s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+                e.currentTarget.style.borderColor = colors.borderHover;
                 e.currentTarget.style.transform = 'translateY(-3px)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.07)';
+                e.currentTarget.style.borderColor = colors.border;
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
-                {/* Graphic Icon Thumbnail */}
-                <div
-                  style={{
-                    width: 50,
-                    height: 50,
-                    borderRadius: '12px',
-                    background: '#090b14',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  {item.shape === 'rounded-square' ? (
-                    <div
-                      style={{
-                        width: 28,
-                        height: 32,
-                        borderRadius: '8px',
-                        background: item.gradient,
-                        boxShadow: '0 0 12px rgba(249, 115, 22, 0.5)',
-                      }}
-                    />
-                  ) : item.shape === 'rect' ? (
-                    <div
-                      style={{
-                        width: 34,
-                        height: 24,
-                        borderRadius: '4px',
-                        background: item.gradient,
-                        boxShadow: '0 0 12px rgba(168, 85, 247, 0.5)',
-                      }}
-                    />
-                  ) : (
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <div style={{ width: 10, height: 20, borderRadius: '6px', background: item.gradient }} />
-                      <div style={{ width: 10, height: 20, borderRadius: '6px', background: item.gradient }} />
-                    </div>
-                  )}
-                </div>
-
-                {/* Title, Specs & Price */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.94rem', fontWeight: 800, color: '#ffffff', marginBottom: 2 }}>
-                    {item.name}
-                  </div>
-                  <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {item.specs}
-                  </div>
-                  <div style={{ fontSize: '0.92rem', fontWeight: 900, color: '#f59e0b' }}>
-                    {item.price}
-                  </div>
-                </div>
-              </div>
-
-              {/* Add to Bag Action */}
-              <button
-                onClick={() =>
-                  handleAddToCartWithFeedback({
-                    id: item.id,
-                    name: item.name,
-                    selling_price: item.raw_price,
-                    image_url: null,
-                    sku: `NGS-${item.id.toUpperCase()}`,
-                    category: 'Trending',
-                  })
-                }
+              <div
                 style={{
-                  background: addedItemNotice === item.id ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.12)',
-                  border: `1px solid ${addedItemNotice === item.id ? '#10b981' : 'rgba(245, 158, 11, 0.3)'}`,
-                  color: addedItemNotice === item.id ? '#10b981' : '#f59e0b',
-                  fontSize: '0.78rem',
-                  fontWeight: 800,
-                  padding: '7px 14px',
-                  borderRadius: '9999px',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  transition: 'all 0.2s',
+                  fontSize: '1.8rem',
+                  lineHeight: 1,
+                  background: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9',
+                  padding: '10px',
+                  borderRadius: '14px',
+                  border: `1px solid ${colors.border}`,
                 }}
               >
-                {addedItemNotice === item.id ? '✓ In Bag' : '+ Add'}
-              </button>
+                {item.icon}
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: colors.textMain }}>
+                  {item.title}
+                </h4>
+                <p style={{ margin: '6px 0 0', fontSize: '0.82rem', color: colors.textMuted, lineHeight: 1.5 }}>
+                  {item.description}
+                </p>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* 👑 FULL HARDWARE COLLECTION & LIVE CATALOG SECTION (Functional & Shoppable) */}
-      <section id="collection" style={{ maxWidth: 1180, margin: '0 auto 100px', padding: '0 24px' }}>
-        {/* Section Headline */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
+      {/* 🏷️ CURATED CATEGORY TAXONOMY (Sourced Live from Database) */}
+      <section id="categories" style={{ maxWidth: 1240, margin: '0 auto 80px', padding: '0 24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+          <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+            Taxonomy Master
+          </span>
+          <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: colors.textMain, margin: '6px 0 0' }}>
+            Browse Hardware by Category
+          </h2>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+          {categories.map((cat) => {
+            const catCount = products.filter((p) => String(p.category_id) === String(cat.id)).length;
+            return (
+              <div
+                key={cat.id}
+                onClick={() => {
+                  setCatalogCategory(String(cat.id));
+                  const el = document.getElementById('catalog');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                style={{
+                  background: colors.bgSurface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: '20px',
+                  padding: '24px',
+                  cursor: 'pointer',
+                  boxShadow: colors.cardShadow,
+                  transition: 'all 0.25s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = colors.borderHover;
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = colors.border;
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <div style={{ fontSize: '2rem', marginBottom: 12 }}>
+                  {cat.name.includes('Smartphones') ? '📱' : cat.name.includes('Laptops') ? '💻' : cat.name.includes('Audio') ? '🎧' : '🖥️'}
+                </div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: colors.textMain, margin: '0 0 6px' }}>
+                  {cat.name}
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: colors.textMuted, margin: '0 0 14px', lineHeight: 1.5 }}>
+                  {cat.description || 'Explore authentic models and accessories.'}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f59e0b' }}>
+                    {catCount} {catCount === 1 ? 'Product' : 'Products'} Live
+                  </span>
+                  <span style={{ fontSize: '0.84rem', color: colors.textDim }}>&rarr;</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 🛍️ REAL DATABASE PRODUCTS CATALOG (100% SOURCED FROM DB - NO MOCK DATA) */}
+      <section id="catalog" style={{ maxWidth: 1240, margin: '0 auto 100px', padding: '0 24px' }}>
+        {/* Section Header with Live DB Categories and Search */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 32 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: '1.2rem', color: '#f59e0b' }}>👑</span>
-            <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#f59e0b' }}>
-              Genuine Royal Inventory
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#f59e0b' }}>
+              Database Live Inventory ({products.length} Items Sourced)
             </span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 20 }}>
             <div>
-              <h2 style={{ fontSize: '2rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
-                Imperial Hardware Collection
+              <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: colors.textMain, margin: 0, letterSpacing: '-0.02em' }}>
+                Electronic Product Catalog
               </h2>
-              <p style={{ color: '#94a3b8', fontSize: '0.92rem', marginTop: 4 }}>
-                Instant live reservation with Telebirr, CBE Birr, Card, or Cash on Delivery.
+              <p style={{ color: colors.textMuted, fontSize: '0.94rem', marginTop: 4 }}>
+                Directly connected to inventory ledger. Real-time stock reservation with Telebirr, CBE Birr, or Cash on Delivery.
               </p>
             </div>
 
-            {/* Filter Pills & Search Bar */}
+            {/* Search Input Bar */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                placeholder="Search MacBook, iPhone, SKU..."
-                value={catalogSearch}
-                onChange={(e) => setCatalogSearch(e.target.value)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '9999px',
-                  padding: '8px 18px',
-                  color: '#ffffff',
-                  fontSize: '0.84rem',
-                  outline: 'none',
-                  minWidth: 220,
-                }}
-              />
-
-              <div style={{ display: 'flex', gap: 6, background: 'rgba(255, 255, 255, 0.03)', padding: '4px', borderRadius: '9999px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                {[
-                  { id: 'all', label: 'All' },
-                  { id: 'laptops', label: 'Laptops' },
-                  { id: 'phones', label: 'Phones' },
-                  { id: 'accessories', label: 'Accessories' },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setCatalogCategory(tab.id)}
-                    style={{
-                      background: catalogCategory === tab.id ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : 'transparent',
-                      color: catalogCategory === tab.id ? '#090a0f' : '#94a3b8',
-                      fontWeight: catalogCategory === tab.id ? 800 : 500,
-                      fontSize: '0.78rem',
-                      border: 'none',
-                      borderRadius: '9999px',
-                      padding: '5px 14px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Search MacBook, iPhone, SKU..."
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  style={{
+                    background: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: '9999px',
+                    padding: '10px 20px 10px 42px',
+                    color: colors.textMain,
+                    fontSize: '0.88rem',
+                    outline: 'none',
+                    minWidth: 260,
+                    boxShadow: isDark ? 'none' : '0 2px 6px rgba(0,0,0,0.04)',
+                  }}
+                />
+                <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: colors.textDim }}>
+                  <Icon name="search" size={16} />
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Real Category Filter Pills (Loaded from DB) */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => setCatalogCategory('all')}
+              style={{
+                background: catalogCategory === 'all' ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : isDark ? 'rgba(255, 255, 255, 0.04)' : '#FFFFFF',
+                color: catalogCategory === 'all' ? '#090a0f' : colors.textMuted,
+                fontWeight: catalogCategory === 'all' ? 800 : 600,
+                fontSize: '0.82rem',
+                border: `1px solid ${catalogCategory === 'all' ? '#f59e0b' : colors.border}`,
+                borderRadius: '9999px',
+                padding: '7px 18px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: isDark ? 'none' : '0 2px 5px rgba(0,0,0,0.03)',
+              }}
+            >
+              All Hardware ({products.length})
+            </button>
+
+            {categories.map((cat) => {
+              const isSelected = String(catalogCategory) === String(cat.id);
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setCatalogCategory(String(cat.id))}
+                  style={{
+                    background: isSelected ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : isDark ? 'rgba(255, 255, 255, 0.04)' : '#FFFFFF',
+                    color: isSelected ? '#090a0f' : colors.textMuted,
+                    fontWeight: isSelected ? 800 : 600,
+                    fontSize: '0.82rem',
+                    border: `1px solid ${isSelected ? '#f59e0b' : colors.border}`,
+                    borderRadius: '9999px',
+                    padding: '7px 18px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: isDark ? 'none' : '0 2px 5px rgba(0,0,0,0.03)',
+                  }}
+                >
+                  {cat.name}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Catalog Grid */}
+        {/* Live Products Grid */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
-            <div style={{ fontSize: '2rem', marginBottom: 12 }}>⚡</div>
-            <p>Loading Ngus flagship inventory...</p>
+          <div style={{ textAlign: 'center', padding: '80px 20px', color: colors.textMuted }}>
+            <div style={{ fontSize: '2.4rem', marginBottom: 12 }}>⚡</div>
+            <p style={{ fontSize: '1.05rem', fontWeight: 600 }}>Loading authentic electronic products from database...</p>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', background: 'rgba(14, 18, 28, 0.6)', borderRadius: '20px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-            <p style={{ color: '#94a3b8', fontSize: '0.94rem' }}>No products matching "{catalogSearch}".</p>
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              background: colors.bgSurface,
+              borderRadius: '24px',
+              border: `1px solid ${colors.border}`,
+              boxShadow: colors.cardShadow,
+            }}
+          >
+            <p style={{ color: colors.textMuted, fontSize: '1rem' }}>No products found matching your current filter criteria.</p>
             <button
+              type="button"
               onClick={() => { setCatalogSearch(''); setCatalogCategory('all'); }}
-              style={{ marginTop: 12, background: 'transparent', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '9999px', padding: '6px 16px', fontSize: '0.8rem', cursor: 'pointer' }}
+              style={{
+                marginTop: 14,
+                background: 'transparent',
+                border: '1px solid #f59e0b',
+                color: '#f59e0b',
+                borderRadius: '9999px',
+                padding: '7px 20px',
+                fontSize: '0.84rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
             >
               Reset Filters
             </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))',
+              gap: 24,
+            }}
+          >
             {filteredProducts.map((p) => {
               const inBag = addedItemNotice === p.id;
               const priceVal = Number(p.selling_price || 0);
+              const isStockAvailable = (p.quantity || 0) > 0;
 
               return (
                 <div
                   key={p.id}
                   style={{
-                    background: 'rgba(14, 18, 28, 0.85)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: '20px',
+                    background: colors.bgSurface,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: '24px',
                     padding: '20px',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    transition: 'all 0.25s ease',
+                    boxShadow: colors.cardShadow,
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.35)';
-                    e.currentTarget.style.boxShadow = '0 16px 36px -10px rgba(0, 0, 0, 0.7)';
+                    e.currentTarget.style.transform = 'translateY(-6px)';
+                    e.currentTarget.style.borderColor = colors.borderHover;
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.borderColor = colors.border;
                   }}
                 >
                   <div>
-                    {/* Image / Graphic Display */}
+                    {/* Device Picture Container */}
                     <div
                       style={{
-                        height: 160,
-                        borderRadius: '14px',
-                        background: '#090b14',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        height: 210,
+                        borderRadius: '16px',
+                        background: isDark ? '#04060a' : '#F1F5F9',
+                        border: `1px solid ${colors.border}`,
                         overflow: 'hidden',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        marginBottom: 16,
+                        marginBottom: 18,
                         position: 'relative',
+                        cursor: 'pointer',
                       }}
+                      onClick={() => setQuickViewProduct(p)}
                     >
                       {p.image_url ? (
                         <img
                           src={p.image_url}
                           alt={p.name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            transition: 'transform 0.4s ease',
+                          }}
+                          onMouseEnter={(e) => (e.target.style.transform = 'scale(1.06)')}
+                          onMouseLeave={(e) => (e.target.style.transform = 'scale(1)')}
                         />
                       ) : (
-                        <div style={{ textAlign: 'center' }}>
-                          <span style={{ fontSize: '2.5rem' }}>⚡</span>
+                        <div style={{ textAlign: 'center', padding: 20 }}>
+                          <span style={{ fontSize: '3rem' }}>⚡</span>
+                          <div style={{ fontSize: '0.72rem', color: colors.textDim, marginTop: 4 }}>Authentic Hardware</div>
                         </div>
                       )}
 
@@ -1239,83 +1318,107 @@ export const Home = () => {
                           position: 'absolute',
                           top: 10,
                           left: 10,
-                          background: 'rgba(9, 12, 20, 0.85)',
+                          background: isDark ? 'rgba(9, 12, 20, 0.85)' : 'rgba(255, 255, 255, 0.95)',
                           backdropFilter: 'blur(8px)',
-                          border: '1px solid rgba(16, 185, 129, 0.4)',
-                          color: '#10b981',
-                          fontSize: '0.66rem',
+                          border: `1px solid ${isStockAvailable ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                          color: isStockAvailable ? '#10b981' : '#f87171',
+                          fontSize: '0.68rem',
                           fontWeight: 700,
-                          padding: '3px 8px',
+                          padding: '3px 9px',
                           borderRadius: '9999px',
                         }}
                       >
-                        ✓ In Stock ({p.quantity ?? 10})
+                        {isStockAvailable ? `✓ In Stock (${p.quantity})` : 'Out of Stock'}
                       </span>
                     </div>
 
                     {/* Category & SKU */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: '0.68rem', color: '#a855f7', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                        {typeof p.category === 'object' ? p.category?.name : (p.category || 'Hardware')}
+                      <span style={{ fontSize: '0.7rem', color: '#f59e0b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {typeof p.category === 'object' ? p.category?.name : (p.category || 'Electronics')}
                       </span>
-                      <span style={{ fontSize: '0.66rem', color: '#64748b' }}>
-                        {p.sku || 'NGS-HW'}
+                      <span style={{ fontSize: '0.68rem', color: colors.textDim }}>
+                        {p.sku}
                       </span>
                     </div>
 
                     {/* Product Name */}
-                    <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff', marginBottom: 10, lineHeight: 1.3 }}>
+                    <h3
+                      onClick={() => setQuickViewProduct(p)}
+                      style={{
+                        fontSize: '1.1rem',
+                        fontWeight: 800,
+                        color: colors.textMain,
+                        marginBottom: 8,
+                        lineHeight: 1.35,
+                        cursor: 'pointer',
+                      }}
+                    >
                       {p.name}
-                    </h4>
+                    </h3>
+
+                    {/* Brand & Model */}
+                    <div style={{ fontSize: '0.76rem', color: colors.textMuted, marginBottom: 18 }}>
+                      {p.brand ? `${p.brand} • ` : ''}{p.model_number || 'Official Release'}
+                    </div>
                   </div>
 
                   {/* Price & Actions */}
-                  <div style={{ paddingTop: 14, borderTop: '1px solid rgba(255, 255, 255, 0.07)' }}>
-                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#f59e0b', marginBottom: 12 }}>
+                  <div style={{ paddingTop: 16, borderTop: `1px solid ${colors.border}` }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#f59e0b', marginBottom: 14 }}>
                       ETB {priceVal.toLocaleString()}
                     </div>
 
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
-                        onClick={() => handleAddToCartWithFeedback({
-                          id: p.id,
-                          name: p.name,
-                          selling_price: priceVal,
-                          image_url: p.image_url,
-                          sku: p.sku,
-                          category: p.category,
-                        })}
+                        type="button"
+                        onClick={() =>
+                          handleAddToCartWithFeedback({
+                            id: p.id,
+                            name: p.name,
+                            selling_price: priceVal,
+                            image_url: p.image_url,
+                            sku: p.sku,
+                            category: p.category?.name || 'Electronics',
+                          })
+                        }
+                        disabled={!isStockAvailable}
                         style={{
                           flex: 1,
-                          background: inBag ? 'rgba(16, 185, 129, 0.25)' : 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                          background: inBag
+                            ? 'rgba(16, 185, 129, 0.25)'
+                            : !isStockAvailable
+                            ? 'rgba(255, 255, 255, 0.05)'
+                            : 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
                           border: inBag ? '1px solid #10b981' : 'none',
-                          color: inBag ? '#10b981' : '#090a0f',
+                          color: inBag ? '#10b981' : !isStockAvailable ? colors.textDim : '#090a0f',
                           fontWeight: 900,
-                          fontSize: '0.8rem',
-                          padding: '9px 14px',
+                          fontSize: '0.84rem',
+                          padding: '10px 14px',
                           borderRadius: '9999px',
-                          cursor: 'pointer',
+                          cursor: !isStockAvailable ? 'not-allowed' : 'pointer',
                           transition: 'all 0.2s',
                         }}
                       >
-                        {inBag ? '✓ In Bag' : 'Add to Bag'}
+                        {inBag ? '✓ In Bag' : !isStockAvailable ? 'Sold Out' : 'Add to Bag'}
                       </button>
 
                       <button
-                        onClick={() => handleOpenInquiry({ name: p.name, price: `ETB ${priceVal.toLocaleString()}` })}
+                        type="button"
+                        onClick={() => setQuickViewProduct(p)}
                         style={{
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          color: '#cbd5e1',
-                          padding: '9px 12px',
+                          background: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9',
+                          border: `1px solid ${colors.border}`,
+                          color: colors.textMain,
+                          padding: '10px 14px',
                           borderRadius: '9999px',
                           cursor: 'pointer',
-                          fontSize: '0.78rem',
-                          fontWeight: 600,
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
                         }}
-                        title="Corporate quote"
+                        title="View Full Specifications"
                       >
-                        Quote
+                        View
                       </button>
                     </div>
                   </div>
@@ -1326,80 +1429,569 @@ export const Home = () => {
         )}
       </section>
 
-      {/* 👑 MINIMALIST CLEAN FOOTER (100% Match to Homepage@1x.png) */}
+      {/* 📖 ABOUT & BRAND PHILOSOPHY (The Royal Standard of Tech) */}
+      <section id="about" style={{ maxWidth: 1240, margin: '0 auto 100px', padding: '0 24px' }}>
+        <div
+          style={{
+            background: colors.bgSurface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '32px',
+            padding: '48px 50px',
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1.2fr) minmax(280px, 1fr)',
+            gap: 40,
+            alignItems: 'center',
+            boxShadow: colors.cardShadow,
+          }}
+        >
+          <div>
+            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+              Our Commitment
+            </span>
+            <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: colors.textMain, margin: '6px 0 16px', lineHeight: 1.2 }}>
+              The Royal Standard of Electronics in Ethiopia
+            </h2>
+            <p style={{ color: colors.textMuted, fontSize: '0.96rem', lineHeight: 1.6, marginBottom: 20 }}>
+              At Ngus Electronics, we believe cutting-edge technology should be accessible with absolute trust. We partner directly with authorized international supply channels to bring genuine laptops, flagship smartphones, studio acoustics, and workplace displays to professionals and organizations across Ethiopia.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.88rem', color: colors.textMain }}>
+                <span style={{ color: '#10b981', fontWeight: 800 }}>✓</span>
+                <span>Direct factory sealed packaging with manufacturer serial warranty</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.88rem', color: colors.textMain }}>
+                <span style={{ color: '#10b981', fontWeight: 800 }}>✓</span>
+                <span>Formal Ethiopian VAT sales receipts and commercial corporate invoices</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.88rem', color: colors.textMain }}>
+                <span style={{ color: '#10b981', fontWeight: 800 }}>✓</span>
+                <span>Immediate digital checkout with Telebirr, CBE Birr, and Visa</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleOpenInquiry()}
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                color: '#090a0f',
+                fontWeight: 800,
+                fontSize: '0.92rem',
+                padding: '12px 28px',
+                borderRadius: '9999px',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Book Showroom Consultation &rarr;
+            </button>
+          </div>
+
+          <div
+            style={{
+              borderRadius: '24px',
+              overflow: 'hidden',
+              height: 340,
+              boxShadow: colors.cardShadow,
+              border: `1px solid ${colors.border}`,
+            }}
+          >
+            <img
+              src="https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=1200&q=80"
+              alt="Ngus Electronics Hardware Laboratory"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* 🌟 VERIFIED CUSTOMER REVIEWS (Like Rosa's Testimonials) */}
+      <section id="reviews" style={{ maxWidth: 1240, margin: '0 auto 100px', padding: '0 24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+            Verified Client Feedback
+          </span>
+          <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: colors.textMain, margin: '6px 0 0' }}>
+            What Our Customers Say
+          </h2>
+          <p style={{ color: colors.textMuted, fontSize: '0.94rem', marginTop: 6 }}>
+            Real reviews from tech professionals and enterprise buyers across Addis Ababa.
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+          {CUSTOMER_REVIEWS.map((rev, idx) => (
+            <div
+              key={idx}
+              style={{
+                background: colors.bgSurface,
+                border: `1px solid ${colors.border}`,
+                borderRadius: '24px',
+                padding: '28px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                boxShadow: colors.cardShadow,
+              }}
+            >
+              <div>
+                <div style={{ color: '#f59e0b', fontSize: '1rem', marginBottom: 14 }}>
+                  {'★'.repeat(rev.rating)}
+                </div>
+                <p style={{ color: colors.textMain, fontSize: '0.92rem', lineHeight: 1.6, fontStyle: 'italic', margin: 0 }}>
+                  "{rev.comment}"
+                </p>
+              </div>
+
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${colors.border}` }}>
+                <div style={{ fontWeight: 800, color: colors.textMain, fontSize: '0.95rem' }}>{rev.name}</div>
+                <div style={{ fontSize: '0.76rem', color: colors.textMuted }}>
+                  {rev.role} • <span style={{ color: '#f59e0b' }}>{rev.location}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 📬 CONSULTATION & CONTACT FORM (Like Rosa's Modern Contact Area) */}
+      <section id="contact" style={{ maxWidth: 1240, margin: '0 auto 100px', padding: '0 24px' }}>
+        <div
+          style={{
+            background: colors.bgSurface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '32px',
+            padding: '48px',
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.2fr)',
+            gap: 48,
+            boxShadow: colors.cardShadow,
+          }}
+        >
+          {/* Contact Details */}
+          <div>
+            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+              Get in Touch
+            </span>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 800, color: colors.textMain, margin: '6px 0 16px' }}>
+              Showroom Consultation & Enterprise Procurement
+            </h2>
+            <p style={{ color: colors.textMuted, fontSize: '0.92rem', lineHeight: 1.6, marginBottom: 32 }}>
+              Looking for bulk business pricing, custom computer specs, or private showroom demo bookings? Our dedicated team responds within 2 hours.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18, fontSize: '0.88rem', color: colors.textMain }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '1.2rem' }}>📍</span>
+                <span>Bole Medhanialem Mall, 2nd Floor, Addis Ababa, Ethiopia</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '1.2rem' }}>📞</span>
+                <span>+251 911 223344 / +251 922 887766</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '1.2rem' }}>✉️</span>
+                <span>support@nguselectronics.com / sales@ngus.et</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '1.2rem' }}>⏰</span>
+                <span>Monday – Saturday: 8:30 AM – 7:30 PM (East Africa Time)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Contact Form */}
+          <div>
+            {inquirySubmitted ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', background: colors.bgCardSubtle, borderRadius: '20px', border: '1px solid #10b981' }}>
+                <span style={{ fontSize: '3rem' }}>✓</span>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981', margin: '12px 0 6px' }}>
+                  Message Sent Successfully!
+                </h3>
+                <p style={{ color: colors.textMuted, fontSize: '0.9rem' }}>
+                  Thank you. Our electronics specialist will reach out to your phone or email promptly.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleInquirySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 6, color: colors.textMain }}>Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Abebe Kebede"
+                      value={inquiryForm.name}
+                      onChange={(e) => setInquiryForm({ ...inquiryForm, name: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        borderRadius: '10px',
+                        background: colors.bgCardSubtle,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textMain,
+                        fontSize: '0.88rem',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 6, color: colors.textMain }}>Phone Number *</label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="+251 912 345678"
+                      value={inquiryForm.phone}
+                      onChange={(e) => setInquiryForm({ ...inquiryForm, phone: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        borderRadius: '10px',
+                        background: colors.bgCardSubtle,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textMain,
+                        fontSize: '0.88rem',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 6, color: colors.textMain }}>Email Address</label>
+                    <input
+                      type="email"
+                      placeholder="client@company.com"
+                      value={inquiryForm.email}
+                      onChange={(e) => setInquiryForm({ ...inquiryForm, email: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        borderRadius: '10px',
+                        background: colors.bgCardSubtle,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textMain,
+                        fontSize: '0.88rem',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 6, color: colors.textMain }}>Inquiry Type</label>
+                    <select
+                      value={inquiryForm.inquiry_type}
+                      onChange={(e) => setInquiryForm({ ...inquiryForm, inquiry_type: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        borderRadius: '10px',
+                        background: colors.bgSurface,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textMain,
+                        fontSize: '0.88rem',
+                      }}
+                    >
+                      <option value="retail">Retail Device Purchase</option>
+                      <option value="corporate">Corporate / Bulk Hardware Order</option>
+                      <option value="showroom">Private Showroom Demo Booking</option>
+                      <option value="warranty">Warranty & Tech Support</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 6, color: colors.textMain }}>Message / Requirement</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Tell us about the electronic models, specs or quantities you need..."
+                    value={inquiryForm.notes}
+                    onChange={(e) => setInquiryForm({ ...inquiryForm, notes: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '11px 14px',
+                      borderRadius: '10px',
+                      background: colors.bgCardSubtle,
+                      border: `1px solid ${colors.border}`,
+                      color: colors.textMain,
+                      fontSize: '0.88rem',
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  style={{
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                    color: '#090a0f',
+                    fontWeight: 900,
+                    fontSize: '0.92rem',
+                    padding: '12px 24px',
+                    borderRadius: '9999px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    marginTop: 6,
+                  }}
+                >
+                  Send Message &rarr;
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* 👑 MODERN MINIMALIST FOOTER */}
       <footer
         style={{
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          padding: '34px 24px 44px',
+          borderTop: `1px solid ${colors.border}`,
+          background: isDark ? 'rgba(4, 5, 10, 0.98)' : '#1E293B',
+          color: '#FFFFFF',
+          padding: '60px 24px 40px',
           position: 'relative',
           zIndex: 10,
         }}
       >
         <div
           style={{
-            maxWidth: 1180,
+            maxWidth: 1240,
             margin: '0 auto',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 40,
+            marginBottom: 40,
+          }}
+        >
+          {/* Col 1: Brand story */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <span style={{ fontSize: '1.4rem' }}>👑</span>
+              <span style={{ fontWeight: 800, fontSize: '1.2rem', color: '#FFFFFF' }}>
+                NGUS <span style={{ color: '#f59e0b' }}>ELECTRONICS</span>
+              </span>
+            </div>
+            <p style={{ color: '#94a3b8', fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
+              The royal benchmark of consumer and enterprise electronics in Ethiopia. Authentic products, direct imports, official warranties, and instant Telebirr checkout.
+            </p>
+          </div>
+
+          {/* Col 2: Quick Links */}
+          <div>
+            <div style={{ fontWeight: 800, color: '#FFFFFF', fontSize: '0.95rem', marginBottom: 16 }}>
+              Quick Navigation
+            </div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.85rem' }}>
+              <li><a href="#hero" style={{ color: '#94a3b8', textDecoration: 'none' }}>Home Showcase</a></li>
+              <li><a href="#catalog" style={{ color: '#94a3b8', textDecoration: 'none' }}>Hardware Catalog</a></li>
+              <li><a href="#categories" style={{ color: '#94a3b8', textDecoration: 'none' }}>Categories</a></li>
+              <li><a href="#about" style={{ color: '#94a3b8', textDecoration: 'none' }}>About Ngus</a></li>
+              <li><a href="#reviews" style={{ color: '#94a3b8', textDecoration: 'none' }}>Customer Feedback</a></li>
+              {isAuthenticated && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setIsTrackingModalOpen(true)}
+                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', padding: 0, fontSize: '0.85rem', cursor: 'pointer' }}
+                  >
+                    Live Order Tracking
+                  </button>
+                </li>
+              )}
+            </ul>
+          </div>
+
+          {/* Col 3: Categories */}
+          <div>
+            <div style={{ fontWeight: 800, color: '#FFFFFF', fontSize: '0.95rem', marginBottom: 16 }}>
+              Product Categories
+            </div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.85rem' }}>
+              {categories.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCatalogCategory(String(c.id));
+                      const el = document.getElementById('catalog');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', padding: 0, fontSize: '0.85rem', cursor: 'pointer' }}
+                  >
+                    {c.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Col 4: Store & Payments */}
+          <div>
+            <div style={{ fontWeight: 800, color: '#FFFFFF', fontSize: '0.95rem', marginBottom: 16 }}>
+              Store & Payments
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: 1.6 }}>
+              <div>Bole Medhanialem Mall, 2nd Floor, Addis Ababa</div>
+              <div style={{ marginTop: 8 }}>Accepted Payment Methods:</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                <span style={{ padding: '3px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.1)', fontSize: '0.72rem', color: '#f59e0b', fontWeight: 800 }}>Telebirr</span>
+                <span style={{ padding: '3px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.1)', fontSize: '0.72rem', color: '#60a5fa', fontWeight: 800 }}>CBE Birr</span>
+                <span style={{ padding: '3px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.1)', fontSize: '0.72rem', color: '#34d399', fontWeight: 800 }}>Visa / Card</span>
+                <span style={{ padding: '3px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.1)', fontSize: '0.72rem', color: '#FFFFFF', fontWeight: 800 }}>COD</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            maxWidth: 1240,
+            margin: '0 auto',
+            paddingTop: 24,
+            borderTop: '1px solid rgba(255, 255, 255, 0.12)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: 20,
+            gap: 16,
+            fontSize: '0.82rem',
+            color: '#94a3b8',
           }}
         >
-          {/* Left: Crown Icon + NGUS */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ fontSize: '1.2rem', color: '#f59e0b' }}>👑</span>
-            <span style={{ fontWeight: 900, fontSize: '1rem', letterSpacing: '0.08em', color: '#ffffff', marginLeft: 8 }}>
-              NGUS
-            </span>
-          </div>
-
-          {/* Center Links: Shop, Support, About, Track, Contact */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 28, fontSize: '0.86rem', color: '#94a3b8' }}>
-            <a href="#featured" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#94a3b8')}>
-              Shop
-            </a>
-            <button
-              onClick={() => setIsTrackingModalOpen(true)}
-              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.86rem', padding: 0 }}
-              onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
-              onMouseLeave={(e) => (e.target.style.color = '#94a3b8')}
-            >
-              Track Order
-            </button>
-            <button
-              onClick={() => handleOpenInquiry()}
-              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.86rem', padding: 0 }}
-              onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
-              onMouseLeave={(e) => (e.target.style.color = '#94a3b8')}
-            >
-              Support
-            </button>
-            <a href="#trending" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.target.style.color = '#ffffff')} onMouseLeave={(e) => (e.target.style.color = '#94a3b8')}>
-              About
-            </a>
-            <button
-              onClick={() => handleOpenInquiry()}
-              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.86rem', padding: 0 }}
-              onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
-              onMouseLeave={(e) => (e.target.style.color = '#94a3b8')}
-            >
-              Contact
-            </button>
-          </div>
-
-          {/* Right: Copyright */}
-          <div style={{ color: '#64748b', fontSize: '0.82rem' }}>
-            © 2026 Ngus Electronics • Royal Technology Standards
+          <div>© {new Date().getFullYear()} Ngus Electronics. All rights reserved. Imperial standard technology.</div>
+          <div style={{ display: 'flex', gap: 20 }}>
+            <span>Privacy Policy</span>
+            <span>Terms of Service</span>
+            <span>Authenticity Guarantee</span>
           </div>
         </div>
       </footer>
+
+      {/* 🔍 QUICK VIEW PRODUCT MODAL */}
+      <Modal
+        isOpen={Boolean(quickViewProduct)}
+        onClose={() => setQuickViewProduct(null)}
+        title={quickViewProduct?.name || 'Product Specifications'}
+        size="md"
+      >
+        {quickViewProduct && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div
+              style={{
+                height: 240,
+                borderRadius: '16px',
+                background: isDark ? '#04060a' : '#F1F5F9',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: `1px solid ${colors.border}`,
+              }}
+            >
+              {quickViewProduct.image_url ? (
+                <img
+                  src={quickViewProduct.image_url}
+                  alt={quickViewProduct.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <span style={{ fontSize: '3.5rem' }}>⚡</span>
+              )}
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase' }}>
+                  {typeof quickViewProduct.category === 'object' ? quickViewProduct.category?.name : (quickViewProduct.category || 'Hardware')}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: colors.textDim }}>
+                  SKU: {quickViewProduct.sku}
+                </span>
+              </div>
+
+              <h3 style={{ fontSize: '1.35rem', fontWeight: 900, color: colors.textMain, margin: '0 0 10px' }}>
+                {quickViewProduct.name}
+              </h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, margin: '14px 0' }}>
+                <div style={{ background: colors.bgCardSubtle, padding: '10px 14px', borderRadius: '10px', border: `1px solid ${colors.border}` }}>
+                  <div style={{ fontSize: '0.7rem', color: colors.textDim }}>Brand</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.88rem', color: colors.textMain }}>{quickViewProduct.brand || 'Verified Import'}</div>
+                </div>
+                <div style={{ background: colors.bgCardSubtle, padding: '10px 14px', borderRadius: '10px', border: `1px solid ${colors.border}` }}>
+                  <div style={{ fontSize: '0.7rem', color: colors.textDim }}>Model Number</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.88rem', color: colors.textMain }}>{quickViewProduct.model_number || 'Standard Edition'}</div>
+                </div>
+                <div style={{ background: colors.bgCardSubtle, padding: '10px 14px', borderRadius: '10px', border: `1px solid ${colors.border}` }}>
+                  <div style={{ fontSize: '0.7rem', color: colors.textDim }}>Units in Warehouse</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#10b981' }}>{quickViewProduct.quantity} units available</div>
+                </div>
+                <div style={{ background: colors.bgCardSubtle, padding: '10px 14px', borderRadius: '10px', border: `1px solid ${colors.border}` }}>
+                  <div style={{ fontSize: '0.7rem', color: colors.textDim }}>Warranty</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#f59e0b' }}>Official 1-Year Local</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#f59e0b' }}>
+                  ETB {Number(quickViewProduct.selling_price || 0).toLocaleString()}
+                </div>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleAddToCartWithFeedback({
+                        id: quickViewProduct.id,
+                        name: quickViewProduct.name,
+                        selling_price: quickViewProduct.selling_price,
+                        image_url: quickViewProduct.image_url,
+                        sku: quickViewProduct.sku,
+                        category: quickViewProduct.category?.name || 'Electronics',
+                      });
+                      setQuickViewProduct(null);
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                      color: '#090a0f',
+                      fontWeight: 900,
+                      fontSize: '0.86rem',
+                      padding: '10px 20px',
+                      borderRadius: '9999px',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Add to Bag
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleOpenInquiry(quickViewProduct);
+                      setQuickViewProduct(null);
+                    }}
+                    style={{
+                      background: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
+                      color: colors.textMain,
+                      fontWeight: 700,
+                      fontSize: '0.86rem',
+                      padding: '10px 16px',
+                      borderRadius: '9999px',
+                      border: `1px solid ${colors.border}`,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Inquire
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* 📦 Live Customer Order Tracking Modal */}
       <Modal
         isOpen={isTrackingModalOpen}
         onClose={() => setIsTrackingModalOpen(false)}
-        title="Track Your Order | Ngus Electronics"
+        title="Live Consignment Tracking | Ngus Electronics"
         size="md"
       >
         <div style={{ padding: '4px 0' }}>
@@ -1449,15 +2041,15 @@ export const Home = () => {
           {trackedOrder && (
             <div
               style={{
-                background: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid rgba(245, 158, 11, 0.3)',
+                background: colors.bgCardSubtle,
+                border: `1px solid ${colors.border}`,
                 borderRadius: '16px',
                 padding: '20px',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Order Reference</div>
+                  <div style={{ fontSize: '0.72rem', color: colors.textDim }}>Order Reference</div>
                   <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#f59e0b' }}>
                     {trackedOrder.order_number}
                   </div>
@@ -1498,8 +2090,8 @@ export const Home = () => {
                         width: 26,
                         height: 26,
                         borderRadius: '50%',
-                        background: s.active ? '#f59e0b' : 'rgba(255, 255, 255, 0.1)',
-                        color: s.active ? '#090a0f' : '#94a3b8',
+                        background: s.active ? '#f59e0b' : isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0',
+                        color: s.active ? '#090a0f' : colors.textDim,
                         fontWeight: 900,
                         fontSize: '0.74rem',
                         display: 'flex',
@@ -1510,14 +2102,14 @@ export const Home = () => {
                     >
                       {s.step}
                     </div>
-                    <div style={{ fontSize: '0.7rem', color: s.active ? '#ffffff' : '#64748b', fontWeight: 600 }}>
+                    <div style={{ fontSize: '0.7rem', color: s.active ? colors.textMain : colors.textDim, fontWeight: 600 }}>
                       {s.title}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div style={{ fontSize: '0.82rem', color: '#cbd5e1', lineHeight: 1.6, marginTop: 14 }}>
+              <div style={{ fontSize: '0.82rem', color: colors.textMuted, lineHeight: 1.6, marginTop: 14 }}>
                 <div><strong>Customer:</strong> {trackedOrder.customer?.display_name || 'Retail Client'}</div>
                 <div><strong>Fulfillment:</strong> {trackedOrder.fulfillment_type || 'Delivery'}</div>
                 <div><strong>Total Amount:</strong> ETB {Number(trackedOrder.grand_total || 0).toLocaleString()}</div>
@@ -1527,7 +2119,7 @@ export const Home = () => {
         </div>
       </Modal>
 
-      {/* 👑 Interactive Inquiry / Quote Request Modal */}
+      {/* 👑 Inquiry / RFQ Modal */}
       <Modal
         isOpen={isInquiryModalOpen}
         onClose={() => setIsInquiryModalOpen(false)}
@@ -1540,15 +2132,15 @@ export const Home = () => {
             <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b', marginBottom: 8 }}>
               Inquiry Received
             </h3>
-            <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.5 }}>
-              Thank you for choosing Ngus Electronics. Our product specialist will contact your phone/email shortly with verified pricing and availability.
+            <p style={{ color: colors.textMuted, fontSize: '0.9rem', lineHeight: 1.5 }}>
+              Thank you for contacting Ngus Electronics. Our product specialist will reach out to your phone/email shortly with verified pricing and availability.
             </p>
           </div>
         ) : (
           <form onSubmit={handleInquirySubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="form-group">
-                <label className="form-label">Full Name *</label>
+                <label className="form-label" style={{ color: colors.textMain }}>Full Name *</label>
                 <input
                   type="text"
                   required
@@ -1559,7 +2151,7 @@ export const Home = () => {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Phone Number *</label>
+                <label className="form-label" style={{ color: colors.textMain }}>Phone Number *</label>
                 <input
                   type="tel"
                   required
@@ -1573,7 +2165,7 @@ export const Home = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="form-group">
-                <label className="form-label">Email Address</label>
+                <label className="form-label" style={{ color: colors.textMain }}>Email Address</label>
                 <input
                   type="email"
                   className="form-input"
@@ -1583,7 +2175,7 @@ export const Home = () => {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Company / Organization</label>
+                <label className="form-label" style={{ color: colors.textMain }}>Company / Organization</label>
                 <input
                   type="text"
                   className="form-input"
@@ -1595,7 +2187,7 @@ export const Home = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Inquiry Type</label>
+              <label className="form-label" style={{ color: colors.textMain }}>Inquiry Type</label>
               <select
                 className="form-select"
                 value={inquiryForm.inquiry_type}
@@ -1609,11 +2201,11 @@ export const Home = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Hardware Notes & Details</label>
+              <label className="form-label" style={{ color: colors.textMain }}>Hardware Notes & Details</label>
               <textarea
                 className="form-textarea"
                 rows={3}
-                placeholder={selectedProductForInquiry ? `Interested in ${selectedProductForInquiry.name} (${selectedProductForInquiry.price || ''})...` : 'Describe the hardware, quantity or specifications needed...'}
+                placeholder={selectedProductForInquiry ? `Interested in ${selectedProductForInquiry.name}...` : 'Describe the hardware, quantity or specifications needed...'}
                 value={inquiryForm.notes}
                 onChange={(e) => setInquiryForm({ ...inquiryForm, notes: e.target.value })}
               />
@@ -1646,7 +2238,7 @@ export const Home = () => {
         )}
       </Modal>
 
-      {/* 👑 Imperial Auth Enforce Modal (Enforce Login before adding to cart) */}
+      {/* 👑 Auth Enforce Modal (Enforce Login before adding to cart) */}
       <Modal
         isOpen={isAuthModalOpen}
         onClose={() => {
@@ -1657,7 +2249,6 @@ export const Home = () => {
         size="md"
       >
         <div style={{ padding: '4px 0' }}>
-          {/* Pending Product Summary Card */}
           {authModalPendingItem && (
             <div
               style={{
@@ -1676,8 +2267,8 @@ export const Home = () => {
                   width: 48,
                   height: 48,
                   borderRadius: '10px',
-                  background: '#090b14',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  background: isDark ? '#090b14' : '#F1F5F9',
+                  border: `1px solid ${colors.border}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1695,7 +2286,7 @@ export const Home = () => {
                 <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Reserving Hardware:
                 </div>
-                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: colors.textMain, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {authModalPendingItem.name}
                 </div>
                 <div style={{ fontSize: '0.84rem', fontWeight: 900, color: '#f59e0b', marginTop: 2 }}>
@@ -1710,8 +2301,8 @@ export const Home = () => {
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              background: colors.bgCardSubtle,
+              border: `1px solid ${colors.border}`,
               borderRadius: '9999px',
               padding: '4px',
               marginBottom: 18,
@@ -1725,7 +2316,7 @@ export const Home = () => {
                 borderRadius: '9999px',
                 border: 'none',
                 background: authModalTab === 'login' ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : 'transparent',
-                color: authModalTab === 'login' ? '#090a0f' : '#94a3b8',
+                color: authModalTab === 'login' ? '#090a0f' : colors.textMuted,
                 fontWeight: 800,
                 fontSize: '0.82rem',
                 cursor: 'pointer',
@@ -1741,7 +2332,7 @@ export const Home = () => {
                 borderRadius: '9999px',
                 border: 'none',
                 background: authModalTab === 'register' ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : 'transparent',
-                color: authModalTab === 'register' ? '#090a0f' : '#94a3b8',
+                color: authModalTab === 'register' ? '#090a0f' : colors.textMuted,
                 fontWeight: 800,
                 fontSize: '0.82rem',
                 cursor: 'pointer',
@@ -1770,7 +2361,7 @@ export const Home = () => {
           {authModalTab === 'login' ? (
             <form onSubmit={handleAuthModalLogin}>
               <div className="form-group">
-                <label className="form-label">Email Address</label>
+                <label className="form-label" style={{ color: colors.textMain }}>Email Address</label>
                 <input
                   type="email"
                   required
@@ -1783,7 +2374,7 @@ export const Home = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Password</label>
+                <label className="form-label" style={{ color: colors.textMain }}>Password</label>
                 <input
                   type="password"
                   required
@@ -1812,59 +2403,58 @@ export const Home = () => {
                     color: '#090a0f',
                     fontWeight: 800,
                     border: 'none',
-                    padding: '10px 22px',
-                    borderRadius: '9999px',
+                    padding: '9px 20px',
+                    borderRadius: '8px',
                     cursor: authLoading ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {authLoading ? 'Signing In...' : 'Sign In & Add to Bag'}
+                  {authLoading ? 'Signing in...' : 'Sign In & Reserve'}
                 </button>
               </div>
             </form>
           ) : (
             <form onSubmit={handleAuthModalRegister}>
               <div className="form-group">
-                <label className="form-label">Full Name *</label>
+                <label className="form-label" style={{ color: colors.textMain }}>Full Name *</label>
                 <input
                   type="text"
                   required
                   className="form-input"
-                  placeholder="Dawit Kebede"
+                  placeholder="e.g. Alazar Tadesse"
                   value={authName}
                   onChange={(e) => setAuthName(e.target.value)}
                   disabled={authLoading}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 10 }}>
-                <div className="form-group">
-                  <label className="form-label">Email Address *</label>
-                  <input
-                    type="email"
-                    required
-                    className="form-input"
-                    placeholder="dawit@example.com"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    disabled={authLoading}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Phone</label>
-                  <input
-                    type="tel"
-                    className="form-input"
-                    placeholder="+251 911 234567"
-                    value={authPhone}
-                    onChange={(e) => setAuthPhone(e.target.value)}
-                    disabled={authLoading}
-                  />
-                </div>
+              <div className="form-group">
+                <label className="form-label" style={{ color: colors.textMain }}>Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  className="form-input"
+                  placeholder="alazar@example.com"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  disabled={authLoading}
+                />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="form-group">
+                <label className="form-label" style={{ color: colors.textMain }}>Phone Number (Optional)</label>
+                <input
+                  type="tel"
+                  className="form-input"
+                  placeholder="+251 912 345678"
+                  value={authPhone}
+                  onChange={(e) => setAuthPhone(e.target.value)}
+                  disabled={authLoading}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="form-group">
-                  <label className="form-label">Password *</label>
+                  <label className="form-label" style={{ color: colors.textMain }}>Password *</label>
                   <input
                     type="password"
                     required
@@ -1876,7 +2466,7 @@ export const Home = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Confirm Password *</label>
+                  <label className="form-label" style={{ color: colors.textMain }}>Confirm Password *</label>
                   <input
                     type="password"
                     required
@@ -1906,25 +2496,16 @@ export const Home = () => {
                     color: '#090a0f',
                     fontWeight: 800,
                     border: 'none',
-                    padding: '10px 22px',
-                    borderRadius: '9999px',
+                    padding: '9px 20px',
+                    borderRadius: '8px',
                     cursor: authLoading ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {authLoading ? 'Registering...' : 'Register & Add to Bag'}
+                  {authLoading ? 'Registering...' : 'Register & Reserve'}
                 </button>
               </div>
             </form>
           )}
-
-          <div style={{ marginTop: 16, textAlign: 'center', paddingTop: 14, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-            <Link
-              to="/login"
-              style={{ color: '#f59e0b', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600 }}
-            >
-              Or open dedicated account portal &rarr;
-            </Link>
-          </div>
         </div>
       </Modal>
     </div>
