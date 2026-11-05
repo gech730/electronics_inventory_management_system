@@ -9,7 +9,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
   // Streamlined, clean, unified navigation - NO duplicated or confusing tabs!
   const navSections = [
     {
-      title: 'Sales & Terminal',
+      title: 'Overview & Operations',
       items: [
         {
           label: 'Dashboard',
@@ -27,11 +27,6 @@ export const Sidebar = ({ isOpen, onClose }) => {
           roles: ['cashier', 'admin', 'manager'],
           description: 'Counter sales & checkout',
         },
-      ],
-    },
-    {
-      title: 'Operations',
-      items: [
         {
           label: 'Orders & Sales',
           path: '/orders',
@@ -40,13 +35,26 @@ export const Sidebar = ({ isOpen, onClose }) => {
           roles: ['admin', 'manager', 'storekeeper'],
           description: 'Online orders & delivery',
         },
+      ],
+    },
+    {
+      title: 'Catalog & Inventory',
+      items: [
         {
-          label: 'Products & Inventory',
+          label: 'Products',
           path: '/products',
           icon: 'package',
           badge: null,
           roles: ['admin', 'manager', 'storekeeper'],
-          description: 'SKUs, stock & categories',
+          description: 'SKUs, stock & pricing',
+        },
+        {
+          label: 'Categories & Brands',
+          path: '/categories',
+          icon: 'tag',
+          badge: null,
+          roles: ['admin', 'manager', 'storekeeper'],
+          description: 'Categories & brand taxonomy',
         },
         {
           label: 'Purchasing & Vendors',
@@ -59,8 +67,16 @@ export const Sidebar = ({ isOpen, onClose }) => {
       ],
     },
     {
-      title: 'Management',
+      title: 'Settings & Administration',
       items: [
+        {
+          label: 'Stores & Locations',
+          path: '/stores',
+          icon: 'store',
+          badge: null,
+          roles: ['admin', 'manager'],
+          description: 'Branches & warehouse locations',
+        },
         {
           label: 'Customers',
           path: '/customers',
@@ -70,12 +86,12 @@ export const Sidebar = ({ isOpen, onClose }) => {
           description: 'Client profiles & credit',
         },
         {
-          label: 'System & Staff',
+          label: 'Staff & Roles',
           path: '/users',
           icon: 'settings',
           badge: 'Admin',
           roles: ['admin', 'manager'],
-          description: 'Staff, roles & settings',
+          description: 'Staff accounts & permissions',
         },
       ],
     },

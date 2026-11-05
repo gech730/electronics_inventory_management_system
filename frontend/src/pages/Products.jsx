@@ -51,6 +51,34 @@ export const Products = () => {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // Quick Brand Creation State
+  const [showQuickAddBrand, setShowQuickAddBrand] = useState(false);
+  const [quickBrandName, setQuickBrandName] = useState('');
+  const [addingBrand, setAddingBrand] = useState(false);
+
+  const handleQuickAddBrand = async (e) => {
+    e.preventDefault();
+    if (!quickBrandName.trim()) return;
+    setAddingBrand(true);
+    try {
+      const res = await api.createBrand({ name: quickBrandName.trim() });
+      const newBrand = res?.brand || res?.data || { id: Date.now(), name: quickBrandName.trim() };
+      setBrands((prev) => [...prev, newBrand]);
+      setFormData((prev) => ({
+        ...prev,
+        brand_id: newBrand.id,
+        brand: newBrand.name,
+      }));
+      setQuickBrandName('');
+      setShowQuickAddBrand(false);
+      addToast?.(`Brand "${newBrand.name}" created and selected!`, 'success');
+    } catch (err) {
+      addToast?.(err.data?.message || err.message || 'Failed to add brand', 'error');
+    } finally {
+      setAddingBrand(false);
+    }
+  };
+
   // Fetch Products, Categories, Brands & Units
   const fetchData = async () => {
     setLoading(true);
@@ -698,31 +726,71 @@ export const Products = () => {
             </div>
 
             <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" htmlFor="brand_id" style={{ color: '#64748b', fontSize: '0.78rem' }}>
-                Hardware Brand
-              </label>
-              <select
-                id="brand_id"
-                name="brand_id"
-                className="form-select"
-                value={formData.brand_id}
-                onChange={(e) => {
-                  const sel = brands.find((b) => String(b.id) === e.target.value);
-                  setFormData((prev) => ({
-                    ...prev,
-                    brand_id: e.target.value,
-                    brand: sel ? sel.name : prev.brand,
-                  }));
-                }}
-                style={{ background: '#f8fafc', color: '#1e293b' }}
-              >
-                <option value="">-- Select Brand --</option>
-                {brands.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label className="form-label" htmlFor="brand_id" style={{ color: '#64748b', fontSize: '0.78rem', margin: 0 }}>
+                  Hardware Brand
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickAddBrand(!showQuickAddBrand)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#1677ff',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  {showQuickAddBrand ? 'Cancel' : '+ New Brand'}
+                </button>
+              </div>
+
+              {showQuickAddBrand ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="text"
+                    placeholder="New brand name (e.g. Asus, LG)..."
+                    value={quickBrandName}
+                    onChange={(e) => setQuickBrandName(e.target.value)}
+                    style={{ flex: 1, padding: '7px 10px', fontSize: '0.82rem', borderRadius: 6, border: '1px solid #1677ff', background: '#f8fafc' }}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleQuickAddBrand}
+                    disabled={addingBrand || !quickBrandName.trim()}
+                    className="btn btn-primary"
+                    style={{ padding: '7px 12px', fontSize: '0.78rem' }}
+                  >
+                    {addingBrand ? '...' : 'Add'}
+                  </button>
+                </div>
+              ) : (
+                <select
+                  id="brand_id"
+                  name="brand_id"
+                  className="form-select"
+                  value={formData.brand_id}
+                  onChange={(e) => {
+                    const sel = brands.find((b) => String(b.id) === e.target.value);
+                    setFormData((prev) => ({
+                      ...prev,
+                      brand_id: e.target.value,
+                      brand: sel ? sel.name : prev.brand,
+                    }));
+                  }}
+                  style={{ background: '#f8fafc', color: '#1e293b' }}
+                >
+                  <option value="">-- Select Brand --</option>
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
