@@ -23,7 +23,9 @@ class CashierShiftController extends Controller
                 'posRegister:id,code,name,store_id',
                 'openedBy:id,name,email',
                 'closedBy:id,name,email',
-            ]);
+            ])
+            ->withCount('sales')
+            ->withSum('sales as total_sales_amount', 'grand_total');
 
         $user = $request->user();
         if ($user && $user->role === 'cashier') {

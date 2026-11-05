@@ -67,4 +67,10 @@ class CashierShift extends Model
     {
         return $this->hasMany(CashMovement::class);
     }
+
+    /** Sales recorded under this cashier shift */
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
+    }
 }

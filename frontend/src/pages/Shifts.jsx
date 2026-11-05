@@ -578,6 +578,7 @@ export const Shifts = () => {
                   <th style={{ padding: '12px 18px', fontWeight: 700 }}>Opened At</th>
                   <th style={{ padding: '12px 18px', fontWeight: 700 }}>Closed At</th>
                   <th style={{ padding: '12px 18px', fontWeight: 700 }}>Opening Float</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700 }}>Shift Sales</th>
                   <th style={{ padding: '12px 18px', fontWeight: 700 }}>Closing Cash</th>
                   <th style={{ padding: '12px 18px', fontWeight: 700 }}>Variance</th>
                   <th style={{ padding: '12px 18px', fontWeight: 700 }}>Status</th>
@@ -587,13 +588,13 @@ export const Shifts = () => {
               <tbody>
                 {shifts.length === 0 ? (
                   <tr>
-                    <td colSpan={10} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                    <td colSpan={11} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                       No shifts recorded.
                     </td>
                   </tr>
                 ) : (
                   shifts.map((s) => {
-                    const diff = Number(s.cash_difference || (s.closing_cash ? (s.closing_cash - s.expected_cash) : 0));
+                    const diff = s.variance_amount !== null && s.variance_amount !== undefined ? Number(s.variance_amount) : Number(s.cash_difference || (s.closing_cash ? (s.closing_cash - s.expected_cash) : 0));
                     return (
                       <tr key={s.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                         <td style={{ padding: '12px 18px', fontWeight: 700 }}>#{s.id}</td>
@@ -615,6 +616,12 @@ export const Shifts = () => {
                         </td>
                         <td style={{ padding: '12px 18px', fontWeight: 600 }}>
                           ETB {Number(s.opening_cash || s.opening_float || 0).toFixed(2)}
+                        </td>
+                        <td style={{ padding: '12px 18px', fontWeight: 700, color: '#10b981' }}>
+                          ETB {Number(s.total_sales_amount || 0).toFixed(2)}
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 4, fontWeight: 500 }}>
+                            ({s.sales_count || 0})
+                          </span>
                         </td>
                         <td style={{ padding: '12px 18px', fontWeight: 700 }}>
                           {s.closing_cash || s.counted_cash ? `ETB ${Number(s.closing_cash || s.counted_cash).toFixed(2)}` : '—'}

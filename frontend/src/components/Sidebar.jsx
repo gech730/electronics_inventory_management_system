@@ -28,9 +28,17 @@ export const Sidebar = ({ isOpen, onClose }) => {
           description: 'Counter sales & checkout',
         },
         {
+          label: 'Sales & Cashier Ledger',
+          path: '/sales',
+          icon: 'receipt',
+          badge: null,
+          roles: ['admin', 'manager', 'cashier'],
+          description: 'Cashier sales & performance audit',
+        },
+        {
           label: 'Cashier Shifts',
           path: '/shifts',
-          icon: 'receipt',
+          icon: 'clock',
           badge: null,
           roles: ['cashier', 'admin', 'manager'],
           description: 'Drawer floats & shift audits',
