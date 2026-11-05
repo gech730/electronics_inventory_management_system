@@ -25,16 +25,20 @@ class CashierShiftController extends Controller
                 'closedBy:id,name,email',
             ]);
 
+        $user = $request->user();
+        if ($user && $user->role === 'cashier') {
+            // Cashiers can strictly see only their own shifts
+            $query->where('opened_by', $user->id);
+        } elseif ($request->filled('opened_by')) {
+            $query->where('opened_by', $request->opened_by);
+        }
+
         if ($request->filled('pos_register_id')) {
             $query->where('pos_register_id', $request->pos_register_id);
         }
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
-        }
-
-        if ($request->filled('opened_by')) {
-            $query->where('opened_by', $request->opened_by);
         }
 
         $shifts = $query->latest('opened_at')->paginate($request->integer('per_page', 15));
@@ -62,6 +66,21 @@ class CashierShiftController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $userId = $user ? $user->id : 1;
+
+        // Check if this cashier already has an active open shift
+        $existingUserShift = CashierShift::where('opened_by', $userId)
+            ->where('status', CashierShift::STATUS_OPEN)
+            ->first();
+
+        if ($existingUserShift) {
+            return response()->json([
+                'message'       => 'You already have an active open cashier shift.',
+                'cashier_shift' => $existingUserShift->load(['posRegister', 'openedBy', 'cashMovements']),
+            ], 200);
+        }
+
         $regId = $request->input('pos_register_id');
         $register = $regId ? PosRegister::find($regId) : PosRegister::where('is_active', true)->first();
 
@@ -72,28 +91,25 @@ class CashierShiftController extends Controller
             );
         }
 
-        $shift = DB::transaction(function () use ($request, $register) {
-            // If an open shift already exists on this register, auto-close it gracefully to avoid deadlocks
-            $existingOpen = CashierShift::where('pos_register_id', $register->id)
-                ->where('status', CashierShift::STATUS_OPEN)
-                ->get();
+        // Verify if the target register is currently occupied by another cashier
+        $registerOccupied = CashierShift::where('pos_register_id', $register->id)
+            ->where('status', CashierShift::STATUS_OPEN)
+            ->where('opened_by', '!=', $userId)
+            ->first();
 
-            foreach ($existingOpen as $prevShift) {
-                $prevExpected = (float) ($prevShift->expected_cash ?? $prevShift->opening_cash ?? 0);
-                $prevShift->update([
-                    'status'       => CashierShift::STATUS_CLOSED,
-                    'counted_cash' => $prevExpected,
-                    'closed_by'    => $request->user()?->id ?: 1,
-                    'closed_at'    => now(),
-                    'notes'        => 'Auto-closed to begin new cashier session',
-                ]);
-            }
+        if ($registerOccupied) {
+            $occupantName = $registerOccupied->openedBy?->name ?? 'another cashier';
+            throw ValidationException::withMessages([
+                'pos_register_id' => ["Register '{$register->name}' ({$register->code}) is currently in use by {$occupantName}. Please select an available terminal."]
+            ]);
+        }
 
+        $shift = DB::transaction(function () use ($request, $register, $userId) {
             $openingCash = (float) ($request->input('opening_cash') ?? $request->input('opening_float') ?? 0.00);
 
             $shift = CashierShift::create([
                 'pos_register_id' => $register->id,
-                'opened_by'       => $request->user()?->id ?: 1,
+                'opened_by'       => $userId,
                 'status'          => CashierShift::STATUS_OPEN,
                 'opening_cash'    => $openingCash,
                 'expected_cash'   => $openingCash,
@@ -107,7 +123,7 @@ class CashierShiftController extends Controller
                     'movement_type'    => CashMovement::TYPE_OPENING_FLOAT,
                     'amount'           => $openingCash,
                     'reason'           => 'Initial cashier opening float drawer deposit',
-                    'recorded_by'      => $request->user()?->id ?: 1,
+                    'recorded_by'      => $userId,
                     'occurred_at'      => now(),
                 ]);
             }
@@ -126,6 +142,13 @@ class CashierShiftController extends Controller
      */
     public function update(Request $request, CashierShift $cashierShift): JsonResponse
     {
+        $user = $request->user();
+        if ($user && $user->role === 'cashier' && $cashierShift->opened_by !== $user->id) {
+            return response()->json([
+                'message' => 'Unauthorized: You can only close or reconcile your own cashier shift.',
+            ], 403);
+        }
+
         $cashierShift = DB::transaction(function () use ($request, $cashierShift) {
             $newStatus = $request->input('status', $cashierShift->status);
 

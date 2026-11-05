@@ -54,15 +54,12 @@ export const Shifts = () => {
       const shiftList = Array.isArray(shiftsRes) ? shiftsRes : (shiftsRes?.data || []);
       setShifts(shiftList);
 
-      // Find currently active shift for cashier
-      const open = shiftList.find(
-        (s) => s.status === 'open' && (
-          s.opened_by?.id === user?.id || 
-          s.opened_by === user?.id || 
-          s.user_id === user?.id || 
-          s.user?.id === user?.id
-        )
-      ) || shiftList.find((s) => s.status === 'open');
+      // Find currently active shift strictly for this logged-in cashier
+      const open = shiftList.find((s) => {
+        if (s.status !== 'open') return false;
+        const opId = typeof s.opened_by === 'object' ? s.opened_by?.id : (s.opened_by || s.openedBy?.id);
+        return Number(opId) === Number(user?.id);
+      });
 
       setActiveShift(open || null);
       if (open) {
