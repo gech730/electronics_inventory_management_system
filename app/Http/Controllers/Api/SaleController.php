@@ -78,6 +78,15 @@ class SaleController extends Controller
                 // 3. Deduct sold quantity from inventory
                 $product->decrement('quantity', $item['quantity']);
 
+                // Deduct from stock location balance
+                $variant = \App\Models\ProductVariant::where('product_id', $product->id)->first();
+                if ($variant) {
+                    $balance = \App\Models\StockBalance::where('product_variant_id', $variant->id)->first();
+                    if ($balance) {
+                        $balance->decrement('quantity_on_hand', min($balance->quantity_on_hand, $item['quantity']));
+                    }
+                }
+
                 $itemsSummary[] = [
                     'product_id' => $product->id,
                     'product_name' => $product->name,

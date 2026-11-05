@@ -28,6 +28,14 @@ export const Sidebar = ({ isOpen, onClose }) => {
           description: 'Counter sales & checkout',
         },
         {
+          label: 'Cashier Shifts',
+          path: '/shifts',
+          icon: 'receipt',
+          badge: null,
+          roles: ['cashier', 'admin', 'manager'],
+          description: 'Drawer floats & shift audits',
+        },
+        {
           label: 'Orders & Sales',
           path: '/orders',
           icon: 'clipboard',
