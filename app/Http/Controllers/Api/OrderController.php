@@ -96,12 +96,13 @@ class OrderController extends Controller
     {
         // Auto-resolve product_id to product_variant_id if variant not explicitly provided
         if ($request->has('items') && is_array($request->items)) {
-            $items = $request->items;
-            foreach ($items as &$item) {
-                if (empty($item['product_variant_id']) && !empty($item['product_id'])) {
-                    $variant = ProductVariant::where('product_id', $item['product_id'])->first();
+            $resolvedItems = [];
+            foreach ($request->items as $item) {
+                $cleanItem = is_array($item) ? $item : (array) $item;
+                if (empty($cleanItem['product_variant_id']) && !empty($cleanItem['product_id'])) {
+                    $variant = ProductVariant::where('product_id', $cleanItem['product_id'])->first();
                     if (!$variant) {
-                        $prod = Product::find($item['product_id']);
+                        $prod = Product::find($cleanItem['product_id']);
                         if ($prod) {
                             $variant = ProductVariant::create([
                                 'product_id'    => $prod->id,
@@ -114,11 +115,12 @@ class OrderController extends Controller
                         }
                     }
                     if ($variant) {
-                        $item['product_variant_id'] = $variant->id;
+                        $cleanItem['product_variant_id'] = $variant->id;
                     }
                 }
+                $resolvedItems[] = $cleanItem;
             }
-            $request->merge(['items' => $items]);
+            $request->merge(['items' => $resolvedItems]);
         }
 
         $validated = $request->validate([
