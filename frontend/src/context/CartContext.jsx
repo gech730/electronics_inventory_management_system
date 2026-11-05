@@ -40,9 +40,9 @@ export const CartProvider = ({ children }) => {
         {
           id: product.id,
           name: product.name,
-          price: Number(product.selling_price || 0),
+          price: Number(product.selling_price || product.price || 0),
           sku: product.sku || 'NGS-HW',
-          image_url: product.image_url || null,
+          image_url: product.image_url || product.images?.[0]?.image_path || null,
           category: typeof product.category === 'object' ? (product.category?.name || 'Hardware') : (product.category || 'Hardware'),
           quantity: qty,
         },

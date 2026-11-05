@@ -7,7 +7,7 @@ import Icon from '../components/Icons';
 
 export default function CustomerDashboard() {
   const { user, logout, showToast } = useAuth();
-  const { setIsCartOpen, totalCount } = useCart();
+  const { cart, addToCart, setIsCartOpen, totalCount } = useCart();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -45,7 +45,7 @@ export default function CustomerDashboard() {
     primaryHover: '#d97706',
   };
 
-  // ── Navigation Tabs: 'orders' | 'tracking' | 'profile' ──────────────
+  // ── Navigation Tabs: 'orders' | 'boutique' | 'tracking' | 'profile' ─
   const initialTab = searchParams.get('tab') || 'orders';
   const [activeTab, setActiveTab] = useState(initialTab);
 
@@ -53,10 +53,15 @@ export default function CustomerDashboard() {
   const [profileData, setProfileData] = useState(null);
   const [orders, setOrders] = useState([]);
   const [shipments, setShipments] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
+  // Filters & Boutique state
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
+  const [boutiqueCategory, setBoutiqueCategory] = useState('all');
+  const [boutiqueSearch, setBoutiqueSearch] = useState('');
+  const [addedItemNotice, setAddedItemNotice] = useState(null);
 
   // Tracking tab search
   const [trackingSearchRef, setTrackingSearchRef] = useState(searchParams.get('track') || '');
@@ -80,7 +85,7 @@ export default function CustomerDashboard() {
   // Sync tab with URL
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['orders', 'tracking', 'profile'].includes(tab)) {
+    if (tab && ['orders', 'boutique', 'tracking', 'profile'].includes(tab)) {
       setActiveTab(tab);
     }
     const trackParam = searchParams.get('track');
@@ -90,14 +95,16 @@ export default function CustomerDashboard() {
     }
   }, [searchParams]);
 
-  // Load customer data
+  // Load customer data & products catalog
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [profRes, ordRes, shpRes] = await Promise.all([
+      const [profRes, ordRes, shpRes, prodRes, catRes] = await Promise.all([
         api.getCustomerProfile().catch(() => null),
         api.getCustomerOrders().catch(() => ({ data: [] })),
         api.getCustomerShipments().catch(() => ({ data: [] })),
+        api.getProducts({ per_page: 50 }).catch(() => ({ data: [] })),
+        api.getCategories({ per_page: 20 }).catch(() => ({ data: [] })),
       ]);
 
       if (profRes?.data) {
@@ -112,6 +119,11 @@ export default function CustomerDashboard() {
       }
       if (ordRes?.data) setOrders(ordRes.data);
       if (shpRes?.data) setShipments(shpRes.data);
+
+      const rawProds = Array.isArray(prodRes) ? prodRes : prodRes?.data || [];
+      const rawCats = Array.isArray(catRes) ? catRes : catRes?.data || [];
+      setProducts(rawProds);
+      setCategories(rawCats);
     } catch (err) {
       console.error('Failed to load customer dashboard data:', err);
       showToast?.('Unable to load full account details. Please refresh.', 'error');
@@ -122,6 +134,16 @@ export default function CustomerDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+  }, []);
+
+  // Listen to order placed event from cart drawer to refresh orders automatically
+  useEffect(() => {
+    const handleOrderPlaced = () => {
+      fetchDashboardData();
+      changeTab('orders');
+    };
+    window.addEventListener('ngus_order_placed', handleOrderPlaced);
+    return () => window.removeEventListener('ngus_order_placed', handleOrderPlaced);
   }, []);
 
   // Copy to clipboard helper
@@ -176,6 +198,16 @@ export default function CustomerDashboard() {
     handleTrackLookup(trackingNumber);
   };
 
+  // Add to Bag directly from dashboard
+  const handleAddToCartFromDashboard = (prod) => {
+    addToCart(prod);
+    setAddedItemNotice(prod.id);
+    showToast?.(`Added "${prod.name}" to your Bag!`, 'success');
+    setTimeout(() => {
+      setAddedItemNotice(null);
+    }, 1800);
+  };
+
   // Save profile changes
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -210,6 +242,26 @@ export default function CustomerDashboard() {
       return true;
     });
   }, [orders, orderStatusFilter]);
+
+  // Filtered products for the Boutique tab
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      const matchCat =
+        boutiqueCategory === 'all'
+          ? true
+          : String(p.category_id) === String(boutiqueCategory) ||
+            (p.category?.name && p.category.name.toLowerCase() === boutiqueCategory.toLowerCase());
+
+      const q = boutiqueSearch.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.sku || '').toLowerCase().includes(q) ||
+        (p.brand || '').toLowerCase().includes(q);
+
+      return matchCat && matchSearch;
+    });
+  }, [products, boutiqueCategory, boutiqueSearch]);
 
   const customerName = profileData?.user?.name || user?.name || 'Valued Client';
   const customerEmail = profileData?.user?.email || user?.email || '';
@@ -322,11 +374,11 @@ export default function CustomerDashboard() {
                 transition: 'all 0.2s',
               }}
             >
-              <span>Explore Hardware</span>
+              <span>Explore Home</span>
               <span style={{ color: '#f59e0b' }}>&rarr;</span>
             </Link>
 
-            {/* Bag Button (Authenticated) */}
+            {/* Bag Button with Item Counter Badge */}
             <button
               onClick={() => setIsCartOpen(true)}
               style={{
@@ -335,8 +387,8 @@ export default function CustomerDashboard() {
                 gap: 8,
                 padding: '8px 16px',
                 borderRadius: '9999px',
-                background: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
-                border: `1px solid ${colors.border}`,
+                background: totalCount > 0 ? 'rgba(245, 158, 11, 0.15)' : isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                border: `1px solid ${totalCount > 0 ? '#f59e0b' : colors.border}`,
                 color: colors.textMain,
                 fontSize: '0.84rem',
                 fontWeight: 700,
@@ -344,6 +396,7 @@ export default function CustomerDashboard() {
                 transition: 'all 0.2s',
                 boxShadow: isDark ? 'none' : '0 2px 6px rgba(0,0,0,0.03)',
               }}
+              title="Open Shopping Bag & Checkout"
             >
               <Icon name="cart" size={16} color="#f59e0b" />
               <span>Bag</span>
@@ -355,6 +408,8 @@ export default function CustomerDashboard() {
                   fontWeight: 900,
                   padding: '2px 7px',
                   borderRadius: '9999px',
+                  minWidth: 20,
+                  textAlign: 'center',
                 }}
               >
                 {totalCount}
@@ -430,12 +485,12 @@ export default function CustomerDashboard() {
 
       {/* ── MAIN DASHBOARD CONTAINER ─────────────────────────────────── */}
       <main style={{ maxWidth: 1280, margin: '0 auto', padding: '36px 24px 80px' }}>
-        {/* 🌟 LUXURIOUS WELCOME HERO CARD (Rosa-Inspired Serif Accent) */}
+        {/* 🌟 LUXURIOUS WELCOME HERO CARD */}
         <div
           style={{
             background: colors.bgSurface,
             borderRadius: '24px',
-            padding: '36px 36px',
+            padding: '36px',
             border: `1px solid ${colors.border}`,
             boxShadow: colors.cardShadow,
             marginBottom: 32,
@@ -498,6 +553,54 @@ export default function CustomerDashboard() {
             <p style={{ margin: 0, color: colors.textMuted, fontSize: '0.94rem', maxWidth: 620, lineHeight: 1.6 }}>
               Review your high-performance hardware orders, view official digital tax receipts, and trace real-time express courier dispatches across Ethiopia.
             </p>
+
+            {/* Direct Quick Action: Add Hardware to Bag */}
+            <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => changeTab('boutique')}
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: '9999px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                  border: 'none',
+                  color: '#090a0f',
+                  fontWeight: 800,
+                  fontSize: '0.86rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  boxShadow: '0 4px 16px rgba(245, 158, 11, 0.35)',
+                }}
+              >
+                <span>🛍️ Order Hardware to Bag</span>
+                <span>&rarr;</span>
+              </button>
+
+              {totalCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsCartOpen(true)}
+                  style={{
+                    padding: '10px 22px',
+                    borderRadius: '9999px',
+                    background: isDark ? 'rgba(255, 255, 255, 0.06)' : '#FFFFFF',
+                    border: `1px solid ${colors.border}`,
+                    color: colors.textMain,
+                    fontWeight: 700,
+                    fontSize: '0.86rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Icon name="cart" size={15} color="#f59e0b" />
+                  <span>View Bag ({totalCount})</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Quick Account Tag Card */}
@@ -745,7 +848,42 @@ export default function CustomerDashboard() {
             </span>
           </button>
 
-          {/* Tab 2: Tracking */}
+          {/* Tab 2: Boutique (Add Products to Bag directly from dashboard) */}
+          <button
+            onClick={() => changeTab('boutique')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 22px',
+              borderRadius: '9999px',
+              border: `1px solid ${activeTab === 'boutique' ? '#f59e0b' : colors.border}`,
+              background: activeTab === 'boutique' ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : colors.bgSurface,
+              color: activeTab === 'boutique' ? '#090a0f' : colors.textMuted,
+              fontSize: '0.86rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: isDark ? 'none' : '0 2px 6px rgba(0,0,0,0.03)',
+            }}
+          >
+            <span>🛍️</span>
+            <span>Hardware Boutique</span>
+            <span
+              style={{
+                background: activeTab === 'boutique' ? '#090a0f' : isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)',
+                color: activeTab === 'boutique' ? '#fbbf24' : colors.textMain,
+                fontSize: '0.72rem',
+                fontWeight: 900,
+                padding: '2px 8px',
+                borderRadius: '9999px',
+              }}
+            >
+              {products.length}
+            </span>
+          </button>
+
+          {/* Tab 3: Tracking */}
           <button
             onClick={() => changeTab('tracking')}
             style={{
@@ -782,7 +920,7 @@ export default function CustomerDashboard() {
             )}
           </button>
 
-          {/* Tab 3: Profile */}
+          {/* Tab 4: Profile */}
           <button
             onClick={() => changeTab('profile')}
             style={{
@@ -898,8 +1036,9 @@ export default function CustomerDashboard() {
                     ? "You haven't placed any orders yet. Discover our latest flagship smartphones, workstations, and noise-cancelling audio."
                     : `No orders found matching filter "${orderStatusFilter}". Try selecting "All Orders".`}
                 </p>
-                <Link
-                  to="/"
+                <button
+                  type="button"
+                  onClick={() => changeTab('boutique')}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -910,13 +1049,14 @@ export default function CustomerDashboard() {
                     color: '#090a0f',
                     fontSize: '0.88rem',
                     fontWeight: 800,
-                    textDecoration: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
                     boxShadow: '0 6px 20px rgba(245, 158, 11, 0.35)',
                   }}
                 >
-                  <span>Explore Hardware Collection</span>
+                  <span>Explore Hardware Boutique</span>
                   <span>&rarr;</span>
-                </Link>
+                </button>
               </div>
             ) : (
               /* Live Orders List */
@@ -1205,7 +1345,322 @@ export default function CustomerDashboard() {
           </div>
         )}
 
-        {/* ── TAB 2: LIVE SHIPPING & PARCEL TRACKING ─────────────────────── */}
+        {/* ── TAB 2: HARDWARE BOUTIQUE (Direct Add to Bag & Live Inventory) ── */}
+        {activeTab === 'boutique' && (
+          <div>
+            {/* Boutique Header Bar */}
+            <div
+              style={{
+                background: colors.bgSurface,
+                borderRadius: '24px',
+                padding: '28px 32px',
+                border: `1px solid ${colors.border}`,
+                boxShadow: colors.cardShadow,
+                marginBottom: 32,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: '1.2rem', color: '#f59e0b' }}>👑</span>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Certified Hardware Catalog ({products.length} Products Available)
+                    </span>
+                  </div>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: colors.textMain, margin: '0 0 6px' }}>
+                    Order Flagship Hardware Directly to Your Bag
+                  </h2>
+                  <p style={{ margin: 0, color: colors.textMuted, fontSize: '0.88rem', maxWidth: 640 }}>
+                    Select your equipment and click <strong>Add to Bag</strong>. Authorized orders feature real-time inventory ledger reservation and priority Addis Ababa courier delivery.
+                  </p>
+                </div>
+
+                {/* Instant Search input */}
+                <div style={{ position: 'relative', minWidth: 260 }}>
+                  <input
+                    type="text"
+                    value={boutiqueSearch}
+                    onChange={(e) => setBoutiqueSearch(e.target.value)}
+                    placeholder="Search MacBook, iPhone, Galaxy..."
+                    style={{
+                      width: '100%',
+                      padding: '11px 18px 11px 40px',
+                      borderRadius: '9999px',
+                      background: colors.bgCardSubtle,
+                      border: `1px solid ${colors.border}`,
+                      color: colors.textMain,
+                      fontSize: '0.86rem',
+                      outline: 'none',
+                    }}
+                  />
+                  <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: colors.textDim }}>
+                    <Icon name="search" size={15} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Category Pills Filter */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 20 }}>
+                <button
+                  type="button"
+                  onClick={() => setBoutiqueCategory('all')}
+                  style={{
+                    padding: '6px 18px',
+                    borderRadius: '9999px',
+                    fontSize: '0.82rem',
+                    fontWeight: boutiqueCategory === 'all' ? 800 : 600,
+                    border: `1px solid ${boutiqueCategory === 'all' ? '#f59e0b' : colors.border}`,
+                    background: boutiqueCategory === 'all' ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : colors.bgCardSubtle,
+                    color: boutiqueCategory === 'all' ? '#090a0f' : colors.textMuted,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  All Categories ({products.length})
+                </button>
+
+                {categories.map((c) => {
+                  const isSelected = String(boutiqueCategory) === String(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setBoutiqueCategory(String(c.id))}
+                      style={{
+                        padding: '6px 18px',
+                        borderRadius: '9999px',
+                        fontSize: '0.82rem',
+                        fontWeight: isSelected ? 800 : 600,
+                        border: `1px solid ${isSelected ? '#f59e0b' : colors.border}`,
+                        background: isSelected ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : colors.bgCardSubtle,
+                        color: isSelected ? '#090a0f' : colors.textMuted,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Products Grid */}
+            {filteredProducts.length === 0 ? (
+              <div
+                style={{
+                  background: colors.bgSurface,
+                  borderRadius: '24px',
+                  border: `1px dashed ${colors.border}`,
+                  padding: '60px 24px',
+                  textAlign: 'center',
+                  boxShadow: colors.cardShadow,
+                }}
+              >
+                <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🔍</div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: colors.textMain, margin: '0 0 6px' }}>
+                  No hardware matching "{boutiqueSearch}"
+                </h3>
+                <p style={{ color: colors.textMuted, fontSize: '0.88rem', margin: '0 0 16px' }}>
+                  Try resetting your category or search filter.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBoutiqueSearch('');
+                    setBoutiqueCategory('all');
+                  }}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: '9999px',
+                    background: 'transparent',
+                    border: '1px solid #f59e0b',
+                    color: '#f59e0b',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontSize: '0.84rem',
+                  }}
+                >
+                  Reset Filters
+                </button>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                  gap: 22,
+                }}
+              >
+                {filteredProducts.map((p) => {
+                  const inBag = addedItemNotice === p.id || cart.some((c) => String(c.id) === String(p.id));
+                  const isStockAvailable = (p.quantity || 0) > 0;
+                  const priceVal = Number(p.selling_price || 0);
+                  const img = p.images?.[0]?.image_path || 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=500&q=80';
+
+                  return (
+                    <div
+                      key={p.id}
+                      style={{
+                        background: colors.bgSurface,
+                        border: `1px solid ${colors.border}`,
+                        borderRadius: '20px',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: colors.cardShadow,
+                        transition: 'all 0.25s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = colors.borderHover;
+                        e.currentTarget.style.transform = 'translateY(-3px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = colors.border;
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      {/* Product Image */}
+                      <div
+                        style={{
+                          height: 200,
+                          width: '100%',
+                          position: 'relative',
+                          background: isDark ? '#090b14' : '#F1F5F9',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <img
+                          src={img}
+                          alt={p.name}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            transition: 'transform 0.4s ease',
+                          }}
+                        />
+
+                        {/* Category Badge */}
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: 12,
+                            left: 12,
+                            padding: '4px 10px',
+                            borderRadius: '9999px',
+                            background: 'rgba(0, 0, 0, 0.65)',
+                            backdropFilter: 'blur(8px)',
+                            color: '#FFFFFF',
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          {p.category?.name || 'Hardware'}
+                        </span>
+
+                        {/* Stock Tag */}
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: 12,
+                            right: 12,
+                            padding: '4px 10px',
+                            borderRadius: '9999px',
+                            background: isStockAvailable ? 'rgba(16, 185, 129, 0.9)' : 'rgba(239, 68, 68, 0.9)',
+                            color: '#FFFFFF',
+                            fontSize: '0.68rem',
+                            fontWeight: 800,
+                          }}
+                        >
+                          {isStockAvailable ? `${p.quantity} In Stock` : 'Sold Out'}
+                        </span>
+                      </div>
+
+                      {/* Product Info */}
+                      <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: colors.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                            {p.brand || 'Ngus Certified Flagship'}
+                          </div>
+                          <h4 style={{ fontSize: '1.02rem', fontWeight: 800, color: colors.textMain, margin: '0 0 6px', lineHeight: 1.3 }}>
+                            {p.name}
+                          </h4>
+                          <p style={{ color: colors.textMuted, fontSize: '0.8rem', lineHeight: 1.4, margin: '0 0 14px' }}>
+                            {p.description ? p.description.slice(0, 85) + '...' : 'Official factory sealed with manufacturer warranty and VAT receipt.'}
+                          </p>
+                        </div>
+
+                        <div>
+                          {/* Price */}
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 14 }}>
+                            <span style={{ fontSize: '1.35rem', fontWeight: 900, color: '#f59e0b' }}>
+                              {priceVal.toLocaleString()}
+                            </span>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: colors.textDim }}>ETB</span>
+                          </div>
+
+                          {/* Add to Bag Button */}
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => handleAddToCartFromDashboard(p)}
+                              disabled={!isStockAvailable}
+                              style={{
+                                flex: 1,
+                                padding: '11px',
+                                borderRadius: '9999px',
+                                background: inBag
+                                  ? 'rgba(16, 185, 129, 0.15)'
+                                  : !isStockAvailable
+                                  ? colors.bgCardSubtle
+                                  : 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                                border: inBag ? '1px solid #10b981' : 'none',
+                                color: inBag ? '#10b981' : !isStockAvailable ? colors.textDim : '#090a0f',
+                                fontWeight: 900,
+                                fontSize: '0.84rem',
+                                cursor: !isStockAvailable ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.2s',
+                              }}
+                            >
+                              {inBag ? '✓ In Bag' : !isStockAvailable ? 'Out of Stock' : 'Add to Bag'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleAddToCartFromDashboard(p);
+                                setIsCartOpen(true);
+                              }}
+                              disabled={!isStockAvailable}
+                              title="Instant Checkout"
+                              style={{
+                                padding: '11px 16px',
+                                borderRadius: '9999px',
+                                background: colors.bgCardSubtle,
+                                border: `1px solid ${colors.border}`,
+                                color: colors.textMain,
+                                fontWeight: 700,
+                                fontSize: '0.82rem',
+                                cursor: !isStockAvailable ? 'not-allowed' : 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              Checkout
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB 3: LIVE SHIPPING & PARCEL TRACKING ─────────────────────── */}
         {activeTab === 'tracking' && (
           <div>
             {/* Tracking Search Card */}
@@ -1562,7 +2017,7 @@ export default function CustomerDashboard() {
           </div>
         )}
 
-        {/* ── TAB 3: PROFILE & ADDRESS SETTINGS ───────────────────────────── */}
+        {/* ── TAB 4: PROFILE & ADDRESS SETTINGS ───────────────────────────── */}
         {activeTab === 'profile' && (
           <div
             style={{

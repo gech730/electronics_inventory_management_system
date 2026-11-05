@@ -24,6 +24,40 @@ export const CustomerCartDrawer = () => {
     setLastOrder,
   } = useCart();
 
+  // ── Dynamic Theme Synchronization ────────────────────────────────
+  const [theme, setTheme] = useState(() => localStorage.getItem('ngus_theme') || 'dark');
+
+  useEffect(() => {
+    const syncTheme = () => {
+      const current = localStorage.getItem('ngus_theme') || document.documentElement.getAttribute('data-theme') || 'dark';
+      setTheme(current);
+    };
+    syncTheme();
+    window.addEventListener('storage', syncTheme);
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => {
+      window.removeEventListener('storage', syncTheme);
+      observer.disconnect();
+    };
+  }, []);
+
+  const isDark = theme === 'dark';
+
+  const colors = {
+    bgOverlay: 'rgba(3, 5, 10, 0.7)',
+    bgDrawer: isDark ? '#0d111b' : '#FCF9F7',
+    bgCard: isDark ? 'rgba(255, 255, 255, 0.04)' : '#FFFFFF',
+    bgInput: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+    border: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.9)',
+    borderHover: isDark ? 'rgba(245, 158, 11, 0.5)' : '#F59E0B',
+    textMain: isDark ? '#FFFFFF' : '#18181B',
+    textMuted: isDark ? '#94A3B8' : '#64748B',
+    textDim: isDark ? '#64748B' : '#94A3B8',
+    footerBg: isDark ? 'rgba(10, 13, 22, 0.95)' : 'rgba(252, 249, 247, 0.95)',
+    cardShadow: isDark ? '0 10px 30px rgba(0,0,0,0.45)' : '0 4px 16px rgba(15, 23, 42, 0.04)',
+  };
+
   const [lastShipment, setLastShipment] = useState(null);
   const [fulfillmentType, setFulfillmentType] = useState('delivery');
   const [paymentMethod, setPaymentMethod] = useState('telebirr');
@@ -37,6 +71,7 @@ export const CustomerCartDrawer = () => {
     customer_notes: '',
   });
 
+  // Prefill user details if available
   useEffect(() => {
     if (user) {
       setFormData((prev) => ({
@@ -63,7 +98,7 @@ export const CustomerCartDrawer = () => {
   const handleCheckoutSubmit = async (e) => {
     e.preventDefault();
     if (!formData.customer_name || !formData.phone || !formData.delivery_address) {
-      setError('Please provide your full name, phone number, and delivery address.');
+      setError('Please provide your full name, phone number, and delivery destination.');
       return;
     }
 
@@ -78,7 +113,7 @@ export const CustomerCartDrawer = () => {
         delivery_address: formData.delivery_address,
         city: formData.city,
         fulfillment_type: fulfillmentType,
-        payment_method: paymentMethod,
+        payment_method: paymentMethod === 'cash_on_delivery' ? 'cash' : paymentMethod,
         payment_reference: formData.payment_reference || undefined,
         customer_notes: formData.customer_notes || undefined,
         items: cart.map((item) => ({
@@ -91,15 +126,20 @@ export const CustomerCartDrawer = () => {
       const res = await api.checkout(payload);
 
       if (res && res.data) {
-        setLastOrder(res.data.order || res.data);
-        setLastShipment(res.data.shipment || null);
+        const orderData = res.data.order || res.data;
+        const shipmentData = res.data.shipment || null;
+        setLastOrder(orderData);
+        setLastShipment(shipmentData);
         setCheckoutStep('success');
         clearCart();
+
+        // Notify other components (like CustomerDashboard) to refresh orders immediately
+        window.dispatchEvent(new CustomEvent('ngus_order_placed', { detail: res.data }));
       } else {
         throw new Error(res.message || 'Checkout failed');
       }
     } catch (err) {
-      setError(err.data?.message || err.message || 'Checkout failed. Please try again.');
+      setError(err.data?.message || err.message || 'Checkout failed. Please verify your entries.');
     } finally {
       setSubmitting(false);
     }
@@ -113,8 +153,9 @@ export const CustomerCartDrawer = () => {
         left: 0,
         width: '100%',
         height: '100%',
-        background: 'rgba(3, 5, 10, 0.75)',
+        background: colors.bgOverlay,
         backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         zIndex: 1000,
         display: 'flex',
         justifyContent: 'flex-end',
@@ -124,85 +165,103 @@ export const CustomerCartDrawer = () => {
       <div
         style={{
           width: '100%',
-          maxWidth: 480,
+          maxWidth: 490,
           height: '100%',
-          background: 'rgba(13, 17, 27, 0.98)',
-          borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '-20px 0 50px rgba(0, 0, 0, 0.8)',
+          background: colors.bgDrawer,
+          borderLeft: `1px solid ${colors.border}`,
+          boxShadow: isDark ? '-20px 0 50px rgba(0, 0, 0, 0.8)' : '-10px 0 40px rgba(0, 0, 0, 0.1)',
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
+          color: colors.textMain,
+          transition: 'background-color 0.3s ease, color 0.3s ease',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drawer Header */}
+        {/* ── DRAWER HEADER ────────────────────────────────────────── */}
         <div
           style={{
             padding: '20px 24px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            borderBottom: `1px solid ${colors.border}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: '1.2rem', color: '#f59e0b' }}>👑</span>
-            <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#ffffff' }}>
-              {checkoutStep === 'cart'
-                ? `Shopping Bag (${totalCount})`
-                : checkoutStep === 'checkout'
-                ? 'Secure Checkout'
-                : 'Order Confirmed'}
-            </span>
+            <span style={{ fontSize: '1.25rem', color: '#f59e0b' }}>👑</span>
+            <div>
+              <div style={{ fontSize: '1.05rem', fontWeight: 800, color: colors.textMain, letterSpacing: '-0.01em' }}>
+                {checkoutStep === 'cart'
+                  ? `Shopping Bag (${totalCount})`
+                  : checkoutStep === 'checkout'
+                  ? 'Secure Checkout'
+                  : 'Order Confirmed'}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: colors.textDim, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Ngus Official Hardware Reserve
+              </div>
+            </div>
           </div>
 
           <button
             onClick={() => setIsCartOpen(false)}
+            aria-label="Close Bag"
             style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: '1.2rem',
+              background: colors.bgCard,
+              border: `1px solid ${colors.border}`,
+              color: colors.textMuted,
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: '6px',
+              transition: 'all 0.2s',
             }}
           >
             ✕
           </button>
         </div>
 
-        {/* Drawer Content */}
+        {/* ── DRAWER CONTENT AREA ──────────────────────────────────── */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
           {/* STEP 1: SHOPPING BAG ITEMS */}
           {checkoutStep === 'cart' && (
             <>
               {cart.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '80px 20px', color: '#94a3b8' }}>
-                  <div style={{ fontSize: '3rem', marginBottom: 16 }}>🛍️</div>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff', marginBottom: 8 }}>
-                    Your bag is empty
+                <div style={{ textAlign: 'center', padding: '80px 20px', color: colors.textMuted }}>
+                  <div style={{ fontSize: '3.2rem', marginBottom: 16 }}>🛍️</div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: colors.textMain, marginBottom: 8 }}>
+                    Your shopping bag is empty
                   </h3>
-                  <p style={{ fontSize: '0.86rem', lineHeight: 1.5, marginBottom: 24 }}>
-                    Explore our collection of laptops, smartphones and flagship electronics.
+                  <p style={{ fontSize: '0.88rem', lineHeight: 1.6, maxWidth: 320, margin: '0 auto 24px' }}>
+                    Explore our collection of flagship workstations, iPhones, MacBooks, and noise-cancelling audio.
                   </p>
                   <button
-                    onClick={() => setIsCartOpen(false)}
+                    onClick={() => {
+                      setIsCartOpen(false);
+                      const el = document.getElementById('catalog');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
                     style={{
                       background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
                       color: '#090a0f',
                       fontWeight: 800,
-                      padding: '10px 24px',
+                      padding: '12px 28px',
                       borderRadius: '9999px',
                       border: 'none',
                       cursor: 'pointer',
+                      fontSize: '0.86rem',
+                      boxShadow: '0 4px 16px rgba(245, 158, 11, 0.35)',
                     }}
                   >
-                    Start Shopping &rarr;
+                    Explore Hardware &rarr;
                   </button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {cart.map((item) => (
                     <div
                       key={item.id}
@@ -211,19 +270,20 @@ export const CustomerCartDrawer = () => {
                         alignItems: 'center',
                         gap: 14,
                         padding: '14px',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        background: colors.bgCard,
+                        border: `1px solid ${colors.border}`,
                         borderRadius: '16px',
+                        boxShadow: colors.cardShadow,
                       }}
                     >
                       <div
                         style={{
-                          width: 60,
-                          height: 60,
+                          width: 58,
+                          height: 58,
                           borderRadius: '12px',
                           overflow: 'hidden',
-                          background: '#090b14',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          background: isDark ? '#090b14' : '#F1F5F9',
+                          border: `1px solid ${colors.border}`,
                           flexShrink: 0,
                           display: 'flex',
                           alignItems: 'center',
@@ -235,61 +295,68 @@ export const CustomerCartDrawer = () => {
                             src={item.image_url}
                             alt={item.name}
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
                           />
                         ) : (
-                          <span style={{ fontSize: '1.5rem' }}>💻</span>
+                          <span style={{ fontSize: '1.4rem' }}>📱</span>
                         )}
                       </div>
 
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 800, color: colors.textMain, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {item.name}
                         </div>
-                        <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 2 }}>
+                        <div style={{ fontSize: '0.72rem', color: colors.textDim, marginTop: 2 }}>
                           SKU: {item.sku}
                         </div>
-                        <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#f59e0b', marginTop: 4 }}>
-                          ETB {Number(item.price).toLocaleString()}
+                        <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#f59e0b', marginTop: 4 }}>
+                          {Number(item.price).toLocaleString()} ETB
                         </div>
                       </div>
 
                       {/* Quantity Controls */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <button
+                          type="button"
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           style={{
                             width: 26,
                             height: 26,
                             borderRadius: '50%',
-                            background: 'rgba(255, 255, 255, 0.08)',
-                            color: '#ffffff',
+                            background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+                            color: colors.textMain,
                             border: 'none',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: 800,
+                            fontSize: '0.9rem',
                           }}
                         >
                           -
                         </button>
-                        <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#ffffff', minWidth: 16, textAlign: 'center' }}>
+                        <span style={{ fontSize: '0.86rem', fontWeight: 800, color: colors.textMain, minWidth: 18, textAlign: 'center' }}>
                           {item.quantity}
                         </span>
                         <button
+                          type="button"
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
                           style={{
                             width: 26,
                             height: 26,
                             borderRadius: '50%',
-                            background: 'rgba(255, 255, 255, 0.08)',
-                            color: '#ffffff',
+                            background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+                            color: colors.textMain,
                             border: 'none',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: 800,
+                            fontSize: '0.9rem',
                           }}
                         >
                           +
@@ -298,6 +365,7 @@ export const CustomerCartDrawer = () => {
 
                       {/* Remove Button */}
                       <button
+                        type="button"
                         onClick={() => removeFromCart(item.id)}
                         style={{
                           background: 'transparent',
@@ -325,10 +393,10 @@ export const CustomerCartDrawer = () => {
                 <div
                   style={{
                     padding: '10px 14px',
-                    borderRadius: '8px',
-                    background: 'rgba(239, 68, 68, 0.15)',
+                    borderRadius: '10px',
+                    background: 'rgba(239, 68, 68, 0.12)',
                     border: '1px solid rgba(239, 68, 68, 0.3)',
-                    color: '#f87171',
+                    color: '#ef4444',
                     fontSize: '0.84rem',
                   }}
                 >
@@ -336,29 +404,31 @@ export const CustomerCartDrawer = () => {
                 </div>
               )}
 
-              {/* Delivery Details */}
+              {/* 1. Contact & Delivery Address */}
               <div>
-                <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-                  1. Contact & Delivery Address
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+                  1. Contact &amp; Delivery Destination
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.76rem', color: '#cbd5e1', marginBottom: 4 }}>Full Name *</label>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: colors.textMuted, marginBottom: 4 }}>
+                      Full Legal Name *
+                    </label>
                     <input
                       type="text"
                       required
                       name="customer_name"
                       value={formData.customer_name}
                       onChange={handleInputChange}
-                      placeholder="e.g. Dawit Kebede"
+                      placeholder="e.g. Henok Tadesse"
                       style={{
                         width: '100%',
                         padding: '10px 14px',
-                        borderRadius: '10px',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        color: '#ffffff',
+                        borderRadius: '12px',
+                        background: colors.bgInput,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textMain,
                         fontSize: '0.88rem',
                         outline: 'none',
                       }}
@@ -367,28 +437,33 @@ export const CustomerCartDrawer = () => {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 10 }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', color: '#cbd5e1', marginBottom: 4 }}>Phone (Telebirr/Calls) *</label>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: colors.textMuted, marginBottom: 4 }}>
+                        Direct Phone *
+                      </label>
                       <input
                         type="tel"
                         required
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        placeholder="+251 912 345678"
+                        placeholder="+251 9XX XXX XXX"
                         style={{
                           width: '100%',
                           padding: '10px 14px',
-                          borderRadius: '10px',
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          color: '#ffffff',
+                          borderRadius: '12px',
+                          background: colors.bgInput,
+                          border: `1px solid ${colors.border}`,
+                          color: colors.textMain,
                           fontSize: '0.88rem',
                           outline: 'none',
                         }}
                       />
                     </div>
+
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', color: '#cbd5e1', marginBottom: 4 }}>City</label>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: colors.textMuted, marginBottom: 4 }}>
+                        City
+                      </label>
                       <input
                         type="text"
                         name="city"
@@ -398,10 +473,10 @@ export const CustomerCartDrawer = () => {
                         style={{
                           width: '100%',
                           padding: '10px 14px',
-                          borderRadius: '10px',
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          color: '#ffffff',
+                          borderRadius: '12px',
+                          background: colors.bgInput,
+                          border: `1px solid ${colors.border}`,
+                          color: colors.textMain,
                           fontSize: '0.88rem',
                           outline: 'none',
                         }}
@@ -410,21 +485,23 @@ export const CustomerCartDrawer = () => {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.76rem', color: '#cbd5e1', marginBottom: 4 }}>Delivery Street / Sub-City / House No. *</label>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: colors.textMuted, marginBottom: 4 }}>
+                      Street / Sub-City / Building Destination *
+                    </label>
                     <input
                       type="text"
                       required
                       name="delivery_address"
                       value={formData.delivery_address}
                       onChange={handleInputChange}
-                      placeholder="e.g. Bole Medhanialem, House 402"
+                      placeholder="e.g. Bole Medhanialem Tower, Suite 402"
                       style={{
                         width: '100%',
                         padding: '10px 14px',
-                        borderRadius: '10px',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        color: '#ffffff',
+                        borderRadius: '12px',
+                        background: colors.bgInput,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textMain,
                         fontSize: '0.88rem',
                         outline: 'none',
                       }}
@@ -436,91 +513,98 @@ export const CustomerCartDrawer = () => {
                     <div
                       onClick={() => setFulfillmentType('delivery')}
                       style={{
-                        padding: '10px',
-                        borderRadius: '10px',
-                        border: `1px solid ${fulfillmentType === 'delivery' ? '#f59e0b' : 'rgba(255, 255, 255, 0.08)'}`,
-                        background: fulfillmentType === 'delivery' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                        padding: '12px 10px',
+                        borderRadius: '12px',
+                        border: `1px solid ${fulfillmentType === 'delivery' ? '#f59e0b' : colors.border}`,
+                        background: fulfillmentType === 'delivery' ? 'rgba(245, 158, 11, 0.12)' : colors.bgCard,
                         cursor: 'pointer',
                         textAlign: 'center',
+                        transition: 'all 0.2s',
                       }}
                     >
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff' }}>🚚 Express Courier</div>
-                      <div style={{ fontSize: '0.7rem', color: '#f59e0b', marginTop: 2 }}>+ETB 150 (Same-Day)</div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 800, color: colors.textMain }}>🚚 Express Courier</div>
+                      <div style={{ fontSize: '0.7rem', color: '#f59e0b', marginTop: 2 }}>+150 ETB (Addis Same-Day)</div>
                     </div>
 
                     <div
                       onClick={() => setFulfillmentType('pickup')}
                       style={{
-                        padding: '10px',
-                        borderRadius: '10px',
-                        border: `1px solid ${fulfillmentType === 'pickup' ? '#f59e0b' : 'rgba(255, 255, 255, 0.08)'}`,
-                        background: fulfillmentType === 'pickup' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                        padding: '12px 10px',
+                        borderRadius: '12px',
+                        border: `1px solid ${fulfillmentType === 'pickup' ? '#f59e0b' : colors.border}`,
+                        background: fulfillmentType === 'pickup' ? 'rgba(245, 158, 11, 0.12)' : colors.bgCard,
                         cursor: 'pointer',
                         textAlign: 'center',
+                        transition: 'all 0.2s',
                       }}
                     >
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff' }}>🏢 Bole Showroom</div>
-                      <div style={{ fontSize: '0.7rem', color: '#10b981', marginTop: 2 }}>Free Pickup</div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 800, color: colors.textMain }}>🏢 Bole Showroom</div>
+                      <div style={{ fontSize: '0.7rem', color: '#10b981', marginTop: 2 }}>Free Store Collection</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Payment Method Selection */}
+              {/* 2. Payment Method Selection (Real DB Tender Methods) */}
               <div>
-                <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-                  2. Choose Payment Method
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+                  2. Payment Method
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {[
-                    { id: 'telebirr', name: 'Telebirr', sub: 'Ethio Telecom Mobile', icon: '📱' },
+                    { id: 'telebirr', name: 'Telebirr', sub: 'Ethio Telecom Mobile Wallet', icon: '📱' },
                     { id: 'cbe_birr', name: 'CBE Birr', sub: 'Commercial Bank of Ethiopia', icon: '🏦' },
-                    { id: 'card', name: 'Card / Bank', sub: 'Visa, Master, Awash, Dashen', icon: '💳' },
-                    { id: 'cash_on_delivery', name: 'Cash on Delivery', sub: 'Pay on Verified Receipt', icon: '💵' },
-                  ].map((method) => (
-                    <div
-                      key={method.id}
-                      onClick={() => setPaymentMethod(method.id)}
-                      style={{
-                        padding: '12px',
-                        borderRadius: '12px',
-                        border: `1px solid ${paymentMethod === method.id ? '#f59e0b' : 'rgba(255, 255, 255, 0.08)'}`,
-                        background: paymentMethod === method.id ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: '1.2rem' }}>{method.icon}</span>
-                        <div>
-                          <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffffff' }}>{method.name}</div>
-                          <div style={{ fontSize: '0.66rem', color: '#94a3b8', marginTop: 2 }}>{method.sub}</div>
+                    { id: 'cash', name: 'Cash on Delivery', sub: 'Pay Upon Physical Inspection', icon: '💵' },
+                    { id: 'bank_transfer', name: 'Bank Transfer', sub: 'Commercial Account Clearing', icon: '🏛️' },
+                    { id: 'card', name: 'Debit / Visa Card', sub: 'CBE / Dashen POS Terminal', icon: '💳' },
+                  ].map((method) => {
+                    const isSelected = paymentMethod === method.id;
+                    return (
+                      <div
+                        key={method.id}
+                        onClick={() => setPaymentMethod(method.id)}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '14px',
+                          border: `1px solid ${isSelected ? '#f59e0b' : colors.border}`,
+                          background: isSelected ? 'rgba(245, 158, 11, 0.12)' : colors.bgCard,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          gridColumn: method.id === 'card' ? 'span 2' : 'span 1',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: '1.25rem' }}>{method.icon}</span>
+                          <div>
+                            <div style={{ fontSize: '0.84rem', fontWeight: 800, color: colors.textMain }}>{method.name}</div>
+                            <div style={{ fontSize: '0.68rem', color: colors.textDim, marginTop: 2 }}>{method.sub}</div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Optional Payment Reference */}
                 <div style={{ marginTop: 12 }}>
-                  <label style={{ display: 'block', fontSize: '0.76rem', color: '#cbd5e1', marginBottom: 4 }}>
-                    Transaction Reference / SMS Code (Optional)
+                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: colors.textMuted, marginBottom: 4 }}>
+                    Transaction Reference or SMS Receipt (Optional)
                   </label>
                   <input
                     type="text"
                     name="payment_reference"
                     value={formData.payment_reference}
                     onChange={handleInputChange}
-                    placeholder="e.g. TLB8934721"
+                    placeholder="e.g. TLB-984218 or CBE-TRX-09"
                     style={{
                       width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      color: '#ffffff',
-                      fontSize: '0.82rem',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: colors.bgInput,
+                      border: `1px solid ${colors.border}`,
+                      color: colors.textMain,
+                      fontSize: '0.84rem',
                       outline: 'none',
                     }}
                   />
@@ -536,9 +620,9 @@ export const CustomerCartDrawer = () => {
                     flex: 1,
                     padding: '12px',
                     borderRadius: '9999px',
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    color: '#ffffff',
+                    background: colors.bgCard,
+                    border: `1px solid ${colors.border}`,
+                    color: colors.textMain,
                     fontWeight: 700,
                     fontSize: '0.86rem',
                     cursor: 'pointer',
@@ -560,10 +644,10 @@ export const CustomerCartDrawer = () => {
                     fontWeight: 900,
                     fontSize: '0.9rem',
                     cursor: submitting ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 0 20px rgba(245, 158, 11, 0.4)',
+                    boxShadow: '0 4px 18px rgba(245, 158, 11, 0.4)',
                   }}
                 >
-                  {submitting ? 'Placing Order...' : `Place Order (ETB ${grandTotal.toLocaleString()})`}
+                  {submitting ? 'Placing Order...' : `Authorize (${grandTotal.toLocaleString()} ETB)`}
                 </button>
               </div>
             </form>
@@ -576,63 +660,75 @@ export const CustomerCartDrawer = () => {
               <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#f59e0b', marginBottom: 6 }}>
                 Order Confirmed!
               </h2>
-              <p style={{ fontSize: '0.86rem', color: '#94a3b8', lineHeight: 1.5, marginBottom: 20 }}>
-                Thank you, your official order has been placed and registered in the Ngus Electronics inventory system.
+              <p style={{ fontSize: '0.88rem', color: colors.textMuted, lineHeight: 1.6, marginBottom: 20 }}>
+                Your order has been officially verified and reserved in the Ngus Electronics inventory ledger.
               </p>
 
-              {/* Order Details Card */}
+              {/* Order Confirmation Card */}
               <div
                 style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
-                  borderRadius: '16px',
+                  background: colors.bgCard,
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  borderRadius: '18px',
                   padding: '20px',
                   textAlign: 'left',
                   marginBottom: 24,
+                  boxShadow: colors.cardShadow,
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Order Number</span>
-                  <span style={{ fontSize: '0.96rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '0.04em' }}>
+                  <span style={{ fontSize: '0.74rem', color: colors.textDim }}>Order Reference</span>
+                  <span style={{ fontSize: '1rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '0.04em' }}>
                     {lastOrder?.order_number || 'NGS-ORD-CONFIRMED'}
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: '0.82rem' }}>
-                  <span style={{ color: '#94a3b8' }}>Status</span>
-                  <span style={{ color: '#10b981', fontWeight: 700 }}>✓ Confirmed & Reserved</span>
+                  <span style={{ color: colors.textMuted }}>Ledger Status</span>
+                  <span style={{ color: '#10b981', fontWeight: 700 }}>✓ Confirmed &amp; Reserved</span>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: '0.82rem' }}>
-                  <span style={{ color: '#94a3b8' }}>Fulfillment</span>
-                  <span style={{ color: '#ffffff' }}>
-                    {fulfillmentType === 'delivery' ? 'Express Courier Dispatch' : 'Vault Pickup (Bole)'}
+                  <span style={{ color: colors.textMuted }}>Fulfillment</span>
+                  <span style={{ color: colors.textMain, fontWeight: 600 }}>
+                    {fulfillmentType === 'delivery' ? 'Express Courier Dispatch' : 'Showroom Pickup (Bole)'}
                   </span>
                 </div>
 
                 {(lastShipment?.tracking_number || lastOrder?.shipments?.[0]?.tracking_number) && (
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 8,
-                    fontSize: '0.82rem',
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: '1px solid rgba(59, 130, 246, 0.25)',
-                  }}>
-                    <span style={{ color: '#93c5fd', fontWeight: 600 }}>Tracking Code:</span>
-                    <strong style={{ color: '#60a5fa', letterSpacing: '0.04em' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 8,
+                      fontSize: '0.82rem',
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      padding: '8px 12px',
+                      borderRadius: 10,
+                      border: '1px solid rgba(59, 130, 246, 0.25)',
+                    }}
+                  >
+                    <span style={{ color: '#3b82f6', fontWeight: 600 }}>Tracking Code:</span>
+                    <strong style={{ color: '#3b82f6', letterSpacing: '0.04em' }}>
                       {lastShipment?.tracking_number || lastOrder?.shipments?.[0]?.tracking_number}
                     </strong>
                   </div>
                 )}
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '0.94rem' }}>
-                  <span style={{ fontWeight: 800, color: '#ffffff' }}>Total Paid</span>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    paddingTop: 10,
+                    borderTop: `1px solid ${colors.border}`,
+                    fontSize: '1rem',
+                  }}
+                >
+                  <span style={{ fontWeight: 800, color: colors.textMain }}>Total Settled</span>
                   <span style={{ fontWeight: 900, color: '#f59e0b' }}>
-                    ETB {Number(lastOrder?.grand_total || grandTotal).toLocaleString()}
+                    {Number(lastOrder?.grand_total || grandTotal).toLocaleString()} ETB
                   </span>
                 </div>
               </div>
@@ -650,13 +746,13 @@ export const CustomerCartDrawer = () => {
                       width: '100%',
                       padding: '12px',
                       borderRadius: '9999px',
-                      background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                       border: 'none',
-                      color: '#ffffff',
+                      color: '#FFFFFF',
                       fontWeight: 800,
                       fontSize: '0.88rem',
                       cursor: 'pointer',
-                      boxShadow: '0 0 20px rgba(37, 99, 235, 0.4)',
+                      boxShadow: '0 4px 16px rgba(59, 130, 246, 0.35)',
                     }}
                   >
                     Track Package Progress Live &rarr;
@@ -675,13 +771,13 @@ export const CustomerCartDrawer = () => {
                     borderRadius: '9999px',
                     background: 'rgba(245, 158, 11, 0.15)',
                     border: '1px solid rgba(245, 158, 11, 0.35)',
-                    color: '#fbbf24',
+                    color: '#f59e0b',
                     fontWeight: 800,
                     fontSize: '0.88rem',
                     cursor: 'pointer',
                   }}
                 >
-                  View My Order History & Receipts
+                  View My Order History &amp; Receipts
                 </button>
 
                 <button
@@ -694,8 +790,8 @@ export const CustomerCartDrawer = () => {
                     padding: '10px',
                     borderRadius: '9999px',
                     background: 'transparent',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    color: '#94a3b8',
+                    border: `1px solid ${colors.border}`,
+                    color: colors.textMuted,
                     fontWeight: 600,
                     fontSize: '0.82rem',
                     cursor: 'pointer',
@@ -708,31 +804,31 @@ export const CustomerCartDrawer = () => {
           )}
         </div>
 
-        {/* Drawer Footer (Only on Cart Step) */}
+        {/* ── DRAWER FOOTER (Cart Step) ────────────────────────────── */}
         {checkoutStep === 'cart' && cart.length > 0 && (
           <div
             style={{
               padding: '20px 24px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              background: 'rgba(9, 12, 19, 0.95)',
+              borderTop: `1px solid ${colors.border}`,
+              background: colors.footerBg,
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#94a3b8', marginBottom: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', color: colors.textMuted, marginBottom: 6 }}>
               <span>Subtotal</span>
-              <span>ETB {subtotal.toLocaleString()}</span>
+              <span>{subtotal.toLocaleString()} ETB</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#94a3b8', marginBottom: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', color: colors.textMuted, marginBottom: 6 }}>
               <span>VAT (15% Tax Invoiced)</span>
-              <span>ETB {tax.toLocaleString()}</span>
+              <span>{tax.toLocaleString()} ETB</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#94a3b8', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', color: colors.textMuted, marginBottom: 12 }}>
               <span>Express Delivery</span>
-              <span style={{ color: '#10b981' }}>+ETB 150.00</span>
+              <span style={{ color: '#10b981' }}>+150.00 ETB</span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.15rem', fontWeight: 900, color: '#ffffff', marginBottom: 16 }}>
-              <span>Grand Total</span>
-              <span style={{ color: '#f59e0b' }}>ETB {(grandTotal).toLocaleString()}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 900, color: colors.textMain, marginBottom: 16 }}>
+              <span>Total</span>
+              <span style={{ color: '#f59e0b' }}>{(grandTotal).toLocaleString()} ETB</span>
             </div>
 
             <button
@@ -746,7 +842,7 @@ export const CustomerCartDrawer = () => {
               }}
               style={{
                 width: '100%',
-                padding: '13px',
+                padding: '14px',
                 borderRadius: '9999px',
                 background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
                 border: 'none',
@@ -754,13 +850,11 @@ export const CustomerCartDrawer = () => {
                 fontWeight: 900,
                 fontSize: '0.94rem',
                 cursor: 'pointer',
-                boxShadow: '0 0 25px rgba(245, 158, 11, 0.45)',
+                boxShadow: '0 4px 20px rgba(245, 158, 11, 0.4)',
                 transition: 'transform 0.2s',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-1px)')}
-              onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
             >
-              {isAuthenticated ? 'Proceed to Checkout →' : 'Sign In to Checkout →'}
+              {isAuthenticated ? 'Proceed to Secure Checkout →' : 'Sign In to Checkout →'}
             </button>
           </div>
         )}
