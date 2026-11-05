@@ -808,10 +808,10 @@ export const Products = () => {
                 onChange={handleInputChange}
                 style={{ background: '#f8fafc', color: '#1e293b' }}
               >
-                <option value="">-- Standard (Piece/Unit) --</option>
+                <option value="">-- Standard (Piece / pcs) --</option>
                 {units.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.name} ({u.code})
+                    {u.name} ({u.abbreviation || 'pcs'})
                   </option>
                 ))}
               </select>
