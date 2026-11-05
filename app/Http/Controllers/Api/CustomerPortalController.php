@@ -340,4 +340,59 @@ class CustomerPortalController extends Controller
             'message' => 'No order or shipment found matching reference "' . $cleanRef . '". Please verify your tracking number or order number.',
         ], 404);
     }
+
+    /**
+     * Update customer profile details and default shipping address.
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'name'    => 'sometimes|string|max:255',
+            'phone'   => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:500',
+        ]);
+
+        if (!empty($validated['name'])) {
+            $user->name = $validated['name'];
+            $user->save();
+        }
+
+        $customer = Customer::where('user_id', $user->id)
+            ->orWhere('email', $user->email)
+            ->first();
+
+        if ($customer) {
+            if (!empty($validated['name'])) {
+                $customer->display_name = $validated['name'];
+            }
+            if (isset($validated['phone'])) {
+                $customer->phone = $validated['phone'];
+            }
+            $customer->save();
+
+            if (!empty($validated['address'])) {
+                $defaultAddress = $customer->defaultAddress ?: $customer->addresses()->first();
+                if ($defaultAddress) {
+                    $defaultAddress->update(['address_line_1' => $validated['address']]);
+                } else {
+                    $customer->addresses()->create([
+                        'address_line_1' => $validated['address'],
+                        'city'           => 'Addis Ababa',
+                        'is_default'     => true,
+                        'address_type'   => 'shipping',
+                    ]);
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Your profile information has been updated successfully.',
+            'data'    => [
+                'user'     => $user->fresh(),
+                'customer' => $customer ? $customer->fresh(['addresses', 'defaultAddress']) : null,
+            ],
+        ]);
+    }
 }

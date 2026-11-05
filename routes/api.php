@@ -111,6 +111,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Customer Portal routes
     Route::get('/customer/profile', [CustomerPortalController::class, 'profile']);
+    Route::match(['put', 'patch'], '/customer/profile', [CustomerPortalController::class, 'updateProfile']);
     Route::get('/customer/orders', [CustomerPortalController::class, 'orders']);
     Route::get('/customer/shipments', [CustomerPortalController::class, 'shipments']);
 

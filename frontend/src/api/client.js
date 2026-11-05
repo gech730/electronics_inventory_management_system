@@ -853,6 +853,13 @@ class ApiClient {
     return this.request('/customer/profile');
   }
 
+  updateCustomerProfile(data) {
+    return this.request('/customer/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   getCustomerOrders() {
     return this.request('/customer/orders');
   }

@@ -2,18 +2,54 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import Icon from '../components/Icons';
 
 export default function CustomerDashboard() {
   const { user, logout, showToast } = useAuth();
+  const { setIsCartOpen, totalCount } = useCart();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Active view tab: 'orders' | 'tracking' | 'profile'
+  // ── Theme State (Synced with Rosa Home Page) ───────────────────────
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('ngus_theme') || 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('ngus_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  const isDark = theme === 'dark';
+
+  // Theme-aware design tokens
+  const colors = {
+    bgApp: isDark ? '#070810' : '#FCF9F7',
+    bgSurface: isDark ? '#0e121d' : '#FFFFFF',
+    bgCardSubtle: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC',
+    border: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.9)',
+    borderHover: isDark ? 'rgba(245, 158, 11, 0.45)' : '#F59E0B',
+    textMain: isDark ? '#FFFFFF' : '#18181B',
+    textMuted: isDark ? '#94A3B8' : '#64748B',
+    textDim: isDark ? '#64748B' : '#94A3B8',
+    headerBg: isDark ? 'rgba(7, 8, 16, 0.92)' : 'rgba(252, 249, 247, 0.92)',
+    cardShadow: isDark
+      ? '0 10px 30px rgba(0, 0, 0, 0.45)'
+      : '0 8px 24px rgba(15, 23, 42, 0.05)',
+    primaryAccent: '#f59e0b',
+    primaryHover: '#d97706',
+  };
+
+  // ── Navigation Tabs: 'orders' | 'tracking' | 'profile' ──────────────
   const initialTab = searchParams.get('tab') || 'orders';
   const [activeTab, setActiveTab] = useState(initialTab);
 
-  // Data states
+  // ── Data States ────────────────────────────────────────────────────
   const [profileData, setProfileData] = useState(null);
   const [orders, setOrders] = useState([]);
   const [shipments, setShipments] = useState([]);
@@ -31,6 +67,15 @@ export default function CustomerDashboard() {
   // Modals & UI helpers
   const [receiptOrder, setReceiptOrder] = useState(null);
   const [copiedCode, setCopiedCode] = useState('');
+
+  // Edit Profile Form State
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    phone: '',
+    address: '',
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
 
   // Sync tab with URL
   useEffect(() => {
@@ -55,7 +100,16 @@ export default function CustomerDashboard() {
         api.getCustomerShipments().catch(() => ({ data: [] })),
       ]);
 
-      if (profRes?.data) setProfileData(profRes.data);
+      if (profRes?.data) {
+        setProfileData(profRes.data);
+        const cust = profRes.data.customer;
+        const defaultAddr = cust?.default_address?.address_line_1 || cust?.addresses?.[0]?.address_line_1 || '';
+        setProfileForm({
+          name: profRes.data.user?.name || cust?.display_name || '',
+          phone: cust?.phone || '',
+          address: defaultAddr,
+        });
+      }
       if (ordRes?.data) setOrders(ordRes.data);
       if (shpRes?.data) setShipments(shpRes.data);
     } catch (err) {
@@ -122,6 +176,30 @@ export default function CustomerDashboard() {
     handleTrackLookup(trackingNumber);
   };
 
+  // Save profile changes
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setProfileSaving(true);
+    setProfileSuccessMsg('');
+    try {
+      const res = await api.updateCustomerProfile(profileForm);
+      if (res?.data) {
+        setProfileData((prev) => ({
+          ...prev,
+          user: res.data.user || prev.user,
+          customer: res.data.customer || prev.customer,
+        }));
+      }
+      setProfileSuccessMsg('Your profile and delivery coordinates have been updated.');
+      showToast?.('Profile updated successfully!', 'success');
+      setTimeout(() => setProfileSuccessMsg(''), 4000);
+    } catch (err) {
+      showToast?.(err.data?.message || 'Failed to update profile.', 'error');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   // Filtered orders
   const filteredOrders = useMemo(() => {
     if (orderStatusFilter === 'all') return orders;
@@ -144,165 +222,183 @@ export default function CustomerDashboard() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'radial-gradient(circle at 50% 0%, #161a30 0%, #070810 50%, #040508 100%)',
-      color: '#f8fafc',
-      fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      position: 'relative',
-      overflowX: 'hidden',
-    }}>
-      {/* Background ambient gold & sapphire glow orbs */}
-      <div style={{
-        position: 'absolute',
-        top: -150,
-        left: '20%',
-        width: 600,
-        height: 400,
-        background: 'radial-gradient(circle, rgba(245, 158, 11, 0.08) 0%, transparent 70%)',
-        filter: 'blur(70px)',
-        pointerEvents: 'none',
-        zIndex: 0,
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: 250,
-        right: '10%',
-        width: 500,
-        height: 500,
-        background: 'radial-gradient(circle, rgba(59, 130, 246, 0.06) 0%, transparent 70%)',
-        filter: 'blur(80px)',
-        pointerEvents: 'none',
-        zIndex: 0,
-      }} />
-
-      {/* Top Royal Header Bar */}
-      <header style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        backdropFilter: 'blur(20px)',
-        background: 'rgba(7, 8, 16, 0.82)',
-        borderBottom: '1px solid rgba(245, 158, 11, 0.18)',
-        padding: '16px 24px',
-      }}>
-        <div style={{
-          maxWidth: 1280,
-          margin: '0 auto',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}>
-          {/* Brand Logo & Portal Tag */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 42,
-                height: 42,
-                borderRadius: 12,
-                background: 'linear-gradient(135deg, #d97706 0%, #b45309 50%, #78350f 100%)',
-                border: '1px solid rgba(251, 191, 36, 0.4)',
+    <div
+      style={{
+        minHeight: '100vh',
+        background: colors.bgApp,
+        color: colors.textMain,
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        position: 'relative',
+        overflowX: 'hidden',
+        transition: 'background-color 0.3s ease, color 0.3s ease',
+      }}
+    >
+      {/* 🧭 FIXED / STICKY HEADER (Rosa Minimalist Style) */}
+      <header
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 40,
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          background: colors.headerBg,
+          borderBottom: `1px solid ${colors.border}`,
+          transition: 'all 0.3s ease',
+          padding: '14px 24px',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1280,
+            margin: '0 auto',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 16,
+          }}
+        >
+          {/* Brand Logo & Portal Subtitle */}
+          <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 16px rgba(245, 158, 11, 0.25)',
-              }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5z" />
-                  <path d="M5 19h14" />
-                </svg>
+                boxShadow: '0 4px 14px rgba(245, 158, 11, 0.3)',
+              }}
+            >
+              <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>👑</span>
+            </div>
+            <div>
+              <div
+                style={{
+                  fontWeight: 800,
+                  fontSize: '1.15rem',
+                  letterSpacing: '-0.02em',
+                  color: colors.textMain,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                NGUS <span style={{ color: '#f59e0b', fontWeight: 800 }}>ELECTRONICS</span>
               </div>
-              <div>
-                <div style={{
-                  fontSize: 18,
-                  fontWeight: 900,
-                  letterSpacing: '0.04em',
-                  background: 'linear-gradient(90deg, #ffffff 0%, #fef3c7 60%, #f59e0b 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}>
-                  NGUS ELECTRONICS
-                </div>
-                <div style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: '0.12em',
-                  color: 'rgba(245, 158, 11, 0.9)',
+              <div
+                style={{
+                  fontSize: '0.65rem',
+                  color: colors.textDim,
+                  letterSpacing: '0.08em',
                   textTransform: 'uppercase',
-                }}>
-                  Royal Customer Portal
-                </div>
+                }}
+              >
+                Royal Customer Sanctuary
               </div>
-            </Link>
-          </div>
+            </div>
+          </Link>
 
-          {/* Quick Navigation Links */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Quick Header Navigation Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Storefront Link */}
             <Link
               to="/"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 6,
                 padding: '8px 16px',
-                borderRadius: 10,
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#cbd5e1',
-                fontSize: 13,
+                borderRadius: '9999px',
+                background: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                border: `1px solid ${colors.border}`,
+                color: colors.textMain,
+                fontSize: '0.84rem',
                 fontWeight: 600,
                 textDecoration: 'none',
+                boxShadow: isDark ? 'none' : '0 2px 6px rgba(0,0,0,0.03)',
                 transition: 'all 0.2s',
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(245, 158, 11, 0.12)';
-                e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-                e.currentTarget.style.color = '#fbbf24';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.color = '#cbd5e1';
-              }}
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="9" cy="21" r="1" />
-                <circle cx="20" cy="21" r="1" />
-                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-              </svg>
-              <span>Explore Boutique</span>
+              <span>Explore Hardware</span>
+              <span style={{ color: '#f59e0b' }}>&rarr;</span>
             </Link>
 
-            <Link
-              to="/tracking"
+            {/* Bag Button (Authenticated) */}
+            <button
+              onClick={() => setIsCartOpen(true)}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
                 padding: '8px 16px',
-                borderRadius: 10,
-                background: 'rgba(59, 130, 246, 0.12)',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
-                color: '#93c5fd',
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: 'none',
+                borderRadius: '9999px',
+                background: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                border: `1px solid ${colors.border}`,
+                color: colors.textMain,
+                fontSize: '0.84rem',
+                fontWeight: 700,
+                cursor: 'pointer',
                 transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
-                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.12)';
-                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.25)';
+                boxShadow: isDark ? 'none' : '0 2px 6px rgba(0,0,0,0.03)',
               }}
             >
-              <Icon name="truck" size={15} color="#60a5fa" />
-              <span>Global Dispatch Tracking</span>
-            </Link>
+              <Icon name="cart" size={16} color="#f59e0b" />
+              <span>Bag</span>
+              <span
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                  color: '#090a0f',
+                  fontSize: '0.72rem',
+                  fontWeight: 900,
+                  padding: '2px 7px',
+                  borderRadius: '9999px',
+                }}
+              >
+                {totalCount}
+              </span>
+            </button>
+
+            {/* ☀️ / 🌙 Light & Dark Theme Toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                border: `1px solid ${colors.border}`,
+                color: isDark ? '#fbbf24' : '#d97706',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              title={`Switch to ${isDark ? 'Light' : 'Dark'} Mode`}
+            >
+              {isDark ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+            </button>
 
             {/* Logout Button */}
             <button
@@ -313,362 +409,400 @@ export default function CustomerDashboard() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 6,
                 padding: '8px 14px',
-                borderRadius: 10,
+                borderRadius: '9999px',
                 background: 'rgba(239, 68, 68, 0.08)',
-                border: '1px solid rgba(239, 68, 68, 0.2)',
-                color: '#fca5a5',
-                fontSize: 13,
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                color: '#ef4444',
+                fontSize: '0.82rem',
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.18)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
-              }}
             >
-              <Icon name="logout" size={15} color="#f87171" />
-              <span>Exit</span>
+              <Icon name="logout" size={14} color="#ef4444" />
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 24px 80px', position: 'relative', zIndex: 1 }}>
-        {/* Welcome Hero Banner */}
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(22, 27, 46, 0.85) 0%, rgba(13, 16, 28, 0.95) 100%)',
-          borderRadius: 24,
-          padding: '32px 36px',
-          border: '1px solid rgba(245, 158, 11, 0.22)',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
-          marginBottom: 32,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 24,
-        }}>
+      {/* ── MAIN DASHBOARD CONTAINER ─────────────────────────────────── */}
+      <main style={{ maxWidth: 1280, margin: '0 auto', padding: '36px 24px 80px' }}>
+        {/* 🌟 LUXURIOUS WELCOME HERO CARD (Rosa-Inspired Serif Accent) */}
+        <div
+          style={{
+            background: colors.bgSurface,
+            borderRadius: '24px',
+            padding: '36px 36px',
+            border: `1px solid ${colors.border}`,
+            boxShadow: colors.cardShadow,
+            marginBottom: 32,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 24,
+            transition: 'all 0.3s ease',
+          }}
+        >
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-              <div style={{
-                padding: '4px 12px',
-                borderRadius: 999,
-                background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.1) 100%)',
-                border: '1px solid rgba(245, 158, 11, 0.35)',
-                color: '#fbbf24',
-                fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: '0.05em',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-              }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="#fbbf24">
-                  <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5z" />
-                </svg>
-                {metrics.membership_tier}
-              </div>
-              <span style={{ fontSize: 13, color: '#94a3b8' }}>
-                Accredited Ngus Patron
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span
+                style={{
+                  padding: '5px 14px',
+                  borderRadius: '9999px',
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  color: '#f59e0b',
+                  fontSize: '0.76rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.06em',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  textTransform: 'uppercase',
+                }}
+              >
+                <span>👑</span> {metrics.membership_tier}
+              </span>
+              <span style={{ fontSize: '0.84rem', color: colors.textMuted }}>
+                Addis Ababa Verified Client
               </span>
             </div>
 
-            <h1 style={{
-              fontSize: 'clamp(24px, 4vw, 36px)',
-              fontWeight: 800,
-              color: '#ffffff',
-              margin: '0 0 8px',
-              letterSpacing: '-0.02em',
-            }}>
-              Welcome to Your Sanctuary, <span style={{
-                background: 'linear-gradient(90deg, #fef08a 0%, #f59e0b 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}>{customerName}</span>
+            <h1
+              style={{
+                fontSize: 'clamp(1.8rem, 3.2vw, 2.6rem)',
+                fontWeight: 700,
+                color: colors.textMain,
+                margin: '0 0 10px',
+                letterSpacing: '-0.025em',
+                lineHeight: 1.2,
+              }}
+            >
+              Welcome back,{' '}
+              <span
+                style={{
+                  fontStyle: 'italic',
+                  fontWeight: 300,
+                  color: '#f59e0b',
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                }}
+              >
+                {customerName}
+              </span>
             </h1>
 
-            <p style={{ margin: 0, color: '#94a3b8', fontSize: 14, maxWidth: 640, lineHeight: 1.6 }}>
-              Review your high-fidelity hardware acquisitions, audit digital transaction ledgers, and track express courier dispatches across Ethiopia in real-time.
+            <p style={{ margin: 0, color: colors.textMuted, fontSize: '0.94rem', maxWidth: 620, lineHeight: 1.6 }}>
+              Review your high-performance hardware orders, view official digital tax receipts, and trace real-time express courier dispatches across Ethiopia.
             </p>
           </div>
 
-          {/* Quick Account Tag */}
-          <div style={{
-            background: 'rgba(10, 12, 22, 0.7)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: 16,
-            padding: '16px 20px',
-            textAlign: 'right',
-            minWidth: 200,
-          }}>
-            <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
-              Active Client Credential
+          {/* Quick Account Tag Card */}
+          <div
+            style={{
+              background: colors.bgCardSubtle,
+              border: `1px solid ${colors.border}`,
+              borderRadius: '18px',
+              padding: '18px 22px',
+              minWidth: 220,
+              boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
+            }}
+          >
+            <div style={{ fontSize: '0.72rem', color: colors.textDim, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+              Active Client ID
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', marginBottom: 2 }}>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: colors.textMain, marginBottom: 4 }}>
               {customerEmail}
             </div>
-            <div style={{ fontSize: 11, color: '#fbbf24', fontWeight: 600 }}>
-              Direct Telebirr / CBE Linked
+            <div style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+              Telebirr &amp; CBE Birr Enabled
             </div>
           </div>
         </div>
 
-        {/* 4 Core Royal Metrics Highlights */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: 20,
-          marginBottom: 36,
-        }}>
+        {/* 📊 4 CORE STATISTIC HIGHLIGHT CARDS */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: 20,
+            marginBottom: 36,
+          }}
+        >
           {/* Metric 1: Total Orders */}
-          <div style={{
-            background: 'rgba(15, 18, 32, 0.7)',
-            backdropFilter: 'blur(12px)',
-            borderRadius: 18,
-            padding: '22px 24px',
-            border: '1px solid rgba(255, 255, 255, 0.07)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
-          }}>
+          <div
+            style={{
+              background: colors.bgSurface,
+              borderRadius: '20px',
+              padding: '24px',
+              border: `1px solid ${colors.border}`,
+              boxShadow: colors.cardShadow,
+              transition: 'all 0.25s ease',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8' }}>Total Acquisitions</span>
-              <div style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                background: 'rgba(245, 158, 11, 0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fbbf24',
-              }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <path d="M16 10a4 4 0 0 1-8 0" />
-                </svg>
+              <span style={{ fontSize: '0.86rem', fontWeight: 600, color: colors.textMuted }}>Total Acquisitions</span>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: '10px',
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#f59e0b',
+                }}
+              >
+                <Icon name="receipt" size={18} color="#f59e0b" />
               </div>
             </div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em', marginBottom: 4 }}>
+            <div style={{ fontSize: '2.1rem', fontWeight: 800, color: colors.textMain, letterSpacing: '-0.02em', marginBottom: 4 }}>
               {metrics.total_orders}
             </div>
-            <div style={{ fontSize: 12, color: '#64748b' }}>
+            <div style={{ fontSize: '0.78rem', color: colors.textDim }}>
               Orders verified in inventory ledger
             </div>
           </div>
 
           {/* Metric 2: Active Shipments */}
-          <div style={{
-            background: 'rgba(15, 18, 32, 0.7)',
-            backdropFilter: 'blur(12px)',
-            borderRadius: 18,
-            padding: '22px 24px',
-            border: '1px solid rgba(59, 130, 246, 0.25)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
-          }}>
+          <div
+            style={{
+              background: colors.bgSurface,
+              borderRadius: '20px',
+              padding: '24px',
+              border: `1px solid ${colors.border}`,
+              boxShadow: colors.cardShadow,
+              transition: 'all 0.25s ease',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#93c5fd' }}>Active In-Transit</span>
-              <div style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                background: 'rgba(59, 130, 246, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#60a5fa',
-              }}>
-                <Icon name="truck" size={20} color="#60a5fa" />
+              <span style={{ fontSize: '0.86rem', fontWeight: 600, color: colors.textMuted }}>Active In-Transit</span>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: '10px',
+                  background: 'rgba(59, 130, 246, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#3b82f6',
+                }}
+              >
+                <Icon name="truck" size={18} color="#3b82f6" />
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
-              <div style={{ fontSize: 30, fontWeight: 800, color: '#60a5fa', letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: '2.1rem', fontWeight: 800, color: '#3b82f6', letterSpacing: '-0.02em' }}>
                 {metrics.active_shipments_count}
               </div>
               {metrics.active_shipments_count > 0 && (
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: '#34d399',
-                  background: 'rgba(16, 185, 129, 0.12)',
-                  padding: '2px 8px',
-                  borderRadius: 999,
-                }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', animation: 'pulse 1.5s infinite' }} />
-                  Live Fleet Moving
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    color: '#10b981',
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    padding: '2px 8px',
+                    borderRadius: '9999px',
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+                  Moving
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 12, color: '#64748b' }}>
-              Consignments currently en route
+            <div style={{ fontSize: '0.78rem', color: colors.textDim }}>
+              Couriers currently en route
             </div>
           </div>
 
-          {/* Metric 3: Total Investment */}
-          <div style={{
-            background: 'rgba(15, 18, 32, 0.7)',
-            backdropFilter: 'blur(12px)',
-            borderRadius: 18,
-            padding: '22px 24px',
-            border: '1px solid rgba(245, 158, 11, 0.22)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
-          }}>
+          {/* Metric 3: Total Spent */}
+          <div
+            style={{
+              background: colors.bgSurface,
+              borderRadius: '20px',
+              padding: '24px',
+              border: `1px solid ${colors.border}`,
+              boxShadow: colors.cardShadow,
+              transition: 'all 0.25s ease',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#fbbf24' }}>Total Value Invested</span>
-              <div style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                background: 'rgba(245, 158, 11, 0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fbbf24',
-              }}>
-                <Icon name="creditCard" size={20} color="#fbbf24" />
+              <span style={{ fontSize: '0.86rem', fontWeight: 600, color: colors.textMuted }}>Total Investment</span>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: '10px',
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#f59e0b',
+                }}
+              >
+                <Icon name="creditCard" size={18} color="#f59e0b" />
               </div>
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#fbbf24', letterSpacing: '-0.02em', marginBottom: 4 }}>
-              {parseFloat(metrics.total_spent || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: 14, fontWeight: 600, color: '#d97706' }}>ETB</span>
+            <div style={{ fontSize: '1.7rem', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.02em', marginBottom: 4 }}>
+              {parseFloat(metrics.total_spent || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: colors.textDim }}>ETB</span>
             </div>
-            <div style={{ fontSize: 12, color: '#64748b' }}>
-              Lifetime procurement volume
+            <div style={{ fontSize: '0.78rem', color: colors.textDim }}>
+              Lifetime procurement balance
             </div>
           </div>
 
-          {/* Metric 4: VIP Privilege */}
-          <div style={{
-            background: 'rgba(15, 18, 32, 0.7)',
-            backdropFilter: 'blur(12px)',
-            borderRadius: 18,
-            padding: '22px 24px',
-            border: '1px solid rgba(16, 185, 129, 0.22)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
-          }}>
+          {/* Metric 4: Courier Priority */}
+          <div
+            style={{
+              background: colors.bgSurface,
+              borderRadius: '20px',
+              padding: '24px',
+              border: `1px solid ${colors.border}`,
+              boxShadow: colors.cardShadow,
+              transition: 'all 0.25s ease',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#6ee7b7' }}>Courier Service Tier</span>
-              <div style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                background: 'rgba(16, 185, 129, 0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#34d399',
-              }}>
-                <Icon name="shield" size={20} color="#34d399" />
+              <span style={{ fontSize: '0.86rem', fontWeight: 600, color: colors.textMuted }}>Delivery Service</span>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: '10px',
+                  background: 'rgba(16, 185, 129, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#10b981',
+                }}
+              >
+                <Icon name="shield" size={18} color="#10b981" />
               </div>
             </div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.01em', marginBottom: 4 }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: colors.textMain, letterSpacing: '-0.01em', marginBottom: 4 }}>
               Priority Express
             </div>
-            <div style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>
+            <div style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 700 }}>
               Addis Ababa 24h Guaranteed Transit
             </div>
           </div>
         </div>
 
-        {/* Tab Navigation Controls */}
-        <div style={{
-          display: 'flex',
-          gap: 12,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          paddingBottom: 16,
-          marginBottom: 32,
-          flexWrap: 'wrap',
-        }}>
+        {/* 📑 TAB NAVIGATION CONTROLS */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 12,
+            borderBottom: `1px solid ${colors.border}`,
+            paddingBottom: 16,
+            marginBottom: 32,
+            flexWrap: 'wrap',
+          }}
+        >
+          {/* Tab 1: Orders */}
           <button
             onClick={() => changeTab('orders')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 10,
-              padding: '12px 24px',
-              borderRadius: 14,
-              border: activeTab === 'orders' ? '1px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.08)',
-              background: activeTab === 'orders' ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(180, 83, 9, 0.15) 100%)' : 'rgba(255, 255, 255, 0.03)',
-              color: activeTab === 'orders' ? '#fbbf24' : '#94a3b8',
-              fontSize: 14,
+              gap: 8,
+              padding: '10px 22px',
+              borderRadius: '9999px',
+              border: `1px solid ${activeTab === 'orders' ? '#f59e0b' : colors.border}`,
+              background: activeTab === 'orders' ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' : colors.bgSurface,
+              color: activeTab === 'orders' ? '#090a0f' : colors.textMuted,
+              fontSize: '0.86rem',
               fontWeight: 700,
               cursor: 'pointer',
               transition: 'all 0.2s',
+              boxShadow: isDark ? 'none' : '0 2px 6px rgba(0,0,0,0.03)',
             }}
           >
-            <Icon name="receipt" size={18} color={activeTab === 'orders' ? '#fbbf24' : '#94a3b8'} />
-            <span>My Order History</span>
-            <span style={{
-              background: activeTab === 'orders' ? '#f59e0b' : 'rgba(255, 255, 255, 0.1)',
-              color: activeTab === 'orders' ? '#000000' : '#ffffff',
-              fontSize: 11,
-              fontWeight: 800,
-              padding: '2px 8px',
-              borderRadius: 999,
-            }}>
+            <Icon name="receipt" size={16} color={activeTab === 'orders' ? '#090a0f' : colors.textMuted} />
+            <span>My Orders</span>
+            <span
+              style={{
+                background: activeTab === 'orders' ? '#090a0f' : isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)',
+                color: activeTab === 'orders' ? '#fbbf24' : colors.textMain,
+                fontSize: '0.72rem',
+                fontWeight: 900,
+                padding: '2px 8px',
+                borderRadius: '9999px',
+              }}
+            >
               {orders.length}
             </span>
           </button>
 
+          {/* Tab 2: Tracking */}
           <button
             onClick={() => changeTab('tracking')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 10,
-              padding: '12px 24px',
-              borderRadius: 14,
-              border: activeTab === 'tracking' ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.08)',
-              background: activeTab === 'tracking' ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(29, 78, 216, 0.15) 100%)' : 'rgba(255, 255, 255, 0.03)',
-              color: activeTab === 'tracking' ? '#93c5fd' : '#94a3b8',
-              fontSize: 14,
+              gap: 8,
+              padding: '10px 22px',
+              borderRadius: '9999px',
+              border: `1px solid ${activeTab === 'tracking' ? '#3b82f6' : colors.border}`,
+              background: activeTab === 'tracking' ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : colors.bgSurface,
+              color: activeTab === 'tracking' ? '#FFFFFF' : colors.textMuted,
+              fontSize: '0.86rem',
               fontWeight: 700,
               cursor: 'pointer',
               transition: 'all 0.2s',
+              boxShadow: isDark ? 'none' : '0 2px 6px rgba(0,0,0,0.03)',
             }}
           >
-            <Icon name="truck" size={18} color={activeTab === 'tracking' ? '#93c5fd' : '#94a3b8'} />
-            <span>Live Shipping & Tracking</span>
+            <Icon name="truck" size={16} color={activeTab === 'tracking' ? '#FFFFFF' : colors.textMuted} />
+            <span>Live Shipping &amp; Tracking</span>
             {metrics.active_shipments_count > 0 && (
-              <span style={{
-                background: '#3b82f6',
-                color: '#ffffff',
-                fontSize: 11,
-                fontWeight: 800,
-                padding: '2px 8px',
-                borderRadius: 999,
-              }}>
+              <span
+                style={{
+                  background: activeTab === 'tracking' ? '#FFFFFF' : '#3b82f6',
+                  color: activeTab === 'tracking' ? '#1d4ed8' : '#FFFFFF',
+                  fontSize: '0.72rem',
+                  fontWeight: 900,
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                }}
+              >
                 {metrics.active_shipments_count} active
               </span>
             )}
           </button>
 
+          {/* Tab 3: Profile */}
           <button
             onClick={() => changeTab('profile')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 10,
-              padding: '12px 24px',
-              borderRadius: 14,
-              border: activeTab === 'profile' ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
-              background: activeTab === 'profile' ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(4, 120, 87, 0.15) 100%)' : 'rgba(255, 255, 255, 0.03)',
-              color: activeTab === 'profile' ? '#6ee7b7' : '#94a3b8',
-              fontSize: 14,
+              gap: 8,
+              padding: '10px 22px',
+              borderRadius: '9999px',
+              border: `1px solid ${activeTab === 'profile' ? '#10b981' : colors.border}`,
+              background: activeTab === 'profile' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : colors.bgSurface,
+              color: activeTab === 'profile' ? '#FFFFFF' : colors.textMuted,
+              fontSize: '0.86rem',
               fontWeight: 700,
               cursor: 'pointer',
               transition: 'all 0.2s',
+              boxShadow: isDark ? 'none' : '0 2px 6px rgba(0,0,0,0.03)',
             }}
           >
-            <Icon name="users" size={18} color={activeTab === 'profile' ? '#6ee7b7' : '#94a3b8'} />
-            <span>Profile & Addresses</span>
+            <Icon name="users" size={16} color={activeTab === 'profile' ? '#FFFFFF' : colors.textMuted} />
+            <span>Profile &amp; Coordinates</span>
           </button>
         </div>
 
@@ -676,116 +810,116 @@ export default function CustomerDashboard() {
         {activeTab === 'orders' && (
           <div>
             {/* Filter Pills */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 24,
-              flexWrap: 'wrap',
-              gap: 16,
-            }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 24,
+                flexWrap: 'wrap',
+                gap: 16,
+              }}
+            >
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {[
                   { id: 'all', label: 'All Orders' },
                   { id: 'confirmed', label: 'Confirmed' },
                   { id: 'shipped', label: 'Shipped & In Transit' },
-                  { id: 'completed', label: 'Completed' },
-                ].map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setOrderStatusFilter(f.id)}
-                    style={{
-                      padding: '6px 16px',
-                      borderRadius: 10,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      border: orderStatusFilter === f.id ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
-                      background: orderStatusFilter === f.id ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                      color: orderStatusFilter === f.id ? '#fbbf24' : '#94a3b8',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+                  { id: 'completed', label: 'Delivered & Complete' },
+                ].map((f) => {
+                  const isSelected = orderStatusFilter === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => setOrderStatusFilter(f.id)}
+                      style={{
+                        padding: '6px 16px',
+                        borderRadius: '9999px',
+                        fontSize: '0.82rem',
+                        fontWeight: isSelected ? 800 : 600,
+                        cursor: 'pointer',
+                        border: `1px solid ${isSelected ? '#f59e0b' : colors.border}`,
+                        background: isSelected
+                          ? 'rgba(245, 158, 11, 0.15)'
+                          : colors.bgSurface,
+                        color: isSelected ? '#f59e0b' : colors.textMuted,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  );
+                })}
               </div>
 
-              <div style={{ fontSize: 13, color: '#64748b' }}>
-                Showing <strong style={{ color: '#e2e8f0' }}>{filteredOrders.length}</strong> of {orders.length} total orders
+              <div style={{ fontSize: '0.84rem', color: colors.textDim }}>
+                Showing <strong style={{ color: colors.textMain }}>{filteredOrders.length}</strong> of {orders.length} orders
               </div>
             </div>
 
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '80px 0', color: '#94a3b8' }}>
-                <div style={{
-                  width: 48,
-                  height: 48,
-                  border: '3px solid rgba(245, 158, 11, 0.2)',
-                  borderTopColor: '#f59e0b',
-                  borderRadius: '50%',
-                  margin: '0 auto 16px',
-                  animation: 'spin 1s linear infinite',
-                }} />
-                <p style={{ fontSize: 15, fontWeight: 600 }}>Loading royal order records...</p>
+              <div style={{ textAlign: 'center', padding: '80px 0', color: colors.textMuted }}>
+                <div style={{ fontSize: '2.4rem', marginBottom: 12 }}>⚡</div>
+                <p style={{ fontSize: '1.05rem', fontWeight: 600 }}>Loading official order records...</p>
               </div>
             ) : filteredOrders.length === 0 ? (
-              /* Empty State */
-              <div style={{
-                background: 'rgba(15, 18, 32, 0.6)',
-                borderRadius: 24,
-                border: '1px dashed rgba(255, 255, 255, 0.12)',
-                padding: '64px 24px',
-                textAlign: 'center',
-              }}>
-                <div style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: '50%',
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 20px',
-                  color: '#fbbf24',
-                }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="9" cy="21" r="1" />
-                    <circle cx="20" cy="21" r="1" />
-                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                  </svg>
+              /* Clean Empty State */
+              <div
+                style={{
+                  background: colors.bgSurface,
+                  borderRadius: '24px',
+                  border: `1px dashed ${colors.border}`,
+                  padding: '64px 24px',
+                  textAlign: 'center',
+                  boxShadow: colors.cardShadow,
+                }}
+              >
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: '50%',
+                    background: 'rgba(245, 158, 11, 0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 18px',
+                    color: '#f59e0b',
+                    fontSize: '1.8rem',
+                  }}
+                >
+                  📦
                 </div>
-                <h3 style={{ fontSize: 20, fontWeight: 700, color: '#ffffff', margin: '0 0 8px' }}>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: colors.textMain, margin: '0 0 8px' }}>
                   No Orders Found
                 </h3>
-                <p style={{ color: '#94a3b8', fontSize: 14, maxWidth: 420, margin: '0 auto 24px' }}>
+                <p style={{ color: colors.textMuted, fontSize: '0.92rem', maxWidth: 440, margin: '0 auto 24px' }}>
                   {orderStatusFilter === 'all'
-                    ? "You haven't placed any orders yet. Discover our flagship workstations, ultra-wide monitors, and accessories."
-                    : `No orders matching filter "${orderStatusFilter}". Try viewing all orders.`}
+                    ? "You haven't placed any orders yet. Discover our latest flagship smartphones, workstations, and noise-cancelling audio."
+                    : `No orders found matching filter "${orderStatusFilter}". Try selecting "All Orders".`}
                 </p>
                 <Link
                   to="/"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 10,
+                    gap: 8,
                     padding: '12px 28px',
-                    borderRadius: 14,
-                    background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-                    color: '#ffffff',
-                    fontSize: 14,
-                    fontWeight: 700,
+                    borderRadius: '9999px',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                    color: '#090a0f',
+                    fontSize: '0.88rem',
+                    fontWeight: 800,
                     textDecoration: 'none',
-                    boxShadow: '0 8px 24px rgba(217, 119, 6, 0.3)',
+                    boxShadow: '0 6px 20px rgba(245, 158, 11, 0.35)',
                   }}
                 >
-                  <span>Explore Ngus Catalog</span>
-                  <Icon name="chevronRight" size={16} color="#ffffff" />
+                  <span>Explore Hardware Collection</span>
+                  <span>&rarr;</span>
                 </Link>
               </div>
             ) : (
-              /* Order List */
+              /* Live Orders List */
               <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                 {filteredOrders.map((order) => {
                   const hasShipment = order.shipments && order.shipments.length > 0;
@@ -801,23 +935,23 @@ export default function CustomerDashboard() {
                   // Status badge styling
                   let statusBg = 'rgba(245, 158, 11, 0.15)';
                   let statusBorder = 'rgba(245, 158, 11, 0.35)';
-                  let statusColor = '#fbbf24';
+                  let statusColor = '#f59e0b';
                   let statusLabel = 'Confirmed';
 
                   if (order.status === 'completed' || firstShipment?.status === 'delivered') {
                     statusBg = 'rgba(16, 185, 129, 0.15)';
                     statusBorder = 'rgba(16, 185, 129, 0.35)';
-                    statusColor = '#34d399';
+                    statusColor = '#10b981';
                     statusLabel = 'Delivered & Complete';
                   } else if (order.status === 'shipped' || firstShipment?.status === 'shipped') {
                     statusBg = 'rgba(59, 130, 246, 0.15)';
                     statusBorder = 'rgba(59, 130, 246, 0.35)';
-                    statusColor = '#60a5fa';
+                    statusColor = '#3b82f6';
                     statusLabel = 'In Transit';
                   } else if (firstShipment?.status === 'packed') {
                     statusBg = 'rgba(245, 158, 11, 0.15)';
                     statusBorder = 'rgba(245, 158, 11, 0.35)';
-                    statusColor = '#fbbf24';
+                    statusColor = '#f59e0b';
                     statusLabel = 'Packed & Quality Verified';
                   }
 
@@ -825,52 +959,47 @@ export default function CustomerDashboard() {
                     <div
                       key={order.id}
                       style={{
-                        background: 'rgba(15, 18, 32, 0.8)',
-                        backdropFilter: 'blur(16px)',
-                        borderRadius: 20,
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.3)',
+                        background: colors.bgSurface,
+                        borderRadius: '20px',
+                        border: `1px solid ${colors.border}`,
+                        boxShadow: colors.cardShadow,
                         overflow: 'hidden',
-                        transition: 'border-color 0.2s',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                        transition: 'border-color 0.2s ease',
                       }}
                     >
                       {/* Order Card Header */}
-                      <div style={{
-                        padding: '20px 24px',
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: 16,
-                      }}>
+                      <div
+                        style={{
+                          padding: '18px 24px',
+                          borderBottom: `1px solid ${colors.border}`,
+                          background: colors.bgCardSubtle,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: 16,
+                        }}
+                      >
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                            <span style={{ fontSize: 16, fontWeight: 800, color: '#ffffff', letterSpacing: '0.02em' }}>
+                            <span style={{ fontSize: '1.02rem', fontWeight: 800, color: colors.textMain, letterSpacing: '0.01em' }}>
                               {order.order_number}
                             </span>
                             <button
-                              onClick={() => handleCopy(order.order_number, 'Order reference')}
+                              onClick={() => handleCopy(order.order_number, 'Order number')}
                               style={{
                                 background: 'transparent',
                                 border: 'none',
-                                color: copiedCode === order.order_number ? '#34d399' : '#64748b',
+                                color: copiedCode === order.order_number ? '#10b981' : colors.textDim,
                                 cursor: 'pointer',
                                 padding: 2,
                                 display: 'inline-flex',
                                 alignItems: 'center',
                               }}
-                              title="Copy Order Number"
+                              title="Copy Order Reference"
                             >
                               {copiedCode === order.order_number ? (
-                                <Icon name="check" size={14} color="#34d399" />
+                                <Icon name="check" size={14} color="#10b981" />
                               ) : (
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -879,39 +1008,43 @@ export default function CustomerDashboard() {
                               )}
                             </button>
                           </div>
-                          <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                          <div style={{ fontSize: '0.78rem', color: colors.textDim }}>
                             Placed on {formattedDate}
                           </div>
                         </div>
 
                         {/* Status Pills */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                          <span style={{
-                            padding: '4px 12px',
-                            borderRadius: 999,
-                            background: statusBg,
-                            border: `1px solid ${statusBorder}`,
-                            color: statusColor,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}>
+                          <span
+                            style={{
+                              padding: '5px 14px',
+                              borderRadius: '9999px',
+                              background: statusBg,
+                              border: `1px solid ${statusBorder}`,
+                              color: statusColor,
+                              fontSize: '0.76rem',
+                              fontWeight: 800,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                            }}
+                          >
                             <span style={{ width: 6, height: 6, borderRadius: '50%', background: statusColor }} />
                             {statusLabel}
                           </span>
 
-                          <span style={{
-                            padding: '4px 12px',
-                            borderRadius: 999,
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            color: '#cbd5e1',
-                            fontSize: 12,
-                            fontWeight: 600,
-                          }}>
-                            {order.fulfillment_type === 'delivery' ? 'Express Courier' : 'Store Collection'}
+                          <span
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '9999px',
+                              background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+                              border: `1px solid ${colors.border}`,
+                              color: colors.textMuted,
+                              fontSize: '0.76rem',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {order.fulfillment_type === 'delivery' ? 'Express Courier' : 'Showroom Pickup'}
                           </span>
                         </div>
                       </div>
@@ -920,7 +1053,7 @@ export default function CustomerDashboard() {
                       <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {order.items?.map((item) => {
                           const product = item.product || item.product_variant?.product;
-                          const image = product?.images?.[0]?.image_path || '/images/products/sample.png';
+                          const image = product?.images?.[0]?.image_path || 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=400&q=80';
 
                           return (
                             <div
@@ -931,22 +1064,24 @@ export default function CustomerDashboard() {
                                 justifyContent: 'space-between',
                                 gap: 16,
                                 paddingBottom: 14,
-                                borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                                borderBottom: `1px solid ${colors.border}`,
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                                <div style={{
-                                  width: 52,
-                                  height: 52,
-                                  borderRadius: 12,
-                                  background: 'rgba(255, 255, 255, 0.03)',
-                                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                                  overflow: 'hidden',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0,
-                                }}>
+                                <div
+                                  style={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: '12px',
+                                    background: colors.bgCardSubtle,
+                                    border: `1px solid ${colors.border}`,
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                  }}
+                                >
                                   <img
                                     src={image}
                                     alt={item.product_name_snapshot}
@@ -957,18 +1092,18 @@ export default function CustomerDashboard() {
                                   />
                                 </div>
                                 <div>
-                                  <div style={{ fontSize: 14, fontWeight: 700, color: '#ffffff' }}>
+                                  <div style={{ fontSize: '0.92rem', fontWeight: 700, color: colors.textMain }}>
                                     {item.product_name_snapshot}
                                   </div>
-                                  <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                                    Qty: <strong style={{ color: '#e2e8f0' }}>{Math.round(item.quantity_ordered)}</strong> × {parseFloat(item.unit_price).toLocaleString()} ETB
-                                    {item.sku_snapshot && <span style={{ marginLeft: 8, color: '#64748b' }}>• SKU: {item.sku_snapshot}</span>}
+                                  <div style={{ fontSize: '0.8rem', color: colors.textMuted, marginTop: 2 }}>
+                                    Qty: <strong style={{ color: colors.textMain }}>{Math.round(item.quantity_ordered)}</strong> × {parseFloat(item.unit_price).toLocaleString()} ETB
+                                    {item.sku_snapshot && <span style={{ marginLeft: 8, color: colors.textDim }}>• SKU: {item.sku_snapshot}</span>}
                                   </div>
                                 </div>
                               </div>
 
                               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                <div style={{ fontSize: 15, fontWeight: 700, color: '#fbbf24' }}>
+                                <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#f59e0b' }}>
                                   {parseFloat(item.line_total).toLocaleString(undefined, { minimumFractionDigits: 2 })} ETB
                                 </div>
                               </div>
@@ -978,25 +1113,27 @@ export default function CustomerDashboard() {
                       </div>
 
                       {/* Order Footer & Actions */}
-                      <div style={{
-                        padding: '16px 24px',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: 16,
-                      }}>
-                        {/* Delivery address snapshot preview */}
-                        <div style={{ fontSize: 13, color: '#94a3b8', maxWidth: 420 }}>
-                          <span style={{ color: '#64748b' }}>Destination: </span>
-                          <strong style={{ color: '#cbd5e1' }}>
+                      <div
+                        style={{
+                          padding: '16px 24px',
+                          background: colors.bgCardSubtle,
+                          borderTop: `1px solid ${colors.border}`,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: 16,
+                        }}
+                      >
+                        {/* Destination */}
+                        <div style={{ fontSize: '0.84rem', color: colors.textMuted, maxWidth: 440 }}>
+                          <span style={{ color: colors.textDim }}>Destination: </span>
+                          <strong style={{ color: colors.textMain }}>
                             {order.shipping_address?.address_line_1 || order.customer?.display_name || 'Addis Ababa'}
                           </strong>
                           {firstShipment?.tracking_number && (
-                            <div style={{ marginTop: 4, fontSize: 12, color: '#60a5fa', display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <Icon name="truck" size={13} color="#60a5fa" />
+                            <div style={{ marginTop: 4, fontSize: '0.78rem', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Icon name="truck" size={13} color="#3b82f6" />
                               <span>Tracking: <strong>{firstShipment.tracking_number}</strong></span>
                             </div>
                           )}
@@ -1005,11 +1142,11 @@ export default function CustomerDashboard() {
                         {/* Grand Total & Action Buttons */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                           <div style={{ textAlign: 'right', marginRight: 8 }}>
-                            <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>
+                            <div style={{ fontSize: '0.72rem', color: colors.textDim, textTransform: 'uppercase' }}>
                               Grand Total
                             </div>
-                            <div style={{ fontSize: 20, fontWeight: 800, color: '#fbbf24' }}>
-                              {parseFloat(order.grand_total).toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: 12 }}>ETB</span>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f59e0b' }}>
+                              {parseFloat(order.grand_total).toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: '0.76rem' }}>ETB</span>
                             </div>
                           </div>
 
@@ -1020,58 +1157,42 @@ export default function CustomerDashboard() {
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 8,
+                                gap: 6,
                                 padding: '9px 18px',
-                                borderRadius: 10,
-                                background: 'rgba(59, 130, 246, 0.15)',
+                                borderRadius: '9999px',
+                                background: 'rgba(59, 130, 246, 0.12)',
                                 border: '1px solid rgba(59, 130, 246, 0.35)',
-                                color: '#93c5fd',
-                                fontSize: 13,
+                                color: '#3b82f6',
+                                fontSize: '0.82rem',
                                 fontWeight: 700,
                                 cursor: 'pointer',
                                 transition: 'all 0.2s',
                               }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.25)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.15)';
-                              }}
                             >
-                              <Icon name="truck" size={15} color="#93c5fd" />
+                              <Icon name="truck" size={14} color="#3b82f6" />
                               <span>Track Package</span>
                             </button>
                           )}
 
-                          {/* Digital Receipt Modal Button */}
+                          {/* Digital Invoice Modal Button */}
                           <button
                             onClick={() => setReceiptOrder(order)}
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: 8,
+                              gap: 6,
                               padding: '9px 18px',
-                              borderRadius: 10,
-                              background: 'rgba(255, 255, 255, 0.05)',
-                              border: '1px solid rgba(255, 255, 255, 0.12)',
-                              color: '#ffffff',
-                              fontSize: 13,
+                              borderRadius: '9999px',
+                              background: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                              border: `1px solid ${colors.border}`,
+                              color: colors.textMain,
+                              fontSize: '0.82rem',
                               fontWeight: 700,
                               cursor: 'pointer',
                               transition: 'all 0.2s',
                             }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = 'rgba(245, 158, 11, 0.15)';
-                              e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.35)';
-                              e.currentTarget.style.color = '#fbbf24';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
-                              e.currentTarget.style.color = '#ffffff';
-                            }}
                           >
-                            <Icon name="receipt" size={15} color="currentColor" />
+                            <Icon name="receipt" size={14} color="currentColor" />
                             <span>Digital Invoice</span>
                           </button>
                         </div>
@@ -1084,37 +1205,42 @@ export default function CustomerDashboard() {
           </div>
         )}
 
-        {/* ── TAB 2: LIVE SHIPPING & PACKAGE TRACKING ─────────────────────── */}
+        {/* ── TAB 2: LIVE SHIPPING & PARCEL TRACKING ─────────────────────── */}
         {activeTab === 'tracking' && (
           <div>
-            {/* Tracking Search Form */}
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(20, 25, 42, 0.8) 0%, rgba(12, 15, 26, 0.9) 100%)',
-              borderRadius: 22,
-              padding: '28px 32px',
-              border: '1px solid rgba(59, 130, 246, 0.25)',
-              boxShadow: '0 16px 36px rgba(0, 0, 0, 0.35)',
-              marginBottom: 36,
-            }}>
+            {/* Tracking Search Card */}
+            <div
+              style={{
+                background: colors.bgSurface,
+                borderRadius: '24px',
+                padding: '28px 32px',
+                border: `1px solid ${colors.border}`,
+                boxShadow: colors.cardShadow,
+                marginBottom: 32,
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <div style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  background: 'rgba(59, 130, 246, 0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#60a5fa',
-                }}>
-                  <Icon name="truck" size={18} color="#60a5fa" />
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '10px',
+                    background: 'rgba(59, 130, 246, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#3b82f6',
+                  }}
+                >
+                  <Icon name="truck" size={18} color="#3b82f6" />
                 </div>
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: '#ffffff', margin: 0 }}>
-                  Real-Time Consignment & Parcel Tracking
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: colors.textMain, margin: 0 }}>
+                  Real-Time Consignment &amp; Dispatch Tracking
                 </h2>
               </div>
-              <p style={{ margin: '0 0 20px', color: '#94a3b8', fontSize: 13 }}>
-                Locate any consignment by entering its <strong>Tracking Number</strong> (e.g. <code>NGS-TRK-...</code>), <strong>Order Number</strong> (<code>NGS-ORD-...</code>), or registered phone number.
+
+              <p style={{ margin: '0 0 20px', color: colors.textMuted, fontSize: '0.88rem' }}>
+                Enter your <strong>Tracking Code</strong> (e.g. <code>NGS-TRK-...</code>), <strong>Order Number</strong> (<code>NGS-ORD-...</code>), or customer phone to trace your courier.
               </p>
 
               <form
@@ -1136,20 +1262,13 @@ export default function CustomerDashboard() {
                     placeholder="e.g. NGS-TRK-20261029-PXMMU or NGS-ORD-..."
                     style={{
                       width: '100%',
-                      padding: '14px 18px',
-                      borderRadius: 12,
-                      background: 'rgba(7, 9, 18, 0.85)',
-                      border: '1px solid rgba(59, 130, 246, 0.35)',
-                      color: '#ffffff',
-                      fontSize: 14,
+                      padding: '14px 20px',
+                      borderRadius: '9999px',
+                      background: colors.bgCardSubtle,
+                      border: `1px solid ${colors.border}`,
+                      color: colors.textMain,
+                      fontSize: '0.9rem',
                       outline: 'none',
-                      transition: 'border-color 0.2s',
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#60a5fa';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(59, 130, 246, 0.35)';
                     }}
                   />
                 </div>
@@ -1159,35 +1278,25 @@ export default function CustomerDashboard() {
                   disabled={trackingLoading}
                   style={{
                     padding: '14px 28px',
-                    borderRadius: 12,
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    borderRadius: '9999px',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                     border: 'none',
-                    color: '#ffffff',
-                    fontSize: 14,
-                    fontWeight: 700,
+                    color: '#FFFFFF',
+                    fontSize: '0.88rem',
+                    fontWeight: 800,
                     cursor: trackingLoading ? 'not-allowed' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    boxShadow: '0 8px 20px rgba(37, 99, 235, 0.35)',
+                    boxShadow: '0 6px 20px rgba(59, 130, 246, 0.35)',
                     transition: 'all 0.2s',
                   }}
                 >
                   {trackingLoading ? (
-                    <>
-                      <div style={{
-                        width: 16,
-                        height: 16,
-                        border: '2px solid rgba(255, 255, 255, 0.3)',
-                        borderTopColor: '#ffffff',
-                        borderRadius: '50%',
-                        animation: 'spin 0.8s linear infinite',
-                      }} />
-                      <span>Tracking...</span>
-                    </>
+                    <span>Locating...</span>
                   ) : (
                     <>
-                      <Icon name="search" size={16} color="#ffffff" />
+                      <Icon name="search" size={16} color="#FFFFFF" />
                       <span>Track Consignment</span>
                     </>
                   )}
@@ -1195,55 +1304,59 @@ export default function CustomerDashboard() {
               </form>
 
               {trackingError && (
-                <div style={{
-                  marginTop: 16,
-                  padding: '12px 16px',
-                  borderRadius: 10,
-                  background: 'rgba(239, 68, 68, 0.12)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  color: '#fca5a5',
-                  fontSize: 13,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}>
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: '12px 18px',
+                    borderRadius: '12px',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    color: '#ef4444',
+                    fontSize: '0.84rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
                   <Icon name="alert" size={16} color="#ef4444" />
                   <span>{trackingError}</span>
                 </div>
               )}
             </div>
 
-            {/* If a specific shipment is found from search */}
+            {/* If a consignment is found from search */}
             {searchedTracking && (
-              <div style={{
-                background: 'rgba(15, 18, 32, 0.85)',
-                borderRadius: 22,
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                padding: '28px',
-                marginBottom: 36,
-                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.4)',
-              }}>
+              <div
+                style={{
+                  background: colors.bgSurface,
+                  borderRadius: '24px',
+                  border: `1px solid ${colors.border}`,
+                  padding: '28px',
+                  marginBottom: 32,
+                  boxShadow: colors.cardShadow,
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                   <div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      Verified Consignment Detail
+                    <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Verified Consignment Record
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                      <h3 style={{ fontSize: 22, fontWeight: 800, color: '#ffffff', margin: 0 }}>
+                      <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: colors.textMain, margin: 0 }}>
                         {searchedTracking.tracking_number}
                       </h3>
                       <button
-                        onClick={() => handleCopy(searchedTracking.tracking_number, 'Tracking number')}
+                        onClick={() => handleCopy(searchedTracking.tracking_number, 'Tracking code')}
                         style={{
                           background: 'transparent',
                           border: 'none',
-                          color: copiedCode === searchedTracking.tracking_number ? '#34d399' : '#64748b',
+                          color: copiedCode === searchedTracking.tracking_number ? '#10b981' : colors.textDim,
                           cursor: 'pointer',
                           padding: 2,
                         }}
                       >
                         {copiedCode === searchedTracking.tracking_number ? (
-                          <Icon name="check" size={16} color="#34d399" />
+                          <Icon name="check" size={16} color="#10b981" />
                         ) : (
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -1255,70 +1368,71 @@ export default function CustomerDashboard() {
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                      Carrier Provider
+                    <div style={{ fontSize: '0.78rem', color: colors.textDim }}>
+                      Logistics Carrier
                     </div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#ffffff' }}>
+                    <div style={{ fontSize: '0.96rem', fontWeight: 800, color: colors.textMain }}>
                       {searchedTracking.shipping_provider}
                     </div>
                   </div>
                 </div>
 
                 {/* 4-Stage Stepper Progress Tracker */}
-                <div style={{
-                  padding: '24px 16px',
-                  background: 'rgba(7, 9, 18, 0.6)',
-                  borderRadius: 16,
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  marginBottom: 28,
-                }}>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: 20,
-                    position: 'relative',
-                  }}>
+                <div
+                  style={{
+                    padding: '24px 20px',
+                    background: colors.bgCardSubtle,
+                    borderRadius: '18px',
+                    border: `1px solid ${colors.border}`,
+                    marginBottom: 24,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: 20,
+                    }}
+                  >
                     {searchedTracking.timeline?.map((step, idx) => {
                       const isCompleted = step.status === 'completed';
                       const isInTransit = step.status === 'in_transit' || step.status === 'processing';
 
                       return (
-                        <div key={idx} style={{ position: 'relative', display: 'flex', gap: 14 }}>
-                          {/* Circle indicator */}
-                          <div style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: '50%',
-                            background: isCompleted ? '#10b981' : isInTransit ? '#3b82f6' : 'rgba(255, 255, 255, 0.08)',
-                            color: '#ffffff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 14,
-                            fontWeight: 800,
-                            flexShrink: 0,
-                            boxShadow: isInTransit ? '0 0 16px rgba(59, 130, 246, 0.5)' : 'none',
-                          }}>
-                            {isCompleted ? (
-                              <Icon name="check" size={16} color="#ffffff" />
-                            ) : (
-                              <span>{step.step}</span>
-                            )}
+                        <div key={idx} style={{ display: 'flex', gap: 14 }}>
+                          <div
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: '50%',
+                              background: isCompleted ? '#10b981' : isInTransit ? '#3b82f6' : isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                              color: '#FFFFFF',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.88rem',
+                              fontWeight: 800,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {isCompleted ? <Icon name="check" size={16} color="#FFFFFF" /> : <span>{step.step}</span>}
                           </div>
 
                           <div>
-                            <div style={{
-                              fontSize: 14,
-                              fontWeight: 700,
-                              color: isCompleted ? '#34d399' : isInTransit ? '#60a5fa' : '#94a3b8',
-                              marginBottom: 3,
-                            }}>
+                            <div
+                              style={{
+                                fontSize: '0.9rem',
+                                fontWeight: 700,
+                                color: isCompleted ? '#10b981' : isInTransit ? '#3b82f6' : colors.textMuted,
+                                marginBottom: 2,
+                              }}
+                            >
                               {step.title}
                             </div>
-                            <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4, marginBottom: 4 }}>
+                            <div style={{ fontSize: '0.78rem', color: colors.textMuted, lineHeight: 1.4, marginBottom: 4 }}>
                               {step.description}
                             </div>
-                            <div style={{ fontSize: 11, color: isCompleted || isInTransit ? '#cbd5e1' : '#475569', fontWeight: 600 }}>
+                            <div style={{ fontSize: '0.72rem', color: colors.textDim, fontWeight: 600 }}>
                               {step.timestamp}
                             </div>
                           </div>
@@ -1328,88 +1442,96 @@ export default function CustomerDashboard() {
                   </div>
                 </div>
 
-                {/* Recipient & Address Detail */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                  gap: 16,
-                  padding: '16px 20px',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  borderRadius: 14,
-                  fontSize: 13,
-                }}>
+                {/* Recipient Details */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: 16,
+                    padding: '16px 20px',
+                    background: colors.bgCardSubtle,
+                    borderRadius: '14px',
+                    fontSize: '0.84rem',
+                  }}
+                >
                   <div>
-                    <span style={{ color: '#64748b' }}>Recipient: </span>
-                    <strong style={{ color: '#ffffff' }}>{searchedTracking.recipient_name}</strong>
+                    <span style={{ color: colors.textDim }}>Recipient: </span>
+                    <strong style={{ color: colors.textMain }}>{searchedTracking.recipient_name}</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#64748b' }}>Contact Phone: </span>
-                    <strong style={{ color: '#ffffff' }}>{searchedTracking.recipient_phone}</strong>
+                    <span style={{ color: colors.textDim }}>Phone: </span>
+                    <strong style={{ color: colors.textMain }}>{searchedTracking.recipient_phone}</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#64748b' }}>Delivery Snapshot: </span>
-                    <strong style={{ color: '#ffffff' }}>{searchedTracking.delivery_address_snapshot}</strong>
+                    <span style={{ color: colors.textDim }}>Address: </span>
+                    <strong style={{ color: colors.textMain }}>{searchedTracking.delivery_address_snapshot}</strong>
                   </div>
                 </div>
               </div>
             )}
 
             {/* Active User Shipments List */}
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', margin: '0 0 16px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: colors.textMain, margin: '0 0 16px' }}>
               Your Registered Consignments ({shipments.length})
             </h3>
 
             {shipments.length === 0 ? (
-              <div style={{
-                background: 'rgba(15, 18, 32, 0.5)',
-                borderRadius: 20,
-                border: '1px dashed rgba(255, 255, 255, 0.1)',
-                padding: '48px 24px',
-                textAlign: 'center',
-                color: '#94a3b8',
-              }}>
-                <Icon name="truck" size={36} color="#64748b" />
-                <p style={{ margin: '16px 0 0', fontSize: 14 }}>
-                  No active courier shipments on file. Delivery orders automatically generate tracking numbers here upon confirmation.
+              <div
+                style={{
+                  background: colors.bgSurface,
+                  borderRadius: '20px',
+                  border: `1px dashed ${colors.border}`,
+                  padding: '48px 24px',
+                  textAlign: 'center',
+                  color: colors.textMuted,
+                  boxShadow: colors.cardShadow,
+                }}
+              >
+                <div style={{ fontSize: '2rem', marginBottom: 10 }}>🚚</div>
+                <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                  No active courier dispatches at this moment. Placed delivery orders automatically generate real-time tracking numbers here.
                 </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {shipments.map((shp) => (
                   <div
                     key={shp.id}
                     style={{
-                      background: 'rgba(15, 18, 32, 0.7)',
-                      borderRadius: 18,
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      background: colors.bgSurface,
+                      borderRadius: '18px',
+                      border: `1px solid ${colors.border}`,
                       padding: '20px 24px',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       flexWrap: 'wrap',
                       gap: 16,
+                      boxShadow: colors.cardShadow,
                     }}
                   >
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        <span style={{ fontSize: 16, fontWeight: 800, color: '#60a5fa' }}>
+                        <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#3b82f6' }}>
                           {shp.tracking_number}
                         </span>
-                        <span style={{
-                          padding: '3px 10px',
-                          borderRadius: 999,
-                          background: shp.status === 'delivered' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                          border: shp.status === 'delivered' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)',
-                          color: shp.status === 'delivered' ? '#34d399' : '#93c5fd',
-                          fontSize: 11,
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                        }}>
+                        <span
+                          style={{
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
+                            background: shp.status === 'delivered' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                            border: `1px solid ${shp.status === 'delivered' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+                            color: shp.status === 'delivered' ? '#10b981' : '#3b82f6',
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            textTransform: 'uppercase',
+                          }}
+                        >
                           {shp.status}
                         </span>
                       </div>
-                      <div style={{ fontSize: 13, color: '#94a3b8' }}>
-                        Carrier: <strong style={{ color: '#e2e8f0' }}>{shp.shipping_provider}</strong> • Destination: {shp.delivery_address_snapshot}
+                      <div style={{ fontSize: '0.84rem', color: colors.textMuted }}>
+                        Carrier: <strong style={{ color: colors.textMain }}>{shp.shipping_provider}</strong> • Destination: {shp.delivery_address_snapshot}
                       </div>
                     </div>
 
@@ -1417,19 +1539,20 @@ export default function CustomerDashboard() {
                       onClick={() => handleTrackLookup(shp.tracking_number)}
                       style={{
                         padding: '10px 20px',
-                        borderRadius: 10,
-                        background: 'rgba(59, 130, 246, 0.15)',
+                        borderRadius: '9999px',
+                        background: 'rgba(59, 130, 246, 0.12)',
                         border: '1px solid rgba(59, 130, 246, 0.35)',
-                        color: '#93c5fd',
-                        fontSize: 13,
+                        color: '#3b82f6',
+                        fontSize: '0.82rem',
                         fontWeight: 700,
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 8,
+                        gap: 6,
+                        transition: 'all 0.2s',
                       }}
                     >
-                      <Icon name="truck" size={14} color="#93c5fd" />
+                      <Icon name="truck" size={14} color="#3b82f6" />
                       <span>Inspect Progress</span>
                     </button>
                   </div>
@@ -1439,118 +1562,244 @@ export default function CustomerDashboard() {
           </div>
         )}
 
-        {/* ── TAB 3: PROFILE & ADDRESSES ──────────────────────────────────── */}
+        {/* ── TAB 3: PROFILE & ADDRESS SETTINGS ───────────────────────────── */}
         {activeTab === 'profile' && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: 24,
-          }}>
-            {/* Patron Profile Card */}
-            <div style={{
-              background: 'rgba(15, 18, 32, 0.8)',
-              borderRadius: 22,
-              padding: '28px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-                <div style={{
-                  width: 54,
-                  height: 54,
-                  borderRadius: 16,
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 22,
-                  fontWeight: 900,
-                  color: '#ffffff',
-                }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: 24,
+            }}
+          >
+            {/* Patron Profile Edit Form */}
+            <div
+              style={{
+                background: colors.bgSurface,
+                borderRadius: '24px',
+                padding: '30px',
+                border: `1px solid ${colors.border}`,
+                boxShadow: colors.cardShadow,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: '16px',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.4rem',
+                    fontWeight: 900,
+                    color: '#090a0f',
+                  }}
+                >
                   {customerName.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 18, fontWeight: 800, color: '#ffffff', margin: '0 0 4px' }}>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: colors.textMain, margin: '0 0 4px' }}>
                     {customerName}
                   </h3>
-                  <div style={{ fontSize: 12, color: '#fbbf24', fontWeight: 700 }}>
+                  <div style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: 800 }}>
                     {metrics.membership_tier}
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontSize: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 10, borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <span style={{ color: '#64748b' }}>Account Email</span>
-                  <strong style={{ color: '#e2e8f0' }}>{customerEmail}</strong>
+              {profileSuccessMsg && (
+                <div
+                  style={{
+                    marginBottom: 20,
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    color: '#10b981',
+                    fontSize: '0.84rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <Icon name="check" size={16} color="#10b981" />
+                  <span>{profileSuccessMsg}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 10, borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <span style={{ color: '#64748b' }}>Customer Code</span>
-                  <strong style={{ color: '#fbbf24' }}>{profileData?.customer?.customer_code || 'NGS-VIP-CUST'}</strong>
+              )}
+
+              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: colors.textMuted, marginBottom: 6 }}>
+                    Full Legal Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      background: colors.bgCardSubtle,
+                      border: `1px solid ${colors.border}`,
+                      color: colors.textMain,
+                      fontSize: '0.88rem',
+                      outline: 'none',
+                    }}
+                  />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 10, borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <span style={{ color: '#64748b' }}>Verified Phone</span>
-                  <strong style={{ color: '#e2e8f0' }}>{profileData?.customer?.phone || '+251 (Direct linked)'}</strong>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: colors.textMuted, marginBottom: 6 }}>
+                    Direct Contact Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    placeholder="+251 9XX XXX XXX"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      background: colors.bgCardSubtle,
+                      border: `1px solid ${colors.border}`,
+                      color: colors.textMain,
+                      fontSize: '0.88rem',
+                      outline: 'none',
+                    }}
+                  />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748b' }}>System Privileges</span>
-                  <strong style={{ color: '#34d399' }}>Self-Checkout & Express Delivery</strong>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: colors.textMuted, marginBottom: 6 }}>
+                    Registered Email (Read-Only)
+                  </label>
+                  <input
+                    type="email"
+                    value={customerEmail}
+                    disabled
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      background: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.03)',
+                      border: `1px solid ${colors.border}`,
+                      color: colors.textDim,
+                      fontSize: '0.88rem',
+                      cursor: 'not-allowed',
+                    }}
+                  />
                 </div>
-              </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: colors.textMuted, marginBottom: 6 }}>
+                    Default Express Delivery Address
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={profileForm.address}
+                    onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                    placeholder="e.g. Bole Sub-City, Woreda 03, House #144, Addis Ababa"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      background: colors.bgCardSubtle,
+                      border: `1px solid ${colors.border}`,
+                      color: colors.textMain,
+                      fontSize: '0.88rem',
+                      outline: 'none',
+                      resize: 'vertical',
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={profileSaving}
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: '9999px',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                    border: 'none',
+                    color: '#090a0f',
+                    fontSize: '0.88rem',
+                    fontWeight: 800,
+                    cursor: profileSaving ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 16px rgba(245, 158, 11, 0.3)',
+                    marginTop: 6,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {profileSaving ? 'Saving Updates...' : 'Save Profile Changes'}
+                </button>
+              </form>
             </div>
 
-            {/* VIP Concierge Card */}
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(22, 27, 46, 0.8) 0%, rgba(13, 16, 28, 0.9) 100%)',
-              borderRadius: 22,
-              padding: '28px',
-              border: '1px solid rgba(245, 158, 11, 0.2)',
-            }}>
+            {/* VIP Concierge & Support Card */}
+            <div
+              style={{
+                background: colors.bgSurface,
+                borderRadius: '24px',
+                padding: '30px',
+                border: `1px solid ${colors.border}`,
+                boxShadow: colors.cardShadow,
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  background: 'rgba(245, 158, 11, 0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fbbf24',
-                }}>
-                  <Icon name="shield" size={18} color="#fbbf24" />
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '10px',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#f59e0b',
+                  }}
+                >
+                  <Icon name="shield" size={18} color="#f59e0b" />
                 </div>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#ffffff', margin: 0 }}>
-                  Imperial Concierge & Support
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: colors.textMain, margin: 0 }}>
+                  Imperial Concierge &amp; Direct Support
                 </h3>
               </div>
-              <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, margin: '0 0 20px' }}>
-                Require bespoke workstation configurations, commercial invoice seals, or warranty assistance? Our Addis Ababa technical direct line is available 24/7.
+              <p style={{ fontSize: '0.88rem', color: colors.textMuted, lineHeight: 1.6, margin: '0 0 24px' }}>
+                Require bespoke workstation configurations, commercial invoice seals with official Ethiopian TIN receipts, or warranty assistance? Our Addis Ababa technical team is available 24/7.
               </p>
 
-              <div style={{
-                background: 'rgba(7, 9, 18, 0.6)',
-                borderRadius: 14,
-                padding: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-                fontSize: 13,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#e2e8f0' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2">
+              <div
+                style={{
+                  background: colors.bgCardSubtle,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 16,
+                  fontSize: '0.86rem',
+                  border: `1px solid ${colors.border}`,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: colors.textMain }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2">
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                   </svg>
                   <span>VIP Hotline: <strong>+251 911 00 22 33</strong></span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#e2e8f0' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: colors.textMain }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                     <polyline points="22,6 12,13 2,6" />
                   </svg>
                   <span>Concierge Email: <strong>vip@ngus-electronics.et</strong></span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#e2e8f0' }}>
-                  <Icon name="store" size={16} color="#34d399" />
-                  <span>Flagship Vault: <strong>Bole Medhanialem Tower, Suite 400</strong></span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: colors.textMain }}>
+                  <Icon name="store" size={18} color="#10b981" />
+                  <span>Flagship Showroom: <strong>Bole Medhanialem Tower, Suite 400</strong></span>
                 </div>
               </div>
             </div>
@@ -1558,31 +1807,36 @@ export default function CustomerDashboard() {
         )}
       </main>
 
-      {/* ── DIGITAL INVOICE / RECEIPT MODAL ──────────────────────────────── */}
+      {/* ── DIGITAL INVOICE / OFFICIAL COMMERCIAL RECEIPT MODAL ─────────── */}
       {receiptOrder && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.85)',
-          backdropFilter: 'blur(12px)',
-          zIndex: 100,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 20,
-        }}>
-          <div style={{
-            background: '#0d101d',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: 24,
-            maxWidth: 640,
-            width: '100%',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            padding: 32,
-            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.7)',
-            position: 'relative',
-          }}>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              background: colors.bgSurface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: '24px',
+              maxWidth: 640,
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: 32,
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.5)',
+              position: 'relative',
+              color: colors.textMain,
+            }}
+          >
             {/* Close Button */}
             <button
               onClick={() => setReceiptOrder(null)}
@@ -1590,78 +1844,78 @@ export default function CustomerDashboard() {
                 position: 'absolute',
                 top: 20,
                 right: 20,
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: 'none',
+                background: colors.bgCardSubtle,
+                border: `1px solid ${colors.border}`,
                 borderRadius: '50%',
                 width: 34,
                 height: 34,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#ffffff',
+                color: colors.textMain,
                 cursor: 'pointer',
               }}
             >
-              <Icon name="x" size={16} color="#ffffff" />
+              <Icon name="x" size={16} color="currentColor" />
             </button>
 
             {/* Receipt Header */}
-            <div style={{ textAlign: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: 24, marginBottom: 24 }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 12px',
-              }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2">
-                  <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5z" />
-                  <path d="M5 19h14" />
-                </svg>
+            <div style={{ textAlign: 'center', borderBottom: `1px solid ${colors.border}`, paddingBottom: 24, marginBottom: 24 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px',
+                  fontSize: '1.3rem',
+                }}
+              >
+                👑
               </div>
-              <h2 style={{ fontSize: 20, fontWeight: 900, color: '#ffffff', margin: '0 0 4px', letterSpacing: '0.04em' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: colors.textMain, margin: '0 0 4px', letterSpacing: '0.04em' }}>
                 NGUS ELECTRONICS
               </h2>
-              <div style={{ fontSize: 12, color: '#fbbf24', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                Official Commercial Receipt
+              <div style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                Official Commercial Invoice
               </div>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+              <div style={{ fontSize: '0.78rem', color: colors.textMuted, marginTop: 4 }}>
                 Bole Sub-City, Addis Ababa, Ethiopia • TIN: 0098451239
               </div>
             </div>
 
             {/* Order & Customer Metadata */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: 13, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: '0.84rem', marginBottom: 24 }}>
               <div>
-                <div style={{ color: '#64748b' }}>Order Reference:</div>
-                <div style={{ fontWeight: 800, color: '#ffffff' }}>{receiptOrder.order_number}</div>
+                <div style={{ color: colors.textDim }}>Order Reference:</div>
+                <div style={{ fontWeight: 800, color: colors.textMain }}>{receiptOrder.order_number}</div>
               </div>
               <div>
-                <div style={{ color: '#64748b' }}>Date Authorized:</div>
-                <div style={{ fontWeight: 700, color: '#ffffff' }}>
+                <div style={{ color: colors.textDim }}>Date Authorized:</div>
+                <div style={{ fontWeight: 700, color: colors.textMain }}>
                   {new Date(receiptOrder.created_at).toLocaleString()}
                 </div>
               </div>
               <div>
-                <div style={{ color: '#64748b' }}>Billed Client:</div>
-                <div style={{ fontWeight: 700, color: '#ffffff' }}>{customerName}</div>
+                <div style={{ color: colors.textDim }}>Billed Client:</div>
+                <div style={{ fontWeight: 700, color: colors.textMain }}>{customerName}</div>
               </div>
               <div>
-                <div style={{ color: '#64748b' }}>Payment Mode:</div>
-                <div style={{ fontWeight: 700, color: '#fbbf24' }}>
+                <div style={{ color: colors.textDim }}>Payment Mode:</div>
+                <div style={{ fontWeight: 700, color: '#f59e0b' }}>
                   {receiptOrder.direct_payment?.payment_method?.name || 'Mobile Banking Verified'}
                 </div>
               </div>
             </div>
 
             {/* Line items table */}
-            <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', padding: '16px 0', marginBottom: 20 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <div style={{ borderTop: `1px solid ${colors.border}`, borderBottom: `1px solid ${colors.border}`, padding: '16px 0', marginBottom: 20 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
                 <thead>
-                  <tr style={{ color: '#94a3b8', textAlign: 'left', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                  <tr style={{ color: colors.textDim, textAlign: 'left', borderBottom: `1px solid ${colors.border}` }}>
                     <th style={{ paddingBottom: 8 }}>Item Description</th>
                     <th style={{ paddingBottom: 8, textAlign: 'center' }}>Qty</th>
                     <th style={{ paddingBottom: 8, textAlign: 'right' }}>Unit Price</th>
@@ -1670,17 +1924,17 @@ export default function CustomerDashboard() {
                 </thead>
                 <tbody>
                   {receiptOrder.items?.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
-                      <td style={{ padding: '10px 0', color: '#ffffff', fontWeight: 600 }}>
+                    <tr key={item.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
+                      <td style={{ padding: '10px 0', color: colors.textMain, fontWeight: 600 }}>
                         {item.product_name_snapshot}
                       </td>
-                      <td style={{ padding: '10px 0', textAlign: 'center', color: '#cbd5e1' }}>
+                      <td style={{ padding: '10px 0', textAlign: 'center', color: colors.textMuted }}>
                         {Math.round(item.quantity_ordered)}
                       </td>
-                      <td style={{ padding: '10px 0', textAlign: 'right', color: '#cbd5e1' }}>
+                      <td style={{ padding: '10px 0', textAlign: 'right', color: colors.textMuted }}>
                         {parseFloat(item.unit_price).toLocaleString()}
                       </td>
-                      <td style={{ padding: '10px 0', textAlign: 'right', color: '#fbbf24', fontWeight: 700 }}>
+                      <td style={{ padding: '10px 0', textAlign: 'right', color: '#f59e0b', fontWeight: 800 }}>
                         {parseFloat(item.line_total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -1690,28 +1944,30 @@ export default function CustomerDashboard() {
             </div>
 
             {/* Financial Summary */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, marginBottom: 24 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.84rem', marginBottom: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: colors.textMuted }}>
                 <span>Subtotal</span>
                 <span>{parseFloat(receiptOrder.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })} ETB</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
-                <span>Shipping & Fragile Handling</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: colors.textMuted }}>
+                <span>Shipping &amp; Fragile Handling</span>
                 <span>{parseFloat(receiptOrder.shipping_fee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} ETB</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: colors.textMuted }}>
                 <span>VAT (Included)</span>
                 <span>{parseFloat(receiptOrder.tax_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} ETB</span>
               </div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                paddingTop: 10,
-                borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                fontSize: 17,
-                fontWeight: 900,
-                color: '#fbbf24',
-              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  paddingTop: 10,
+                  borderTop: `1px solid ${colors.border}`,
+                  fontSize: '1.15rem',
+                  fontWeight: 900,
+                  color: '#f59e0b',
+                }}
+              >
                 <span>Total Settled</span>
                 <span>{parseFloat(receiptOrder.grand_total).toLocaleString(undefined, { minimumFractionDigits: 2 })} ETB</span>
               </div>
@@ -1722,17 +1978,17 @@ export default function CustomerDashboard() {
               <button
                 onClick={() => window.print()}
                 style={{
-                  padding: '10px 20px',
-                  borderRadius: 12,
-                  background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                  padding: '10px 22px',
+                  borderRadius: '9999px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
                   border: 'none',
-                  color: '#ffffff',
-                  fontSize: 13,
-                  fontWeight: 700,
+                  color: '#090a0f',
+                  fontSize: '0.84rem',
+                  fontWeight: 800,
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 8,
+                  gap: 6,
                 }}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1742,15 +1998,16 @@ export default function CustomerDashboard() {
                 </svg>
                 <span>Print Document</span>
               </button>
+
               <button
                 onClick={() => setReceiptOrder(null)}
                 style={{
-                  padding: '10px 20px',
-                  borderRadius: 12,
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#ffffff',
-                  fontSize: 13,
+                  padding: '10px 22px',
+                  borderRadius: '9999px',
+                  background: colors.bgCardSubtle,
+                  border: `1px solid ${colors.border}`,
+                  color: colors.textMain,
+                  fontSize: '0.84rem',
                   fontWeight: 600,
                   cursor: 'pointer',
                 }}
