@@ -16,6 +16,7 @@ export const Stores = () => {
   // Data states
   const [stores, setStores] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [registers, setRegisters] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -26,6 +27,10 @@ export const Stores = () => {
   const [locationStoreFilter, setLocationStoreFilter] = useState('all');
   const [locationTypeFilter, setLocationTypeFilter] = useState('all');
   const [locationSellableFilter, setLocationSellableFilter] = useState('all');
+
+  const [registerSearch, setRegisterSearch] = useState('');
+  const [registerStoreFilter, setRegisterStoreFilter] = useState('all');
+  const [registerStatusFilter, setRegisterStatusFilter] = useState('all');
 
   // Modals - Store
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
@@ -51,22 +56,34 @@ export const Stores = () => {
     is_active: true,
   });
 
+  // Modals - Register
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [editingRegister, setEditingRegister] = useState(null);
+  const [registerFormData, setRegisterFormData] = useState({
+    store_id: '',
+    code: '',
+    name: '',
+    is_active: true,
+  });
+
   // Delete confirmation modal
-  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'store'|'location', item }
+  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'store'|'location'|'register', item }
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch all stores and stock locations
+  // Fetch all stores, stock locations, and POS registers
   const loadData = async () => {
     try {
       setLoading(true);
-      const [storesRes, locsRes] = await Promise.all([
+      const [storesRes, locsRes, regsRes] = await Promise.all([
         api.getStores({ per_page: 100 }).catch(() => ({ data: [] })),
         api.getStockLocations({ per_page: 150 }).catch(() => ({ data: [] })),
+        api.getPosRegisters({ per_page: 150 }).catch(() => ({ data: [] })),
       ]);
       setStores(storesRes?.data || []);
       setLocations(locsRes?.data || []);
+      setRegisters(regsRes?.data || []);
     } catch (err) {
-      showToast?.('Failed to load store and warehouse data', 'error');
+      showToast?.('Failed to load store, warehouse, and register data', 'error');
     } finally {
       setLoading(false);
     }
@@ -102,8 +119,10 @@ export const Stores = () => {
     const totalLocations = locations.length;
     const sellableFloors = locations.filter((l) => l.is_sellable).length;
     const centralDepots = locations.filter((l) => l.location_type === 'warehouse').length;
-    return { totalStores, activeStores, totalLocations, sellableFloors, centralDepots };
-  }, [stores, locations]);
+    const totalRegisters = registers.length;
+    const activeRegisters = registers.filter((r) => r.is_active).length;
+    return { totalStores, activeStores, totalLocations, sellableFloors, centralDepots, totalRegisters, activeRegisters };
+  }, [stores, locations, registers]);
 
   // Filtered Stores
   const filteredStores = useMemo(() => {
@@ -140,6 +159,71 @@ export const Stores = () => {
       return matchesSearch && matchesStore && matchesType && matchesSellable;
     });
   }, [locations, locationSearch, locationStoreFilter, locationTypeFilter, locationSellableFilter]);
+
+  // Filtered Registers
+  const filteredRegisters = useMemo(() => {
+    return registers.filter((reg) => {
+      const q = registerSearch.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        reg.name?.toLowerCase().includes(q) ||
+        reg.code?.toLowerCase().includes(q) ||
+        reg.store?.name?.toLowerCase().includes(q);
+      const matchesStore =
+        registerStoreFilter === 'all' || String(reg.store_id) === String(registerStoreFilter);
+      const matchesStatus =
+        registerStatusFilter === 'all' ||
+        (registerStatusFilter === 'active' ? reg.is_active : !reg.is_active);
+      return matchesSearch && matchesStore && matchesStatus;
+    });
+  }, [registers, registerSearch, registerStoreFilter, registerStatusFilter]);
+
+  // ── Register Form Handlers ────────────────────────────────────────
+  const handleOpenRegisterModal = (reg = null) => {
+    if (reg) {
+      setEditingRegister(reg);
+      setRegisterFormData({
+        store_id: reg.store_id ? String(reg.store_id) : (stores[0]?.id ? String(stores[0].id) : ''),
+        code: reg.code || '',
+        name: reg.name || '',
+        is_active: reg.is_active ?? true,
+      });
+    } else {
+      setEditingRegister(null);
+      setRegisterFormData({
+        store_id: stores[0]?.id ? String(stores[0].id) : '',
+        code: `REG-0${registers.length + 1}`,
+        name: '',
+        is_active: true,
+      });
+    }
+    setIsRegisterModalOpen(true);
+  };
+
+  const handleSaveRegister = async (e) => {
+    e.preventDefault();
+    if (!registerFormData.code || !registerFormData.name || !registerFormData.store_id) {
+      showToast?.('Store, register code, and counter name are required', 'warning');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      if (editingRegister) {
+        await api.updatePosRegister(editingRegister.id, registerFormData);
+        showToast?.('POS Register updated successfully', 'success');
+      } else {
+        await api.createPosRegister(registerFormData);
+        showToast?.('POS Register created successfully', 'success');
+      }
+      setIsRegisterModalOpen(false);
+      loadData();
+    } catch (err) {
+      showToast?.(err?.data?.message || err?.message || 'Failed to save register', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // ── Store Form Handlers ──────────────────────────────────────────
   const handleOpenStoreModal = (store = null) => {
@@ -257,9 +341,12 @@ export const Stores = () => {
       if (deleteTarget.type === 'store') {
         await api.deleteStore(deleteTarget.item.id);
         showToast?.('Store deleted successfully', 'success');
-      } else {
+      } else if (deleteTarget.type === 'location') {
         await api.deleteStockLocation(deleteTarget.item.id);
         showToast?.('Stock location deleted successfully', 'success');
+      } else if (deleteTarget.type === 'register') {
+        await api.deletePosRegister(deleteTarget.item.id);
+        showToast?.('POS Register deleted successfully', 'success');
       }
       setDeleteTarget(null);
       loadData();
@@ -333,12 +420,22 @@ export const Stores = () => {
 
           {isAdminOrManager && (
             <button
-              onClick={() => (activeTab === 'stores' ? handleOpenStoreModal() : handleOpenLocationModal())}
+              onClick={() => {
+                if (activeTab === 'stores') handleOpenStoreModal();
+                else if (activeTab === 'locations') handleOpenLocationModal();
+                else handleOpenRegisterModal();
+              }}
               className="btn btn-primary"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}
             >
               <Icon name="plus" size={16} color="#fff" />
-              <span>{activeTab === 'stores' ? 'New Store Branch' : 'New Stock Location'}</span>
+              <span>
+                {activeTab === 'stores'
+                  ? 'New Store Branch'
+                  : activeTab === 'locations'
+                  ? 'New Stock Location'
+                  : 'New POS Register'}
+              </span>
             </button>
           )}
         </div>
@@ -348,7 +445,7 @@ export const Stores = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: 16,
           marginBottom: 24,
         }}
@@ -437,6 +534,32 @@ export const Stores = () => {
               width: 46,
               height: 46,
               borderRadius: 'var(--radius-sm)',
+              background: 'rgba(56, 189, 248, 0.12)',
+              color: '#0284c7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="monitor" size={24} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+              POS Cash Registers
+            </div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0284c7' }}>{stats.totalRegisters}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {stats.activeRegisters} active terminals
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div
+            style={{
+              width: 46,
+              height: 46,
+              borderRadius: 'var(--radius-sm)',
               background: 'rgba(245, 158, 11, 0.12)',
               color: '#f59e0b',
               display: 'flex',
@@ -512,6 +635,28 @@ export const Stores = () => {
         >
           <Icon name="package" size={18} />
           <span>Stock Locations & Warehouses ({locations.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('registers')}
+          style={{
+            padding: '10px 18px',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            border: 'none',
+            background: activeTab === 'registers' ? 'var(--bg-card)' : 'transparent',
+            borderBottom: activeTab === 'registers' ? '2px solid var(--primary)' : '2px solid transparent',
+            color: activeTab === 'registers' ? 'var(--primary)' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            transition: 'all var(--transition-fast)',
+          }}
+        >
+          <Icon name="monitor" size={18} />
+          <span>POS Terminals & Registers ({registers.length})</span>
         </button>
       </div>
 
@@ -1028,6 +1173,207 @@ export const Stores = () => {
         </div>
       )}
 
+      {/* TAB 3: POS REGISTERS & COUNTER TERMINALS */}
+      {activeTab === 'registers' && (
+        <div>
+          {/* Filters Bar */}
+          <div
+            className="glass-card"
+            style={{
+              padding: '14px 18px',
+              marginBottom: 18,
+              display: 'flex',
+              gap: 12,
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 260, maxWidth: 500 }}>
+              <div style={{ position: 'relative', width: '100%' }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 12,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-dim)',
+                  }}
+                >
+                  <Icon name="search" size={16} />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search registers by code, name, or store..."
+                  value={registerSearch}
+                  onChange={(e) => setRegisterSearch(e.target.value)}
+                  className="input-field"
+                  style={{ paddingLeft: 36, width: '100%', fontSize: '0.85rem' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <select
+                value={registerStoreFilter}
+                onChange={(e) => setRegisterStoreFilter(e.target.value)}
+                className="input-field"
+                style={{ fontSize: '0.85rem', minWidth: 160 }}
+              >
+                <option value="all">All Stores & Branches</option>
+                {stores.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.code})
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={registerStatusFilter}
+                onChange={(e) => setRegisterStatusFilter(e.target.value)}
+                className="input-field"
+                style={{ fontSize: '0.85rem', minWidth: 140 }}
+              >
+                <option value="all">All Statuses</option>
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+              </select>
+
+              <button
+                onClick={loadData}
+                className="btn btn-secondary btn-icon"
+                title="Refresh Registers"
+                style={{ width: 38, height: 38 }}
+              >
+                <Icon name="refresh" size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Registers Grid */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: 16,
+            }}
+          >
+            {filteredRegisters.length === 0 ? (
+              <div
+                className="glass-card"
+                style={{
+                  gridColumn: '1 / -1',
+                  padding: 48,
+                  textAlign: 'center',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                <Icon name="monitor" size={42} color="var(--text-dim)" />
+                <h3 style={{ margin: '14px 0 6px', color: 'var(--text-main)', fontSize: '1.1rem' }}>
+                  No POS Registers Configured
+                </h3>
+                <p style={{ margin: '0 0 16px', fontSize: '0.85rem' }}>
+                  {registerSearch || registerStoreFilter !== 'all' || registerStatusFilter !== 'all'
+                    ? 'No counter terminals match your filter criteria.'
+                    : 'Configure your first store counter register to enable POS cashier checkout shifts.'}
+                </p>
+                {isAdminOrManager && (
+                  <button onClick={() => handleOpenRegisterModal()} className="btn btn-primary">
+                    <Icon name="plus" size={16} /> + New POS Register
+                  </button>
+                )}
+              </div>
+            ) : (
+              filteredRegisters.map((reg) => (
+                <div
+                  key={reg.id}
+                  className="glass-card"
+                  style={{
+                    padding: 20,
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                      <span
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.82rem',
+                          fontWeight: 800,
+                          padding: '3px 8px',
+                          borderRadius: 4,
+                          background: 'rgba(56, 189, 248, 0.12)',
+                          color: '#0284c7',
+                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                        }}
+                      >
+                        {reg.code}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          background: reg.is_active ? 'rgba(34, 197, 94, 0.12)' : 'rgba(148, 163, 184, 0.15)',
+                          color: reg.is_active ? '#16a34a' : 'var(--text-muted)',
+                        }}
+                      >
+                        {reg.is_active ? '● Active Counter' : '○ Inactive'}
+                      </span>
+                    </div>
+
+                    <h3 style={{ margin: '0 0 6px', fontSize: '1.05rem', fontWeight: 800 }}>
+                      {reg.name}
+                    </h3>
+
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                      <Icon name="store" size={14} />
+                      <span>{reg.store?.name || `Store #${reg.store_id}`}</span>
+                    </div>
+                  </div>
+
+                  {isAdminOrManager && (
+                    <div
+                      style={{
+                        paddingTop: 12,
+                        borderTop: '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        gap: 8,
+                      }}
+                    >
+                      <button
+                        onClick={() => handleOpenRegisterModal(reg)}
+                        className="action-btn action-btn-primary"
+                        style={{ fontSize: '0.78rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <Icon name="edit" size={13} />
+                        Edit
+                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => setDeleteTarget({ type: 'register', item: reg })}
+                          className="action-btn action-btn-danger"
+                          style={{ fontSize: '0.78rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <Icon name="trash" size={13} />
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── CREATE / EDIT STORE MODAL ───────────────────────────────────── */}
       <Modal
         isOpen={isStoreModalOpen}
@@ -1301,11 +1647,118 @@ export const Stores = () => {
         </form>
       </Modal>
 
+      {/* ── CREATE / EDIT POS REGISTER MODAL ────────────────────────────── */}
+      <Modal
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+        title={editingRegister ? `Edit POS Register: ${editingRegister.name}` : 'Configure New POS Register'}
+      >
+        <form onSubmit={handleSaveRegister}>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4 }}>
+              Assigned Store Branch *
+            </label>
+            <select
+              required
+              value={registerFormData.store_id}
+              onChange={(e) => setRegisterFormData({ ...registerFormData, store_id: e.target.value })}
+              className="input-field"
+              style={{ width: '100%' }}
+            >
+              <option value="">Select Store Branch...</option>
+              {stores.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14, marginBottom: 14 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4 }}>
+                Register Code *
+              </label>
+              <input
+                type="text"
+                required
+                value={registerFormData.code}
+                onChange={(e) => setRegisterFormData({ ...registerFormData, code: e.target.value.toUpperCase() })}
+                placeholder="REG-01"
+                className="input-field"
+                style={{ width: '100%', fontFamily: 'monospace' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4 }}>
+                Counter / Terminal Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={registerFormData.name}
+                onChange={(e) => setRegisterFormData({ ...registerFormData, name: e.target.value })}
+                placeholder="e.g. Main Cash Desk 1"
+                className="input-field"
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: '12px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(255, 255, 255, 0.04)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 20,
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Active Status</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Allow cashiers to select this register terminal when opening shifts
+              </div>
+            </div>
+            <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={registerFormData.is_active}
+                onChange={(e) => setRegisterFormData({ ...registerFormData, is_active: e.target.checked })}
+                style={{ width: 18, height: 18, accentColor: 'var(--primary)' }}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => setIsRegisterModalOpen(false)}
+              className="btn btn-secondary"
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? 'Saving...' : editingRegister ? 'Update Register' : 'Register Terminal'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {/* ── DELETE CONFIRMATION MODAL ───────────────────────────────────── */}
       <Modal
         isOpen={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
-        title={deleteTarget?.type === 'store' ? 'Delete Store Branch' : 'Delete Stock Location'}
+        title={
+          deleteTarget?.type === 'store'
+            ? 'Delete Store Branch'
+            : deleteTarget?.type === 'register'
+            ? 'Delete POS Register'
+            : 'Delete Stock Location'
+        }
       >
         <div style={{ padding: '8px 0' }}>
           <div
@@ -1327,6 +1780,8 @@ export const Stores = () => {
               <div style={{ fontSize: '0.78rem', marginTop: 2 }}>
                 {deleteTarget?.type === 'store'
                   ? 'A store cannot be deleted if it has stock locations or active POS registers assigned.'
+                  : deleteTarget?.type === 'register'
+                  ? 'A register cannot be deleted if it has recorded cashier shifts. Deactivate the counter instead.'
                   : 'A stock location cannot be deleted if it holds active on-hand inventory stock balances.'}
               </div>
             </div>
