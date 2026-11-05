@@ -35,3 +35,5 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+scratch/
+import_to_aiven.php
