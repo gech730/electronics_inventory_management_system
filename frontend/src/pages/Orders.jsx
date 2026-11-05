@@ -1427,7 +1427,8 @@ export const Orders = () => {
           title={`Order Management: #${selectedOrder.order_number || selectedOrder.id}`}
           maxWidth={750}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* SCREEN ONLY: Interactive Admin Management Controls */}
+          <div className="screen-only" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Admin Status & Lifecycle Control Bar */}
             <form
               onSubmit={handleSaveModalUpdates}
@@ -1441,7 +1442,7 @@ export const Orders = () => {
                 gap: 10,
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'gap', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#38bdf8' }}>
                     ADMIN STATUS CONTROLLER:
@@ -1666,6 +1667,174 @@ export const Orders = () => {
               </div>
             </div>
           </div>
+
+          {/* PRINT ONLY: Clean Professional Order Slip */}
+          <div id="printable-order-slip" className="print-only">
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #0f172a', paddingBottom: 16, marginBottom: 20 }}>
+              <div>
+                <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, letterSpacing: '-0.5px', color: '#0f172a' }}>
+                  NGUS ELECTRONICS
+                </h1>
+                <div style={{ fontSize: '13px', color: '#475569', marginTop: 4 }}>
+                  Official Order Slip & Fulfillment Dispatch Voucher
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: 2 }}>
+                  Bole Medhanialem Mall, Addis Ababa, Ethiopia | Tel: +251 911 223344 | TIN: 0092184910
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
+                  {selectedOrder.order_number || `ORD-${selectedOrder.id}`}
+                </div>
+                <div style={{ fontSize: '12px', color: '#475569', marginTop: 4 }}>
+                  Date: {new Date(selectedOrder.created_at || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </div>
+                <div style={{ display: 'inline-block', marginTop: 6, padding: '3px 10px', borderRadius: 4, background: '#f1f5f9', border: '1px solid #cbd5e1', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}>
+                  Status: {selectedOrder.status} | {selectedOrder.fulfillment_type || 'Delivery'}
+                </div>
+              </div>
+            </div>
+
+            {/* Customer & Dispatch Info Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+              <div style={{ border: '1px solid #cbd5e1', borderRadius: 6, padding: 14 }}>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: 6 }}>
+                  Customer / Delivery To
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
+                  {selectedOrder.customer?.display_name || 'Retail Client'}
+                </div>
+                <div style={{ fontSize: '12px', color: '#334155', marginTop: 2 }}>
+                  Phone: {selectedOrder.customer?.phone || 'N/A'}
+                </div>
+                <div style={{ fontSize: '12px', color: '#334155' }}>
+                  Email: {selectedOrder.customer?.email || 'N/A'}
+                </div>
+                {selectedOrder.customer?.company_name && (
+                  <div style={{ fontSize: '12px', color: '#334155' }}>
+                    Company: {selectedOrder.customer.company_name}
+                  </div>
+                )}
+                {selectedOrder.customer_notes && (
+                  <div style={{ fontSize: '12px', color: '#0f172a', marginTop: 6, padding: '6px 8px', background: '#f8fafc', borderRadius: 4, borderLeft: '3px solid #0284c7' }}>
+                    <strong>Special Instructions:</strong> {selectedOrder.customer_notes}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ border: '1px solid #cbd5e1', borderRadius: 6, padding: 14 }}>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: 6 }}>
+                  Order & Dispatch Details
+                </div>
+                <div style={{ fontSize: '12px', color: '#334155', display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ color: '#64748b' }}>Order Source / Channel:</span>
+                  <strong style={{ textTransform: 'capitalize' }}>{selectedOrder.source || 'Backoffice Store'}</strong>
+                </div>
+                <div style={{ fontSize: '12px', color: '#334155', display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ color: '#64748b' }}>Fulfillment Method:</span>
+                  <strong style={{ textTransform: 'capitalize' }}>{selectedOrder.fulfillment_type === 'pickup' ? 'Store Counter Pickup' : 'Courier Delivery'}</strong>
+                </div>
+                {selectedOrder.shipments && selectedOrder.shipments.length > 0 && (
+                  <>
+                    <div style={{ fontSize: '12px', color: '#334155', display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ color: '#64748b' }}>Courier Provider:</span>
+                      <strong>{selectedOrder.shipments[0].shipping_provider}</strong>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#334155', display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748b' }}>Tracking # / Waybill:</span>
+                      <strong>{selectedOrder.shipments[0].tracking_number || selectedOrder.shipments[0].shipment_number}</strong>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div style={{ marginBottom: 20 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1', textAlign: 'left' }}>
+                    <th style={{ padding: '8px 10px', fontWeight: 800 }}>#</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 800 }}>Item Description & SKU</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 800 }}>Qty Ordered</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 800 }}>Qty Fulfilled</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800 }}>Unit Price</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800 }}>Total (ETB)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selectedOrder.items || []).map((it, idx) => (
+                    <tr key={it.id || idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '8px 10px', color: '#64748b' }}>{idx + 1}</td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                          {it.product_name_snapshot || it.product_variant?.product?.name || `Item #${it.id}`}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                          SKU: {it.sku_snapshot || it.product_variant?.sku || 'STD'}
+                        </div>
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700 }}>
+                        {it.quantity_ordered}
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>
+                        {it.quantity_fulfilled || it.quantity_ordered || 0}
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                        {Number(it.unit_price).toFixed(2)}
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>
+                        {Number(it.line_total || it.quantity_ordered * it.unit_price).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Totals Section */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 30 }}>
+              <div style={{ width: '280px', border: '1px solid #cbd5e1', borderRadius: 6, padding: 12, background: '#f8fafc' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: 4, color: '#475569' }}>
+                  <span>Subtotal:</span>
+                  <span style={{ fontWeight: 600 }}>ETB {Number(selectedOrder.subtotal || 0).toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: 4, color: '#475569' }}>
+                  <span>VAT (15%):</span>
+                  <span style={{ fontWeight: 600 }}>ETB {Number(selectedOrder.tax_total || 0).toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: 6, color: '#475569' }}>
+                  <span>Shipping / Delivery:</span>
+                  <span style={{ fontWeight: 600 }}>ETB {Number(selectedOrder.shipping_fee || 0).toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 800, color: '#0f172a', borderTop: '2px solid #cbd5e1', paddingTop: 6 }}>
+                  <span>GRAND TOTAL:</span>
+                  <span>ETB {Number(selectedOrder.grand_total || selectedOrder.total_amount || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Sign-off & Verification Footer */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, paddingTop: 20, borderTop: '1px dashed #cbd5e1', fontSize: '11px', color: '#475569' }}>
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 30 }}>Warehouse Pack & Check:</div>
+                <div style={{ borderTop: '1px solid #94a3b8', paddingTop: 4 }}>Signature / Stamp</div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 30 }}>Courier / Dispatcher:</div>
+                <div style={{ borderTop: '1px solid #94a3b8', paddingTop: 4 }}>Signature & Date</div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 30 }}>Customer Acceptance:</div>
+                <div style={{ borderTop: '1px solid #94a3b8', paddingTop: 4 }}>Received in Good Condition</div>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center', marginTop: 30, fontSize: '10px', color: '#94a3b8' }}>
+              Generated from Ngus Electronics System on {new Date().toLocaleString()} | Computer generated order slip.
+            </div>
+          </div>
         </Modal>
       )}
 
@@ -1791,6 +1960,7 @@ export const Orders = () => {
           maxWidth={460}
         >
           <div
+            id="printable-pos-receipt"
             style={{
               fontFamily: 'monospace',
               background: '#ffffff',
@@ -1847,7 +2017,7 @@ export const Orders = () => {
               <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Goods once sold cannot be returned without receipt.</div>
             </div>
 
-            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 10 }}>
+            <div className="screen-only" style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 10 }}>
               <button
                 type="button"
                 onClick={() => window.print()}
