@@ -184,8 +184,24 @@ class CheckoutController extends Controller
                     'line_total'            => $lineTotal,
                 ]);
 
-                // Create stock reservation for this order
+                // Deduct stock and record reservation for online paid orders
+                if ($product && $product->track_inventory) {
+                    $product->decrement('quantity', (int) $qty);
+                }
+
                 if ($stockLocation) {
+                    $stockBalance = StockBalance::lockForUpdate()->firstOrCreate(
+                        [
+                            'stock_location_id'  => $stockLocation->id,
+                            'product_variant_id' => $variant->id,
+                        ],
+                        [
+                            'quantity_on_hand'  => 0.000,
+                            'quantity_reserved' => 0.000,
+                        ]
+                    );
+                    $stockBalance->decrement('quantity_on_hand', min($stockBalance->quantity_on_hand, $qty));
+
                     StockReservation::create([
                         'order_item_id'      => $orderItem->id,
                         'product_variant_id' => $variant->id,

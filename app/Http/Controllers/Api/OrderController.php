@@ -7,8 +7,10 @@ use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockBalance;
+use App\Models\StockLocation;
 use App\Models\StockReservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -153,6 +155,15 @@ class OrderController extends Controller
             $status = $validated['status'] ?? Order::STATUS_PLACED;
             $shippingFee = (float) ($validated['shipping_fee'] ?? 0.00);
 
+            // Auto-resolve stock location if not specified
+            $stockLocationId = $validated['stock_location_id'] ?? null;
+            if (!$stockLocationId && !empty($validated['store_id'])) {
+                $stockLocationId = StockLocation::where('store_id', $validated['store_id'])->value('id');
+            }
+            if (!$stockLocationId) {
+                $stockLocationId = StockLocation::value('id');
+            }
+
             // Snapshot addresses if available
             $billingSnapshot = null;
             if (!empty($validated['billing_address_id'])) {
@@ -173,7 +184,7 @@ class OrderController extends Controller
                 'fulfillment_type'          => $validated['fulfillment_type'],
                 'customer_id'               => $validated['customer_id'] ?? null,
                 'store_id'                  => $validated['store_id'] ?? null,
-                'stock_location_id'         => $validated['stock_location_id'] ?? null,
+                'stock_location_id'         => $stockLocationId,
                 'pos_register_id'           => $validated['pos_register_id'] ?? null,
                 'cashier_shift_id'          => $validated['cashier_shift_id'] ?? null,
                 'created_by'                => $request->user()?->id,
@@ -199,11 +210,21 @@ class OrderController extends Controller
 
             foreach ($validated['items'] as $itemData) {
                 $variant = ProductVariant::with('product')->lockForUpdate()->findOrFail($itemData['product_variant_id']);
+                $product = $variant->product;
 
                 $unitPrice = isset($itemData['unit_price']) ? (float) $itemData['unit_price'] : (float) $variant->selling_price;
                 $quantity = (float) $itemData['quantity_ordered'];
                 $discount = (float) ($itemData['discount_amount'] ?? 0.00);
                 $taxPercent = (float) ($itemData['tax_rate_percent'] ?? 0.0000);
+
+                // Check available stock if inventory is tracked and order is not draft
+                if ($product && $product->track_inventory && $status !== Order::STATUS_DRAFT) {
+                    if ($product->quantity < $quantity) {
+                        throw ValidationException::withMessages([
+                            'items' => ["Insufficient stock for '{$product->name}'. Available: {$product->quantity}, Requested: {$quantity}."]
+                        ]);
+                    }
+                }
 
                 $lineSubtotal = round($quantity * $unitPrice, 2);
                 $taxableAmount = max(0, $lineSubtotal - $discount);
@@ -220,7 +241,7 @@ class OrderController extends Controller
                     'product_name_snapshot'  => $variant->variant_name ?: ($variant->product?->name ?? 'Product ' . $variant->id),
                     'sku_snapshot'           => $variant->sku ?: ($variant->product?->sku ?? 'SKU-' . $variant->id),
                     'quantity_ordered'       => $quantity,
-                    'quantity_fulfilled'     => 0.000,
+                    'quantity_fulfilled'     => in_array($status, [Order::STATUS_SHIPPED, Order::STATUS_COMPLETED]) ? $quantity : 0.000,
                     'quantity_cancelled'     => 0.000,
                     'unit_price'             => $unitPrice,
                     'discount_amount'        => $discount,
@@ -229,25 +250,23 @@ class OrderController extends Controller
                     'line_total'             => $lineTotal,
                 ]);
 
-                // Stock reservation handling if location specified and status is confirmed or processing
-                if ($order->stock_location_id && in_array($status, [Order::STATUS_CONFIRMED, Order::STATUS_PROCESSING])) {
-                    $stockBalance = StockBalance::where('stock_location_id', $order->stock_location_id)
-                        ->where('product_variant_id', $variant->id)
-                        ->lockForUpdate()
-                        ->first();
+                // Immediately deduct stock for active orders (not draft)
+                if ($product && $product->track_inventory && $status !== Order::STATUS_DRAFT) {
+                    $product->decrement('quantity', (int) $quantity);
 
-                    if ($stockBalance) {
-                        $stockBalance->increment('quantity_reserved', $quantity);
+                    if ($stockLocationId) {
+                        $stockBalance = StockBalance::lockForUpdate()->firstOrCreate(
+                            [
+                                'stock_location_id'  => $stockLocationId,
+                                'product_variant_id' => $variant->id,
+                            ],
+                            [
+                                'quantity_on_hand'  => 0.000,
+                                'quantity_reserved' => 0.000,
+                            ]
+                        );
 
-                        StockReservation::create([
-                            'order_item_id'      => $orderItem->id,
-                            'stock_location_id'  => $order->stock_location_id,
-                            'product_variant_id' => $variant->id,
-                            'quantity'           => $quantity,
-                            'status'             => StockReservation::STATUS_ACTIVE,
-                            'expires_at'         => now()->addDays(2),
-                            'created_by'         => $request->user()?->id,
-                        ]);
+                        $stockBalance->decrement('quantity_on_hand', min($stockBalance->quantity_on_hand, $quantity));
                     }
                 }
             }
@@ -286,92 +305,93 @@ class OrderController extends Controller
             $oldStatus = $order->status;
             $newStatus = $validated['status'] ?? $oldStatus;
 
-            // Handle transition to confirmed: create stock reservations if not yet reserved
-            if ($newStatus === Order::STATUS_CONFIRMED && $oldStatus !== Order::STATUS_CONFIRMED && $order->stock_location_id) {
-                $order->confirmed_at = now();
+            $wasActive = !in_array($oldStatus, [Order::STATUS_DRAFT, Order::STATUS_CANCELLED, Order::STATUS_REJECTED]);
+            $isNowActive = !in_array($newStatus, [Order::STATUS_DRAFT, Order::STATUS_CANCELLED, Order::STATUS_REJECTED]);
+
+            // 1. Transitioning to CANCELLED or REJECTED from an active state: Restore inventory
+            if (in_array($newStatus, [Order::STATUS_CANCELLED, Order::STATUS_REJECTED]) && $wasActive) {
+                $order->cancelled_at = now();
+
                 foreach ($order->items as $item) {
-                    $hasActiveRes = StockReservation::where('order_item_id', $item->id)
-                        ->where('status', StockReservation::STATUS_ACTIVE)
-                        ->exists();
+                    $variant = ProductVariant::find($item->product_variant_id);
+                    if ($variant && $variant->product_id) {
+                        $variant->product()->increment('quantity', (int) $item->quantity_ordered);
+                    }
 
-                    if (!$hasActiveRes) {
-                        $balance = StockBalance::where('stock_location_id', $order->stock_location_id)
-                            ->where('product_variant_id', $item->product_variant_id)
-                            ->lockForUpdate()
-                            ->first();
-
-                        if ($balance) {
-                            $balance->increment('quantity_reserved', $item->quantity_ordered);
-                            StockReservation::create([
-                                'order_item_id'      => $item->id,
+                    if ($order->stock_location_id) {
+                        $balance = StockBalance::lockForUpdate()->firstOrCreate(
+                            [
                                 'stock_location_id'  => $order->stock_location_id,
                                 'product_variant_id' => $item->product_variant_id,
-                                'quantity'           => $item->quantity_ordered,
-                                'status'             => StockReservation::STATUS_ACTIVE,
-                                'expires_at'         => now()->addDays(2),
-                                'created_by'         => auth()->id(),
+                            ],
+                            ['quantity_on_hand' => 0.000, 'quantity_reserved' => 0.000]
+                        );
+                        $balance->increment('quantity_on_hand', $item->quantity_ordered);
+                    }
+                }
+
+                // Release active reservations if any
+                $orderItems = $order->items()->pluck('id');
+                StockReservation::whereIn('order_item_id', $orderItems)
+                    ->where('status', StockReservation::STATUS_ACTIVE)
+                    ->update([
+                        'status'      => StockReservation::STATUS_CANCELLED,
+                        'released_at' => now(),
+                    ]);
+            }
+
+            // 2. Transitioning from DRAFT / CANCELLED / REJECTED to ACTIVE: Check and deduct inventory
+            if (!$wasActive && $isNowActive) {
+                $locationId = $order->stock_location_id ?: StockLocation::value('id');
+
+                // Step A: Validate sufficient stock
+                foreach ($order->items as $item) {
+                    $variant = ProductVariant::with('product')->lockForUpdate()->find($item->product_variant_id);
+                    $product = $variant?->product;
+                    if ($product && $product->track_inventory) {
+                        if ($product->quantity < $item->quantity_ordered) {
+                            throw ValidationException::withMessages([
+                                'status' => ["Cannot activate order. Insufficient stock for '{$product->name}'. Available: {$product->quantity}, Requested: {$item->quantity_ordered}."]
                             ]);
                         }
                     }
                 }
+
+                // Step B: Deduct stock
+                foreach ($order->items as $item) {
+                    $variant = ProductVariant::with('product')->lockForUpdate()->find($item->product_variant_id);
+                    $product = $variant?->product;
+                    if ($product && $product->track_inventory) {
+                        $product->decrement('quantity', (int) $item->quantity_ordered);
+
+                        if ($locationId) {
+                            $balance = StockBalance::lockForUpdate()->firstOrCreate(
+                                [
+                                    'stock_location_id'  => $locationId,
+                                    'product_variant_id' => $item->product_variant_id,
+                                ],
+                                ['quantity_on_hand' => 0.000, 'quantity_reserved' => 0.000]
+                            );
+                            $balance->decrement('quantity_on_hand', min($balance->quantity_on_hand, $item->quantity_ordered));
+                        }
+                    }
+                }
             }
 
-            // Handle transition to cancelled or rejected: release active stock reservations
-            if (in_array($newStatus, [Order::STATUS_CANCELLED, Order::STATUS_REJECTED]) && !in_array($oldStatus, [Order::STATUS_CANCELLED, Order::STATUS_REJECTED])) {
-                $order->cancelled_at = now();
-                $orderItems = $order->items()->pluck('id');
-                $reservations = StockReservation::whereIn('order_item_id', $orderItems)
+            // 3. Mark milestone timestamps
+            if ($newStatus === Order::STATUS_CONFIRMED && !$order->confirmed_at) {
+                $order->confirmed_at = now();
+            }
+
+            if ($newStatus === Order::STATUS_COMPLETED && !$order->completed_at) {
+                $order->completed_at = now();
+                // Consume any active stock reservations
+                StockReservation::whereIn('order_item_id', $order->items->pluck('id'))
                     ->where('status', StockReservation::STATUS_ACTIVE)
-                    ->get();
-
-                foreach ($reservations as $res) {
-                    $balance = StockBalance::where('stock_location_id', $res->stock_location_id)
-                        ->where('product_variant_id', $res->product_variant_id)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if ($balance) {
-                        $balance->decrement('quantity_reserved', min($balance->quantity_reserved, $res->quantity));
-                    }
-
-                    $res->update([
-                        'status'      => StockReservation::STATUS_CANCELLED,
-                        'released_at' => now(),
+                    ->update([
+                        'status'      => StockReservation::STATUS_CONSUMED,
+                        'consumed_at' => now(),
                     ]);
-                }
-            }
-
-            // Handle transition to completed: consume reservations and deduct on-hand stock
-            if ($newStatus === Order::STATUS_COMPLETED && $oldStatus !== Order::STATUS_COMPLETED) {
-                $orderItems = $order->items;
-                foreach ($orderItems as $item) {
-                    $res = StockReservation::where('order_item_id', $item->id)
-                        ->where('status', StockReservation::STATUS_ACTIVE)
-                        ->first();
-
-                    if ($res) {
-                        $balance = StockBalance::where('stock_location_id', $res->stock_location_id)
-                            ->where('product_variant_id', $res->product_variant_id)
-                            ->lockForUpdate()
-                            ->first();
-
-                        if ($balance) {
-                            $balance->decrement('quantity_reserved', min($balance->quantity_reserved, $res->quantity));
-                            $balance->decrement('quantity_on_hand', min($balance->quantity_on_hand, $res->quantity));
-                        }
-
-                        // Also decrement parent product quantity for catalog sync
-                        $variant = ProductVariant::find($item->product_variant_id);
-                        if ($variant && $variant->product_id) {
-                            $variant->product()->decrement('quantity', min($variant->product->quantity, (int) $res->quantity));
-                        }
-
-                        $res->update([
-                            'status'      => StockReservation::STATUS_CONSUMED,
-                            'consumed_at' => now(),
-                        ]);
-                    }
-                }
             }
 
             $order->update($validated);

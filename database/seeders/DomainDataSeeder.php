@@ -239,5 +239,69 @@ class DomainDataSeeder extends Seeder
                 'failed_at' => now(),
             ]
         );
+
+        // 7. Stock Locations & Balances
+        $store = \App\Models\Store::first();
+        if ($store) {
+            $loc1 = \App\Models\StockLocation::firstOrCreate(
+                ['code' => 'WH-MAIN'],
+                [
+                    'store_id' => $store->id,
+                    'name' => 'Main Flagship Warehouse',
+                    'location_type' => 'warehouse',
+                    'is_sellable' => true,
+                    'is_active' => true,
+                ]
+            );
+
+            \App\Models\StockLocation::firstOrCreate(
+                ['code' => 'SHOP-01'],
+                [
+                    'store_id' => $store->id,
+                    'name' => 'Flagship Showroom Floor',
+                    'location_type' => 'shop_floor',
+                    'is_sellable' => true,
+                    'is_active' => true,
+                ]
+            );
+
+            // Sync initial stock balances for all products
+            foreach (\App\Models\ProductVariant::with('product')->get() as $variant) {
+                if ($variant->product) {
+                    \App\Models\StockBalance::firstOrCreate(
+                        [
+                            'stock_location_id'  => $loc1->id,
+                            'product_variant_id' => $variant->id,
+                        ],
+                        [
+                            'quantity_on_hand'  => (float) ($variant->product->quantity ?? 0),
+                            'quantity_reserved' => 0.000,
+                            'reorder_level'     => (float) ($variant->product->minimum_stock ?? 5),
+                        ]
+                    );
+                }
+            }
+
+            // 8. POS Terminals & Registers
+            \App\Models\PosRegister::firstOrCreate(
+                ['register_code' => 'REG-01'],
+                [
+                    'store_id'   => $store->id,
+                    'name'       => 'Main Electronics Cash Counter 1',
+                    'ip_address' => '192.168.1.101',
+                    'is_active'  => true,
+                ]
+            );
+
+            \App\Models\PosRegister::firstOrCreate(
+                ['register_code' => 'REG-02'],
+                [
+                    'store_id'   => $store->id,
+                    'name'       => 'Mobile & Accessories Express Counter',
+                    'ip_address' => '192.168.1.102',
+                    'is_active'  => true,
+                ]
+            );
+        }
     }
 }

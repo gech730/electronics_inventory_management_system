@@ -408,6 +408,14 @@ export const Orders = () => {
   const formTax = formSubtotal * 0.15;
   const formGrandTotal = formSubtotal + formTax + (parseFloat(newOrder.shipping_fee) || 0);
 
+  const hasOverstockItems = useMemo(() => {
+    return newOrder.items.some((item) => {
+      if (!item.product_id) return false;
+      const prod = products.find((p) => String(p.id) === String(item.product_id));
+      return prod && Number(item.quantity) > (Number(prod.quantity) || 0);
+    });
+  }, [newOrder.items, products]);
+
   // Submit new order creation
   const handleCreateOrder = async (e) => {
     e.preventDefault();
@@ -415,6 +423,18 @@ export const Orders = () => {
     if (validItems.length === 0) {
       showToast?.('Please select at least one product line item', 'warning');
       return;
+    }
+
+    // Client-side inventory availability check
+    for (const item of validItems) {
+      const prod = products.find((p) => String(p.id) === String(item.product_id));
+      if (prod && Number(item.quantity) > (Number(prod.quantity) || 0)) {
+        showToast?.(
+          `Cannot create order: requested quantity for '${prod.name}' (${item.quantity}) exceeds available stock (${prod.quantity || 0}).`,
+          'error'
+        );
+        return;
+      }
     }
 
     try {
@@ -1279,7 +1299,7 @@ export const Orders = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
                 Fulfillment Store
@@ -1293,6 +1313,23 @@ export const Orders = () => {
                 {stores.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name} ({s.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
+                Stock Hub / Location
+              </label>
+              <select
+                value={newOrder.stock_location_id}
+                onChange={(e) => setNewOrder({ ...newOrder, stock_location_id: e.target.value })}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)' }}
+              >
+                {stockLocations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.name} ({loc.code})
                   </option>
                 ))}
               </select>
@@ -1326,49 +1363,93 @@ export const Orders = () => {
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {newOrder.items.map((item, idx) => (
-                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'center' }}>
-                  <select
-                    value={item.product_id}
-                    onChange={(e) => updateLineItem(idx, 'product_id', e.target.value)}
-                    required
-                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)', fontSize: '0.85rem' }}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {newOrder.items.map((item, idx) => {
+                const prod = products.find((p) => String(p.id) === String(item.product_id));
+                const stockQty = prod ? (Number(prod.quantity) || 0) : null;
+                const isOverStock = prod && Number(item.quantity) > stockQty;
+
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: isOverStock ? '1px solid #ef4444' : '1px solid var(--border-subtle)',
+                    }}
                   >
-                    <option value="">Select Electronics Product...</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} - ETB {Number(p.selling_price || 0).toFixed(2)} (Stock: {p.quantity || 0})
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.quantity}
-                    onChange={(e) => updateLineItem(idx, 'quantity', e.target.value)}
-                    placeholder="Qty"
-                    style={{ padding: '8px', borderRadius: 6, border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}
-                  />
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={item.unit_price}
-                    onChange={(e) => updateLineItem(idx, 'unit_price', e.target.value)}
-                    placeholder="Price"
-                    style={{ padding: '8px', borderRadius: 6, border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}
-                  />
-                  {newOrder.items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeLineItem(idx)}
-                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4 }}
-                    >
-                      <Icon name="trash" size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'center' }}>
+                      <select
+                        value={item.product_id}
+                        onChange={(e) => updateLineItem(idx, 'product_id', e.target.value)}
+                        required
+                        style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-app)', fontSize: '0.85rem' }}
+                      >
+                        <option value="">Select Electronics Product...</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} - ETB {Number(p.selling_price || 0).toFixed(2)} (Stock: {p.quantity || 0})
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        min="1"
+                        max={stockQty !== null ? stockQty : undefined}
+                        value={item.quantity}
+                        onChange={(e) => updateLineItem(idx, 'quantity', e.target.value)}
+                        placeholder="Qty"
+                        style={{ padding: '8px', borderRadius: 6, border: isOverStock ? '1px solid #ef4444' : '1px solid var(--border-subtle)', fontSize: '0.85rem' }}
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.unit_price}
+                        onChange={(e) => updateLineItem(idx, 'unit_price', e.target.value)}
+                        placeholder="Price"
+                        style={{ padding: '8px', borderRadius: 6, border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}
+                      />
+                      {newOrder.items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeLineItem(idx)}
+                          style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4 }}
+                        >
+                          <Icon name="trash" size={16} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Live stock availability indicator */}
+                    {prod && (
+                      <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              fontWeight: 600,
+                              background: stockQty <= 0 ? 'rgba(239, 68, 68, 0.15)' : stockQty < 5 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                              color: stockQty <= 0 ? '#ef4444' : stockQty < 5 ? '#f59e0b' : '#10b981',
+                            }}
+                          >
+                            {stockQty <= 0 ? '⚠ Out of Stock (0 units)' : stockQty < 5 ? `⚡ Low Stock: Only ${stockQty} available` : `✓ In Stock: ${stockQty} units available`}
+                          </span>
+                          {isOverStock && (
+                            <span style={{ color: '#ef4444', fontWeight: 600 }}>
+                              Requested ({item.quantity}) exceeds available stock ({stockQty})!
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ color: '#94a3b8' }}>
+                          SKU: {prod.sku || 'N/A'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -1412,8 +1493,16 @@ export const Orders = () => {
             <button type="button" onClick={() => setIsCreateModalOpen(false)} className="btn btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? 'Creating Order...' : 'Submit Order'}
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={submitting || hasOverstockItems}
+              style={{
+                opacity: hasOverstockItems ? 0.6 : 1,
+                cursor: hasOverstockItems ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {hasOverstockItems ? 'Insufficient Stock' : submitting ? 'Creating Order...' : 'Submit Order'}
             </button>
           </div>
         </form>
