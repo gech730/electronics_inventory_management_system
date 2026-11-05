@@ -724,18 +724,97 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Print utility helpers */
+.print-only {
+  display: none !important;
+}
+
+.screen-only {
+  display: block;
+}
+
 /* ==========================================================================
-   Print Stylesheet for 80mm/58mm POS Thermal Receipts
+   Print Stylesheet for 80mm POS Thermal Receipts & A4 Order Invoices
    ========================================================================== */
 @media print {
-  body * {
-    visibility: hidden !important;
+  @page {
+    margin: 8mm;
+    size: auto;
   }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app navigation and controls */
+  aside,
+  nav,
+  header,
+  footer,
+  .sidebar,
+  .top-navbar,
+  .ambient-glow,
+  .btn,
+  button,
+  .no-print,
+  .screen-only {
+    display: none !important;
+  }
+
+  /* Hide everything on page by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Allow modal container to render without dark backdrop */
+  .modal-overlay {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .modal-content {
+    position: static !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .modal-header {
+    display: none !important;
+  }
+
+  .modal-body {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* POS Thermal Receipt Print Styling */
   #printable-pos-receipt,
   #printable-pos-receipt * {
     visibility: visible !important;
   }
+
   #printable-pos-receipt {
+    display: block !important;
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
@@ -748,13 +827,31 @@ h1, h2, h3, h4, h5, h6 {
     background: #ffffff !important;
     color: #000000 !important;
   }
-  aside,
-  nav,
-  header,
-  .modal-overlay,
-  .btn,
-  button {
-    display: none !important;
+
+  /* Order Slip / Invoice Print Styling */
+  #printable-order-slip,
+  #printable-order-slip * {
+    visibility: visible !important;
+  }
+
+  #printable-order-slip {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 210mm !important;
+    margin: 0 !important;
+    padding: 16px 20px !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt !important;
+  }
+
+  .print-only {
+    display: block !important;
   }
 }
 
