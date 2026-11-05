@@ -50,6 +50,12 @@ export const Pos = () => {
   const [shiftNotes, setShiftNotes] = useState('');
   const [openingShiftSubmitting, setOpeningShiftSubmitting] = useState(false);
 
+  // Terminal vs History Tab Switch
+  const [activeTab, setActiveTab] = useState('terminal');
+  const [salesHistory, setSalesHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+
   // Fetch initial data
   useEffect(() => {
     const fetchPosData = async () => {
@@ -79,9 +85,13 @@ export const Pos = () => {
         const defaultPm = pms.find((m) => m.method_type === 'cash' || m.code?.toLowerCase() === 'cash') || pms[0];
         setSelectedPaymentMethod(defaultPm);
 
-        // Check if cashier has active open shift
-        const openShifts = shiftsRes?.data || [];
-        const myOpenShift = openShifts.find((s) => s.user_id === user?.id || s.user?.id === user?.id) || openShifts[0];
+        // Check if cashier has active open shift strictly for this logged-in user
+        const openShifts = Array.isArray(shiftsRes) ? shiftsRes : (shiftsRes?.data || []);
+        const myOpenShift = openShifts.find((s) => {
+          if (s.status !== 'open') return false;
+          const opId = typeof s.opened_by === 'object' ? s.opened_by?.id : (s.opened_by || s.openedBy?.id);
+          return Number(opId) === Number(user?.id);
+        });
         setActiveShift(myOpenShift || null);
       } catch (err) {
         showToast(err.message || 'Failed to load POS data', 'error');
@@ -91,7 +101,62 @@ export const Pos = () => {
     };
 
     fetchPosData();
+    fetchSalesHistory();
   }, [user?.id]);
+
+  const fetchSalesHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const res = await api.getSales({ per_page: 50 });
+      const list = Array.isArray(res) ? res : (res?.data || []);
+      setSalesHistory(list);
+    } catch (err) {
+      console.warn('Failed to load sales history:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleViewReceipt = async (sale) => {
+    try {
+      const fullRes = await api.getSale(sale.id);
+      const s = fullRes?.sale || fullRes?.data || fullRes;
+      const rawItems = (s.items && s.items.length > 0) ? s.items : (s.order?.items || []);
+
+      const formattedItems = rawItems.map((it) => ({
+        product: {
+          id: it.id || it.product_variant_id || it.product_id,
+          name: it.product_name_snapshot || it.product_variant?.product?.name || it.product?.name || 'Electronic Item',
+          sku: it.sku_snapshot || it.product_variant?.sku || it.sku || '-',
+          selling_price: Number(it.unit_price || 0),
+        },
+        quantity: Number(it.quantity || 1),
+      }));
+
+      const grandTotalNum = Number(s.grand_total || s.total_amount || 0);
+      const subtotalNum = Number(s.subtotal || grandTotalNum);
+      const discountNum = Number(s.discount_amount || 0);
+      const taxNum = Number(s.tax_amount || (subtotalNum * 0.15));
+
+      setCompletedSale({
+        ...s,
+        sale_number: s.sale_number || `SALE-${s.id}`,
+        cartItems: formattedItems,
+        subtotal: subtotalNum,
+        discountAmount: discountNum,
+        taxAmount: taxNum,
+        grandTotal: grandTotalNum,
+        tendered: grandTotalNum,
+        changeDue: 0,
+        paymentMethodName: s.cashier_shift_id ? 'Cash Drawer (POS)' : 'Counter Tender',
+        cashierName: s.cashier?.name || user?.name || 'Authorized Cashier',
+        timestamp: s.issued_at ? new Date(s.issued_at).toLocaleString() : (s.created_at ? new Date(s.created_at).toLocaleString() : new Date().toLocaleString()),
+      });
+      setIsReceiptOpen(true);
+    } catch (err) {
+      showToast(err.message || 'Failed to load receipt details', 'error');
+    }
+  };
 
   // In-terminal Shift Opening Handler
   const handleQuickOpenShift = async (e) => {
@@ -134,6 +199,18 @@ export const Pos = () => {
       return matchSearch && matchCategory;
     });
   }, [products, searchQuery, selectedCategory]);
+
+  // Filtered sales history for cashier
+  const filteredSalesHistory = useMemo(() => {
+    if (!historySearchQuery.trim()) return salesHistory;
+    const q = historySearchQuery.toLowerCase();
+    return salesHistory.filter((s) => {
+      const num = (s.sale_number || '').toLowerCase();
+      const cust = (s.customer?.name || '').toLowerCase();
+      const date = (s.issued_at || s.created_at || '').toLowerCase();
+      return num.includes(q) || cust.includes(q) || date.includes(q);
+    });
+  }, [salesHistory, historySearchQuery]);
 
   // Cart operations
   const addToCart = (product) => {
@@ -291,6 +368,7 @@ export const Pos = () => {
       // Open receipt modal
       setIsReceiptOpen(true);
       showToast('Transaction completed successfully!', 'success');
+      fetchSalesHistory();
     } catch (err) {
       showToast(err.message || 'Checkout failed to process', 'error');
     } finally {
@@ -385,7 +463,71 @@ export const Pos = () => {
         </div>
       </div>
 
+      {/* Tab Navigation: Terminal Catalog vs Cashier Sales History */}
+      <div style={{ display: 'flex', gap: 10, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 10 }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('terminal')}
+          style={{
+            padding: '8px 18px',
+            borderRadius: 8,
+            border: 'none',
+            cursor: 'pointer',
+            fontWeight: 700,
+            fontSize: '0.88rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: activeTab === 'terminal' ? 'var(--brand-blue)' : 'var(--bg-surface)',
+            color: activeTab === 'terminal' ? '#fff' : 'var(--text-muted)',
+            boxShadow: activeTab === 'terminal' ? '0 2px 6px rgba(22, 119, 255, 0.3)' : 'none',
+            transition: 'all 150ms ease',
+          }}
+        >
+          <Icon name="cart" size={16} />
+          Terminal Register & Catalog
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('history');
+            fetchSalesHistory();
+          }}
+          style={{
+            padding: '8px 18px',
+            borderRadius: 8,
+            border: 'none',
+            cursor: 'pointer',
+            fontWeight: 700,
+            fontSize: '0.88rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: activeTab === 'history' ? 'var(--brand-blue)' : 'var(--bg-surface)',
+            color: activeTab === 'history' ? '#fff' : 'var(--text-muted)',
+            boxShadow: activeTab === 'history' ? '0 2px 6px rgba(22, 119, 255, 0.3)' : 'none',
+            transition: 'all 150ms ease',
+          }}
+        >
+          <Icon name="fileText" size={16} />
+          My Sales History
+          <span
+            style={{
+              fontSize: '0.74rem',
+              background: activeTab === 'history' ? 'rgba(255,255,255,0.25)' : 'var(--bg-app)',
+              padding: '2px 8px',
+              borderRadius: 12,
+              fontWeight: 800,
+            }}
+          >
+            {salesHistory.length}
+          </span>
+        </button>
+      </div>
+
       {/* Main Terminal Workspace Layout */}
+      {activeTab === 'terminal' && (
       <div
         style={{
           display: 'grid',
@@ -966,6 +1108,255 @@ export const Pos = () => {
           )}
         </div>
       </div>
+      )}
+
+      {/* TAB 2: Cashier Sales History */}
+      {activeTab === 'history' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Cashier Shift & Summary KPI Cards */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                background: 'var(--bg-surface)',
+                padding: '16px 20px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Cashier Identity</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, marginTop: 4, color: 'var(--text-main)' }}>
+                {user?.name || 'Cashier'}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: 2 }}>{user?.email}</div>
+            </div>
+
+            <div
+              style={{
+                background: 'var(--bg-surface)',
+                padding: '16px 20px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Active Register Session</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, marginTop: 4, color: activeShift ? 'var(--success)' : 'var(--warning)' }}>
+                {activeShift ? (activeShift.pos_register?.name || activeShift.posRegister?.name || `Shift #${activeShift.id}`) : 'No Active Shift'}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: 2 }}>
+                {activeShift ? `Float: ETB ${Number(activeShift.opening_float || 0).toFixed(2)}` : 'Shift closed'}
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: 'var(--bg-surface)',
+                padding: '16px 20px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Counter Sales</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, marginTop: 4, color: 'var(--brand-blue)' }}>
+                {salesHistory.length} orders
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: 2 }}>This session & cashier</div>
+            </div>
+
+            <div
+              style={{
+                background: 'var(--bg-surface)',
+                padding: '16px 20px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Revenue Processed</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, marginTop: 4, color: 'var(--success)' }}>
+                ETB {salesHistory.reduce((acc, s) => acc + Number(s.grand_total || s.total_amount || 0), 0).toFixed(2)}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: 2 }}>Gross receipts collected</div>
+            </div>
+          </div>
+
+          {/* Sales History Table Container */}
+          <div
+            style={{
+              background: 'var(--bg-surface)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-subtle)',
+              boxShadow: 'var(--shadow-sm)',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Top Table Controls */}
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--border-subtle)',
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Cashier Transactions Log</h3>
+                <span
+                  style={{
+                    background: 'var(--bg-app)',
+                    padding: '2px 8px',
+                    borderRadius: 12,
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  {filteredSalesHistory.length} records
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ position: 'relative', minWidth: 260 }}>
+                  <input
+                    type="text"
+                    placeholder="Search by sale #, customer..."
+                    value={historySearchQuery}
+                    onChange={(e) => setHistorySearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px 8px 32px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-subtle)',
+                      background: 'var(--bg-app)',
+                      fontSize: '0.82rem',
+                    }}
+                  />
+                  <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }}>
+                    <Icon name="search" size={14} />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={fetchSalesHistory}
+                  disabled={loadingHistory}
+                  className="btn btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', padding: '8px 12px' }}
+                >
+                  <Icon name="refresh" size={14} />
+                  {loadingHistory ? 'Refreshing...' : 'Refresh'}
+                </button>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-app)', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '12px 20px', fontWeight: 700 }}>Sale Number</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700 }}>Date & Time</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700 }}>Customer</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700 }}>Shift / Terminal</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, textAlign: 'right' }}>Total (ETB)</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, textAlign: 'center' }}>Status</th>
+                    <th style={{ padding: '12px 20px', fontWeight: 700, textAlign: 'right' }}>Receipt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingHistory ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+                        Loading cashier transactions...
+                      </td>
+                    </tr>
+                  ) : filteredSalesHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '50px 20px' }}>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 10 }}>
+                          No sales found for this cashier session.
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('terminal')}
+                          className="btn btn-primary"
+                          style={{ fontSize: '0.8rem', padding: '6px 16px' }}
+                        >
+                          Go to Terminal & Ring Sale
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredSalesHistory.map((s) => (
+                      <tr key={s.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 120ms' }}>
+                        <td style={{ padding: '14px 20px', fontWeight: 700, color: 'var(--brand-blue)' }}>
+                          {s.sale_number || `SALE-${s.id}`}
+                        </td>
+                        <td style={{ padding: '14px 16px', color: 'var(--text-muted)' }}>
+                          {s.issued_at ? new Date(s.issued_at).toLocaleString() : (s.created_at ? new Date(s.created_at).toLocaleString() : '-')}
+                        </td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <span style={{ fontWeight: 600 }}>{s.customer?.name || 'Walk-in Customer'}</span>
+                        </td>
+                        <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                          {s.cashier_shift_id ? `Shift #${s.cashier_shift_id}` : (s.pos_register?.name || 'Counter')}
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 800 }}>
+                          ETB {Number(s.grand_total || s.total_amount || 0).toFixed(2)}
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                          <span
+                            style={{
+                              padding: '3px 10px',
+                              borderRadius: 'var(--radius-full)',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              background: 'rgba(0, 176, 116, 0.1)',
+                              color: 'var(--success)',
+                              border: '1px solid rgba(0, 176, 116, 0.25)',
+                            }}
+                          >
+                            {s.payment_status || s.status || 'PAID'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleViewReceipt(s)}
+                            className="btn btn-secondary"
+                            style={{
+                              padding: '4px 10px',
+                              fontSize: '0.76rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              fontWeight: 700,
+                            }}
+                          >
+                            <Icon name="receipt" size={14} />
+                            Receipt
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL 1: Payment & Checkout Tender Modal */}
       <Modal
