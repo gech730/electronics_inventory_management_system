@@ -36,4 +36,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 scratch/
+firstdb_import.sql
 import_to_aiven.php
+sync_sqlite_to_aiven.php
