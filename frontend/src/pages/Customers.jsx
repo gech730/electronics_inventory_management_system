@@ -25,6 +25,7 @@ export const Customers = () => {
   const [customerOrders, setCustomerOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
 
   // Customer Form State
   const [customerForm, setCustomerForm] = useState({
@@ -114,6 +115,7 @@ export const Customers = () => {
   // Open Create Customer
   const handleOpenCreate = () => {
     setEditingCustomer(null);
+    setFormError('');
     setCustomerForm({
       customer_code: `CUST-${Date.now().toString().slice(-4)}`,
       customer_type: 'individual',
@@ -142,6 +144,7 @@ export const Customers = () => {
   // Open Edit Customer
   const handleOpenEdit = (customer) => {
     setEditingCustomer(customer);
+    setFormError('');
     setCustomerForm({
       customer_code: customer.customer_code || '',
       customer_type: customer.customer_type || 'individual',
@@ -192,34 +195,64 @@ export const Customers = () => {
   // Submit Customer Create / Update
   const handleSubmitCustomer = async (e) => {
     e.preventDefault();
+    setFormError('');
+
+    if (!customerForm.display_name?.trim()) {
+      setFormError('Please enter the customer or business name.');
+      return;
+    }
+    if (!customerForm.phone?.trim()) {
+      setFormError('Please enter a primary phone number.');
+      return;
+    }
+
     try {
       setSubmitting(true);
       if (editingCustomer) {
         await api.updateCustomer(editingCustomer.id, {
-          display_name: customerForm.display_name,
+          display_name: customerForm.display_name.trim(),
           customer_type: customerForm.customer_type,
-          phone: customerForm.phone || null,
-          email: customerForm.email || null,
-          tax_number: customerForm.tax_number || null,
+          phone: customerForm.phone.trim(),
+          email: customerForm.email?.trim() || null,
+          tax_number: customerForm.tax_number?.trim() || null,
           credit_limit: parseFloat(customerForm.credit_limit) || 0,
           default_credit_days: parseInt(customerForm.default_credit_days) || 0,
           is_active: customerForm.is_active,
-          notes: customerForm.notes || null,
+          notes: customerForm.notes?.trim() || null,
         });
         showToast('Customer profile updated successfully!', 'success');
       } else {
-        await api.createCustomer({
-          ...customerForm,
+        const payload = {
+          customer_code: customerForm.customer_code?.trim() || undefined,
+          customer_type: customerForm.customer_type,
+          display_name: customerForm.display_name.trim(),
+          phone: customerForm.phone.trim(),
+          email: customerForm.email?.trim() || null,
+          tax_number: customerForm.tax_number?.trim() || null,
           credit_limit: parseFloat(customerForm.credit_limit) || 0,
           default_credit_days: parseInt(customerForm.default_credit_days) || 0,
-        });
+          is_active: customerForm.is_active,
+          notes: customerForm.notes?.trim() || null,
+        };
+
+        if (customerForm.address?.address_line?.trim() || customerForm.address?.city?.trim()) {
+          payload.address = {
+            ...customerForm.address,
+            recipient_name: customerForm.address.recipient_name || customerForm.display_name,
+            phone: customerForm.address.phone || customerForm.phone,
+          };
+        }
+
+        await api.createCustomer(payload);
         showToast('New customer profile registered!', 'success');
       }
 
       setIsCustomerModalOpen(false);
       await loadCustomers();
     } catch (err) {
-      showToast(err.message || 'Failed to save customer', 'error');
+      const msg = err.data?.message || err.message || 'Failed to save customer';
+      setFormError(msg);
+      showToast(msg, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -770,6 +803,25 @@ export const Customers = () => {
         maxWidth={580}
       >
         <form onSubmit={handleSubmitCustomer} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {formError && (
+            <div
+              style={{
+                padding: '10px 14px',
+                borderRadius: 8,
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#ef4444',
+                fontSize: '0.84rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <Icon name="alert" size={16} color="#ef4444" />
+              <span>{formError}</span>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 4 }}>
@@ -788,14 +840,14 @@ export const Customers = () => {
 
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: 4 }}>
-                Customer Code
+                Customer Code (Optional)
               </label>
               <input
                 type="text"
-                required
                 disabled={!!editingCustomer}
                 value={customerForm.customer_code}
                 onChange={(e) => setCustomerForm({ ...customerForm, customer_code: e.target.value })}
+                placeholder="Auto-generated if blank"
                 style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', fontSize: '0.88rem', fontFamily: 'JetBrains Mono, monospace' }}
               />
             </div>

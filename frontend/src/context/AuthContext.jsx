@@ -113,6 +113,7 @@ export const AuthProvider = ({ children }) => {
         toggleTheme,
         toasts,
         addToast,
+        showToast: addToast,
         removeToast,
       }}
     >
