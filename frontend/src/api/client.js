@@ -124,6 +124,20 @@ class ApiClient {
     return this.request('/user');
   }
 
+  updateProfile(data) {
+    return this.request('/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  changePassword(data) {
+    return this.request('/user/password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // ── Admin Staff Users APIs ───────────────────────────────────
   getUsers(params = {}) {
     return this.request(`/admin/users${this.buildQuery(params)}`);

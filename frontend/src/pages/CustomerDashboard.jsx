@@ -82,6 +82,16 @@ export default function CustomerDashboard() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
 
+  // Password Security state
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: '',
+    password: '',
+    password_confirmation: '',
+  });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+
   // Sync tab with URL
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -229,6 +239,41 @@ export default function CustomerDashboard() {
       showToast?.(err.data?.message || 'Failed to update profile.', 'error');
     } finally {
       setProfileSaving(false);
+    }
+  };
+
+  // Change password for customer
+  const handleSavePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (passwordForm.password.length < 6) {
+      setPasswordError('New password must be at least 6 characters.');
+      return;
+    }
+
+    if (passwordForm.password !== passwordForm.password_confirmation) {
+      setPasswordError('Password confirmation does not match.');
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      await api.changePassword(passwordForm);
+      setPasswordSuccess('Your password has been changed securely.');
+      showToast?.('Password changed successfully!', 'success');
+      setPasswordForm({
+        current_password: '',
+        password: '',
+        password_confirmation: '',
+      });
+      setTimeout(() => setPasswordSuccess(''), 4000);
+    } catch (err) {
+      setPasswordError(err.message || 'Failed to update password. Please check your current password.');
+      showToast?.(err.message || 'Failed to update password', 'error');
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -2190,6 +2235,165 @@ export default function CustomerDashboard() {
                   }}
                 >
                   {profileSaving ? 'Saving Updates...' : 'Save Profile Changes'}
+                </button>
+              </form>
+            </div>
+
+            {/* Account Security & Password Card */}
+            <div
+              style={{
+                background: colors.bgSurface,
+                borderRadius: '24px',
+                padding: '30px',
+                border: `1px solid ${colors.border}`,
+                boxShadow: colors.cardShadow,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '10px',
+                    background: 'rgba(59, 130, 246, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#3b82f6',
+                  }}
+                >
+                  <Icon name="shield" size={18} color="#3b82f6" />
+                </div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: colors.textMain, margin: 0 }}>
+                  Account Security &amp; Password
+                </h3>
+              </div>
+              <p style={{ fontSize: '0.88rem', color: colors.textMuted, lineHeight: 1.6, margin: '0 0 20px' }}>
+                Ensure your account credentials remain secure. Enter your current password followed by your new password.
+              </p>
+
+              {passwordError && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#ef4444',
+                    fontSize: '0.82rem',
+                    marginBottom: 16,
+                  }}
+                >
+                  {passwordError}
+                </div>
+              )}
+
+              {passwordSuccess && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    color: '#10b981',
+                    fontSize: '0.82rem',
+                    marginBottom: 16,
+                  }}
+                >
+                  {passwordSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleSavePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: colors.textMuted, marginBottom: 6 }}>
+                    Current Password *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={passwordForm.current_password}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
+                    placeholder="Enter current password"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      background: colors.bgCardSubtle,
+                      border: `1px solid ${colors.border}`,
+                      color: colors.textMain,
+                      fontSize: '0.88rem',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: colors.textMuted, marginBottom: 6 }}>
+                      New Password *
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={passwordForm.password}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })}
+                      placeholder="Min 6 characters"
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        background: colors.bgCardSubtle,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textMain,
+                        fontSize: '0.88rem',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: colors.textMuted, marginBottom: 6 }}>
+                      Confirm New Password *
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={passwordForm.password_confirmation}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, password_confirmation: e.target.value })}
+                      placeholder="Repeat new password"
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        background: colors.bgCardSubtle,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textMain,
+                        fontSize: '0.88rem',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={passwordSaving}
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: '9999px',
+                    background: '#2563eb',
+                    border: 'none',
+                    color: '#ffffff',
+                    fontSize: '0.88rem',
+                    fontWeight: 800,
+                    cursor: passwordSaving ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 16px rgba(37, 99, 235, 0.3)',
+                    marginTop: 4,
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  {passwordSaving ? 'Updating Password...' : 'Update Account Password'}
                 </button>
               </form>
             </div>

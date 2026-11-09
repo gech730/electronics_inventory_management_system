@@ -110,6 +110,8 @@ Route::get('/sale-refunds/{saleRefund}', [SaleRefundController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [ApiAuthController::class, 'logout']);
     Route::get('/user', [ApiAuthController::class, 'user']);
+    Route::put('/user/profile', [ApiAuthController::class, 'updateProfile']);
+    Route::post('/user/password', [ApiAuthController::class, 'changePassword']);
 
     // Customer Portal routes
     Route::get('/customer/profile', [CustomerPortalController::class, 'profile']);

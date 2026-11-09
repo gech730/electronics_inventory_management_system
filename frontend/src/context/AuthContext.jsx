@@ -92,6 +92,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem('volttrack_user', JSON.stringify(updatedUser));
+  };
+
   const hasRole = (allowedRoles = []) => {
     if (!user) return false;
     if (allowedRoles.length === 0) return true;
@@ -108,6 +113,7 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        updateUser,
         hasRole,
         theme,
         toggleTheme,

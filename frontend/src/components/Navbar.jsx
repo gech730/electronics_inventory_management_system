@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Icon from './Icons';
+import ProfileModal from './ProfileModal';
 
 export const Navbar = ({ onToggleSidebar }) => {
   const { user, logout } = useAuth();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   return (
     <header
@@ -103,12 +105,16 @@ export const Navbar = ({ onToggleSidebar }) => {
 
         {/* User Profile Pill with chevron */}
         <div
+          onClick={() => setIsProfileOpen(true)}
+          title="Account Profile & Password Security"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 12,
             padding: '4px 6px',
             cursor: 'pointer',
+            borderRadius: 8,
+            transition: 'background 0.2s',
           }}
         >
           <div
@@ -130,10 +136,10 @@ export const Navbar = ({ onToggleSidebar }) => {
 
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
             <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>
-              {user?.name || 'Getacher Kifilie'}
+              {user?.name || 'Authorized Staff'}
             </span>
             <span style={{ fontSize: '0.74rem', color: '#94a3b8', textTransform: 'capitalize' }}>
-              {user?.role || 'Admin'}
+              {user?.role || 'Staff'}
             </span>
           </div>
 
@@ -153,6 +159,12 @@ export const Navbar = ({ onToggleSidebar }) => {
           <Icon name="logout" size={16} color="#64748b" />
         </button>
       </div>
+
+      {/* Staff Account & Password Modal */}
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
     </header>
   );
 };

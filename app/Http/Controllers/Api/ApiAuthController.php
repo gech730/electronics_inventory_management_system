@@ -100,4 +100,55 @@ class ApiAuthController extends Controller
     {
         return response()->json($request->user()->only(['id', 'name', 'email', 'role']));
     }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+        ]);
+
+        $user->update($validated);
+
+        if ($user->customer) {
+            $user->customer->update([
+                'display_name' => $validated['name'],
+                'email' => $validated['email'],
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Profile updated successfully.',
+            'user' => $user->only(['id', 'name', 'email', 'role']),
+        ]);
+    }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+        ]);
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'The provided current password does not match our records.',
+                'errors' => ['current_password' => ['Incorrect current password.']],
+            ], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Password changed successfully.',
+        ]);
+    }
 }
