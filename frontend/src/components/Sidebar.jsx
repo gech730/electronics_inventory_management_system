@@ -106,7 +106,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           path: '/users',
           icon: 'settings',
           badge: 'Admin',
-          roles: ['admin', 'manager'],
+          roles: ['admin'],
           description: 'Staff accounts & permissions',
         },
       ],

@@ -19,11 +19,18 @@ export const Dashboard = () => {
   const [shifts, setShifts] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [recentOrdersFilter, setRecentOrdersFilter] = useState('all');
+  const [staffCount, setStaffCount] = useState(0);
 
   // Load operational data concurrently & gracefully
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
+      if (user?.role === 'admin') {
+        api.getUsers().then((res) => {
+          if (Array.isArray(res?.data)) setStaffCount(res.data.length);
+        }).catch(() => {});
+      }
+
       const [
         productsRes,
         categoriesRes,
@@ -375,16 +382,18 @@ export const Dashboard = () => {
                 letterSpacing: '0.06em',
                 padding: '3px 10px',
                 borderRadius: '9999px',
-                background: 'rgba(22, 119, 255, 0.12)',
-                color: '#1677ff',
-                border: '1px solid rgba(22, 119, 255, 0.25)',
+                background: user?.role === 'admin' ? 'rgba(22, 119, 255, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                color: user?.role === 'admin' ? '#1677ff' : '#10b981',
+                border: user?.role === 'admin' ? '1px solid rgba(22, 119, 255, 0.25)' : '1px solid rgba(16, 185, 129, 0.25)',
               }}
             >
-              {user?.role || 'Admin'} Console
+              {user?.role === 'admin' ? 'System Administrator' : 'Store Operations Manager'} Console
             </span>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', margin: '4px 0 0' }}>
-            Live Electronics Operations Console • Real-time sales, inventory telemetry, and orders
+            {user?.role === 'admin'
+              ? 'Executive Enterprise Console • Global financials, staff RBAC, system controls & audit telemetry'
+              : 'Store Operations & Inventory Console • Stock fulfillment, cashier shift oversight, procurement & daily floor sales'}
           </p>
         </div>
 
@@ -606,85 +615,156 @@ export const Dashboard = () => {
           </div>
         </Link>
 
-        {/* Card 3: Stock Health / Alerts */}
-        <Link
-          to="/balances"
-          style={{ textDecoration: 'none' }}
-          className="glass-card glass-card-interactive"
-        >
-          <div
-            style={{
-              padding: '20px 22px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
-              transition: 'transform 200ms ease, box-shadow 200ms ease',
-            }}
+        {/* Card 3: Role-specific KPI (Staff & RBAC for Admin, Inventory Health for Manager) */}
+        {user?.role === 'admin' ? (
+          <Link
+            to="/users"
+            style={{ textDecoration: 'none' }}
+            className="glass-card glass-card-interactive"
           >
             <div
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: '12px',
-                background:
-                  stats.lowStockCount > 0
-                    ? 'linear-gradient(135deg, #ff9f43 0%, #ea580c 100%)'
-                    : 'linear-gradient(135deg, #00b074 0%, #10b981 100%)',
+                padding: '20px 22px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ffffff',
-                boxShadow:
-                  stats.lowStockCount > 0
-                    ? '0 4px 12px rgba(245, 158, 11, 0.3)'
-                    : '0 4px 12px rgba(0, 176, 116, 0.3)',
-                flexShrink: 0,
+                gap: 16,
+                transition: 'transform 200ms ease, box-shadow 200ms ease',
               }}
             >
-              <Icon name="alert" size={24} color="#ffffff" />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <span
-                style={{
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                Inventory Health
-              </span>
               <div
                 style={{
-                  fontSize: '1.45rem',
-                  fontWeight: 800,
-                  color: stats.lowStockCount > 0 ? '#ea580c' : 'var(--text-main)',
-                  marginTop: 2,
-                }}
-              >
-                {stats.lowStockCount > 0 ? `${stats.lowStockCount} Low Stock` : 'Optimal'}
-              </div>
-              <div
-                style={{
-                  fontSize: '0.74rem',
-                  color: stats.lowStockCount > 0 ? '#ea580c' : '#00b074',
-                  marginTop: 3,
-                  fontWeight: 600,
+                  width: 48,
+                  height: 48,
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 4,
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+                  flexShrink: 0,
                 }}
               >
-                <span>
-                  {stats.lowStockCount > 0
-                    ? `${stats.outOfStockCount} out of stock • Restock &rarr;`
-                    : 'All stock thresholds healthy'}
+                <Icon name="shield" size={24} color="#ffffff" />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span
+                  style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    color: 'var(--text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Staff & RBAC Identity
                 </span>
+                <div
+                  style={{
+                    fontSize: '1.45rem',
+                    fontWeight: 800,
+                    color: 'var(--text-main)',
+                    marginTop: 2,
+                  }}
+                >
+                  {staffCount || 7} Staff Accounts
+                </div>
+                <div
+                  style={{
+                    fontSize: '0.74rem',
+                    color: '#8b5cf6',
+                    marginTop: 3,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <span>Admins, Managers & Cashiers • Manage &rarr;</span>
+                </div>
               </div>
             </div>
-          </div>
-        </Link>
+          </Link>
+        ) : (
+          <Link
+            to="/balances"
+            style={{ textDecoration: 'none' }}
+            className="glass-card glass-card-interactive"
+          >
+            <div
+              style={{
+                padding: '20px 22px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                transition: 'transform 200ms ease, box-shadow 200ms ease',
+              }}
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '12px',
+                  background:
+                    stats.lowStockCount > 0
+                      ? 'linear-gradient(135deg, #ff9f43 0%, #ea580c 100%)'
+                      : 'linear-gradient(135deg, #00b074 0%, #10b981 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  boxShadow:
+                    stats.lowStockCount > 0
+                      ? '0 4px 12px rgba(245, 158, 11, 0.3)'
+                      : '0 4px 12px rgba(0, 176, 116, 0.3)',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="alert" size={24} color="#ffffff" />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span
+                  style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    color: 'var(--text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Inventory Health
+                </span>
+                <div
+                  style={{
+                    fontSize: '1.45rem',
+                    fontWeight: 800,
+                    color: stats.lowStockCount > 0 ? '#ea580c' : 'var(--text-main)',
+                    marginTop: 2,
+                  }}
+                >
+                  {stats.lowStockCount > 0 ? `${stats.lowStockCount} Low Stock` : 'Optimal'}
+                </div>
+                <div
+                  style={{
+                    fontSize: '0.74rem',
+                    color: stats.lowStockCount > 0 ? '#ea580c' : '#00b074',
+                    marginTop: 3,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <span>
+                    {stats.lowStockCount > 0
+                      ? `${stats.outOfStockCount} out of stock • Restock &rarr;`
+                      : 'All stock thresholds healthy'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        )}
 
         {/* Card 4: Open Orders & Register Shifts */}
         <Link
@@ -932,43 +1012,83 @@ export const Dashboard = () => {
             </div>
           </Link>
 
-          <Link
-            to="/users"
-            className="glass-card glass-card-interactive"
-            style={{
-              padding: '14px 16px',
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              borderLeft: '4px solid #8b5cf6',
-              transition: 'all 150ms ease',
-            }}
-          >
-            <div
+          {user?.role === 'admin' ? (
+            <Link
+              to="/users"
+              className="glass-card glass-card-interactive"
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 8,
-                background: 'rgba(139, 92, 246, 0.1)',
-                color: '#8b5cf6',
+                padding: '14px 16px',
+                textDecoration: 'none',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
+                gap: 12,
+                borderLeft: '4px solid #8b5cf6',
+                transition: 'all 150ms ease',
               }}
             >
-              <Icon name="shield" size={18} color="#8b5cf6" />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                Staff & Roles
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: 'rgba(139, 92, 246, 0.1)',
+                  color: '#8b5cf6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="shield" size={18} color="#8b5cf6" />
               </div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                Access control & users
+              <div>
+                <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  Staff & Roles
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  Access control & users
+                </div>
               </div>
-            </div>
-          </Link>
+            </Link>
+          ) : (
+            <Link
+              to="/shifts"
+              className="glass-card glass-card-interactive"
+              style={{
+                padding: '14px 16px',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                borderLeft: '4px solid #8b5cf6',
+                transition: 'all 150ms ease',
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: 'rgba(139, 92, 246, 0.1)',
+                  color: '#8b5cf6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="clock" size={18} color="#8b5cf6" />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  Cashier Shifts
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  Drawer floats & cash audits
+                </div>
+              </div>
+            </Link>
+          )}
         </div>
       </div>
 
