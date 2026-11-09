@@ -24,3 +24,4 @@ class ContactMessage extends Model
         'updated_at' => 'datetime',
     ];
 }
+
