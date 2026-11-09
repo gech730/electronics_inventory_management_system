@@ -117,6 +117,14 @@ export const Sidebar = ({ isOpen, onClose }) => {
           roles: ['admin'],
           description: 'Payment methods & VAT tax rates',
         },
+        {
+          label: 'Customer Support & Inquiries',
+          path: '/support-inquiries',
+          icon: 'mail',
+          badge: null,
+          roles: ['admin', 'manager'],
+          description: 'Customer contact messages & feedback',
+        },
       ],
     },
   ];

@@ -27,6 +27,7 @@ const routeTitles = {
   '/goods-receipts': 'Inbound Goods Receiving (GRN)',
   '/returns': 'Customer Returns & RMA Replacements',
   '/finance-settings': 'Financial Ledger, Accounts & Currencies',
+  '/support-inquiries': 'Customer Support & Inquiries Desk',
   '/users': 'Staff Access & RBAC Identity Management',
   '/login': 'Staff & Client Authentication Portal',
   '/register': 'Customer Registration & Account Portal',
@@ -64,6 +65,7 @@ import Transfers from './pages/Transfers';
 import Adjustments from './pages/Adjustments';
 import Returns from './pages/Returns';
 import FinanceSettings from './pages/FinanceSettings';
+import SupportInquiries from './pages/SupportInquiries';
 import Sales from './pages/Sales';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
@@ -194,6 +196,7 @@ export default function App() {
           <Route path="/goods-receipts" element={<GoodsReceipts />} />
           <Route path="/returns" element={<Returns />} />
           <Route path="/finance-settings" element={<FinanceSettings />} />
+          <Route path="/support-inquiries" element={<SupportInquiries />} />
           <Route path="/users" element={<Users />} />
         </Route>
 

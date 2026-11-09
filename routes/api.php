@@ -31,10 +31,12 @@ use App\Http\Controllers\Api\SaleReturnController;
 use App\Http\Controllers\Api\SaleRefundController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\CustomerPortalController;
+use App\Http\Controllers\Api\ContactMessageController;
 
 Route::post('/login', [ApiAuthController::class, 'login']);
 Route::post('/register', [ApiAuthController::class, 'register']);
 Route::post('/checkout', [CheckoutController::class, 'checkout']);
+Route::post('/contact', [ContactMessageController::class, 'store']);
 Route::get('/tracking/{reference}', [CustomerPortalController::class, 'track']);
 
 // Public routes (catalog, stores, locations, units browsing)
@@ -227,5 +229,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/sales', [SaleController::class, 'index']);
         Route::post('/sales', [SaleController::class, 'store']);
         Route::get('/sales/{sale}', [SaleController::class, 'show']);
+    });
+
+    // Customer Inquiries & Support Messages (Manager & Admin access)
+    Route::middleware('role:manager,admin')->group(function () {
+        Route::get('/admin/contact-messages', [ContactMessageController::class, 'index']);
+        Route::match(['put', 'patch'], '/admin/contact-messages/{id}', [ContactMessageController::class, 'update']);
+        Route::delete('/admin/contact-messages/{id}', [ContactMessageController::class, 'destroy']);
     });
 });

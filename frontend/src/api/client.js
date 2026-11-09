@@ -884,6 +884,29 @@ class ApiClient {
   trackShipment(reference) {
     return this.request(`/tracking/${encodeURIComponent(reference)}`);
   }
+
+  // ── Contact Messages & Customer Support ────────────────────
+  submitContactMessage(data) {
+    return this.request('/contact', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  getContactMessages(params = {}) {
+    return this.request(`/admin/contact-messages${this.buildQuery(params)}`);
+  }
+
+  updateContactMessage(id, data) {
+    return this.request(`/admin/contact-messages/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteContactMessage(id) {
+    return this.request(`/admin/contact-messages/${id}`, { method: 'DELETE' });
+  }
 }
 
 export const api = new ApiClient();

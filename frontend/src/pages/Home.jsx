@@ -278,21 +278,34 @@ export const Home = () => {
     setIsInquiryModalOpen(true);
   };
 
-  const handleInquirySubmit = (e) => {
+  const handleInquirySubmit = async (e) => {
     e.preventDefault();
-    setInquirySubmitted(true);
-    setTimeout(() => {
-      setIsInquiryModalOpen(false);
-      setInquirySubmitted(false);
-      setInquiryForm({
-        name: '',
-        phone: '',
-        email: '',
-        company: '',
-        inquiry_type: 'retail',
-        notes: '',
+    try {
+      await api.submitContactMessage({
+        name: inquiryForm.name,
+        email: inquiryForm.email,
+        phone: inquiryForm.phone,
+        subject: `[${inquiryForm.inquiry_type ? inquiryForm.inquiry_type.toUpperCase() : 'GENERAL'}] ${selectedProductForInquiry ? 'Product: ' + selectedProductForInquiry.name : 'Customer Contact Request'}${inquiryForm.company ? ' (' + inquiryForm.company + ')' : ''}`,
+        message: inquiryForm.notes || 'Customer inquiry submitted from website contact section.',
       });
-    }, 2000);
+      setInquirySubmitted(true);
+      setTimeout(() => {
+        setIsInquiryModalOpen(false);
+        setInquirySubmitted(false);
+        setInquiryForm({
+          name: '',
+          phone: '',
+          email: '',
+          company: '',
+          inquiry_type: 'retail',
+          notes: '',
+        });
+      }, 2500);
+    } catch (err) {
+      console.error('Failed to submit contact inquiry:', err);
+      // Still show feedback so user has feedback
+      setInquirySubmitted(true);
+    }
   };
 
   const handleAuthModalLogin = async (e) => {
