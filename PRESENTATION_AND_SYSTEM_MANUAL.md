@@ -33,7 +33,8 @@
 
 ### 🌟 Key Distinctions
 - **Zero Mock Data**: 100% of products, categories, orders, customers, and financial audits are driven by live relational database records.
-- **Ethiopian Payment Ecosystem**: Out-of-the-box support for **Telebirr**, **CBE Birr**, **Cash on Delivery / POS Cash**, **Direct Bank Wire**, and **Debit/Credit Cards**.
+- **Ethiopian Payment Ecosystem**: Out-of-the-box support strictly focused on **Telebirr** (Sandbox simulation active), **CBE Birr** (Sandbox simulation active), and **Cash** (Counter POS & Cash on Delivery).
+- **Universal Light / Dark Mode**: Unified single source of truth for seamless light and dark mode toggling across public boutique, customer portal, POS terminal, and executive administration.
 - **Data Isolation**: Cashiers are strictly isolated to viewing their own sales receipts, while Administrators and Operations Managers possess 360° store oversight.
 
 ---
@@ -211,7 +212,19 @@ The application enforces a granular 5-tier role hierarchy. Each user account is 
   - **Account Deletion Guard**: System strictly forbids an administrator from deleting their own active account, preventing accidental lockout.
 
 #### 17. Finance, Tax & Currencies (`/finance-settings`)
-- Configuration of store payment tenders (Telebirr, CBE Birr, Cash, Card, Bank Wire) and legal VAT rates (Ethiopian standard 15%).
+- Configuration of store payment tenders (Telebirr, CBE Birr, Cash) and legal VAT rates (Ethiopian standard 15%).
+
+#### 18. Customer Support & Inquiries Desk (`/support-inquiries`)
+- **Direct Storefront Integration**: Receives inquiries, product quotation requests, and customer questions submitted via the public contact forms on the website.
+- **Support Workflow**:
+  - Live KPI tiles for Total Inquiries, Pending Action, In Progress, and Resolved.
+  - Interactive status dropdown per message for rapid triage.
+  - Internal staff notes feature to document customer phone calls, quote deliveries, and resolution logs.
+  - Instant search across sender names, emails, phone numbers, and subject lines.
+
+#### 19. Staff & Customer Self-Service Profile & Password Security
+- **Staff Accounts (Admin, Manager, Cashier, Storekeeper)**: Accessible by clicking the user avatar in the top navigation bar. Includes personal profile updating and secure password change with current password validation.
+- **Customer Accounts**: Self-service profile details (Name, Direct Contact Phone, Express Delivery Coordinates) and encrypted password changing within the Customer Dashboard.
 
 ---
 
