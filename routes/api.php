@@ -176,6 +176,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin/users', [ApiUserController::class, 'index']);
         Route::post('/admin/users', [ApiUserController::class, 'store']);
+        Route::match(['put', 'patch'], '/admin/users/{user}', [ApiUserController::class, 'update']);
+        Route::delete('/admin/users/{user}', [ApiUserController::class, 'destroy']);
 
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::match(['put', 'patch'], '/categories/{category}', [CategoryController::class, 'update']);

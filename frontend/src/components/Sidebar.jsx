@@ -109,6 +109,14 @@ export const Sidebar = ({ isOpen, onClose }) => {
           roles: ['admin'],
           description: 'Staff accounts & permissions',
         },
+        {
+          label: 'Finance & Tax Settings',
+          path: '/finance-settings',
+          icon: 'dollarSign',
+          badge: 'Admin',
+          roles: ['admin'],
+          description: 'Payment methods & VAT tax rates',
+        },
       ],
     },
   ];

@@ -136,6 +136,19 @@ class ApiClient {
     });
   }
 
+  updateUser(id, data) {
+    return this.request(`/admin/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteUser(id) {
+    return this.request(`/admin/users/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // ── Categories & Brands APIs ─────────────────────────────────
   getCategories(params = {}) {
     return this.request(`/categories${this.buildQuery(params)}`);

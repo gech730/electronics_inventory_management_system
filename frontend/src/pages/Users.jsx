@@ -15,10 +15,21 @@ export const Users = () => {
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
 
   // Form State for creating staff
   const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    role: 'cashier',
+    password: '',
+    password_confirmation: '',
+  });
+
+  // Form State for editing staff
+  const [editFormData, setEditFormData] = useState({
     name: '',
     email: '',
     role: 'cashier',
@@ -104,6 +115,62 @@ export const Users = () => {
     }
   };
 
+  // Open Edit Modal
+  const handleOpenEditModal = (staff) => {
+    setEditingUser(staff);
+    setEditFormData({
+      name: staff.name || '',
+      email: staff.email || '',
+      role: staff.role || 'cashier',
+      password: '',
+      password_confirmation: '',
+    });
+    setFormError('');
+    setIsEditModalOpen(true);
+  };
+
+  // Submit Edit Staff Member
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setFormError('');
+
+    if (editFormData.password) {
+      if (editFormData.password !== editFormData.password_confirmation) {
+        setFormError('Passwords do not match.');
+        return;
+      }
+      if (editFormData.password.length < 8) {
+        setFormError('Password must be at least 8 characters long.');
+        return;
+      }
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        name: editFormData.name,
+        email: editFormData.email,
+        role: editFormData.role,
+      };
+      if (editFormData.password) {
+        payload.password = editFormData.password;
+        payload.password_confirmation = editFormData.password_confirmation;
+      }
+      const res = await api.updateUser(editingUser.id, payload);
+      addToast(`Staff account for ${editFormData.name} updated successfully!`, 'success');
+      setIsEditModalOpen(false);
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === editingUser.id ? { ...u, ...res.user } : u))
+      );
+    } catch (err) {
+      setFormError(err.data?.message || err.message || 'Failed to update user.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Toggle User Active / Inactive Status
   const handleToggleStatus = (targetUser) => {
     if (targetUser.id === currentUser?.id) {
@@ -125,7 +192,7 @@ export const Users = () => {
   };
 
   // Delete User Confirmation
-  const confirmDeleteUser = () => {
+  const confirmDeleteUser = async () => {
     if (!userToDelete) return;
 
     if (userToDelete.id === currentUser?.id) {
@@ -134,9 +201,15 @@ export const Users = () => {
       return;
     }
 
-    setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
-    addToast(`Staff member ${userToDelete.name} removed successfully`, 'info');
-    setUserToDelete(null);
+    try {
+      await api.deleteUser(userToDelete.id);
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
+      addToast(`Staff member ${userToDelete.name} removed successfully`, 'info');
+    } catch (err) {
+      addToast(err.message || 'Failed to delete staff member.', 'error');
+    } finally {
+      setUserToDelete(null);
+    }
   };
 
   // Filtered Users List
@@ -440,6 +513,16 @@ export const Users = () => {
                       {/* Management Action Buttons */}
                       <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          {/* Edit Staff Role & Info */}
+                          <button
+                            onClick={() => handleOpenEditModal(staff)}
+                            className="action-btn action-btn-primary"
+                            title="Edit staff role & details"
+                          >
+                            <Icon name="edit" size={13} />
+                            <span>Edit</span>
+                          </button>
+
                           {/* Toggle Active / Inactive Status Button */}
                           <button
                             onClick={() => handleToggleStatus(staff)}
@@ -611,6 +694,142 @@ export const Users = () => {
               disabled={submitting}
             >
               {submitting ? 'Creating...' : 'Create Staff Account'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal 2: Edit Staff Member Role & Profile */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={editingUser ? `Edit Staff: ${editingUser.name}` : 'Edit Staff Member'}
+        maxWidth={500}
+      >
+        {formError && (
+          <div
+            style={{
+              padding: '12px 16px',
+              borderRadius: '8px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#ef4444',
+              fontSize: '0.86rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              marginBottom: 18,
+            }}
+          >
+            <Icon name="alert" size={18} color="#ef4444" />
+            <span>{formError}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleEditSubmit}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="edit_name" style={{ color: '#64748b', fontSize: '0.78rem' }}>
+              Full Name
+            </label>
+            <input
+              id="edit_name"
+              name="name"
+              type="text"
+              className="form-input"
+              value={editFormData.name}
+              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+              style={{ background: '#f8fafc', color: '#1e293b' }}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="edit_email" style={{ color: '#64748b', fontSize: '0.78rem' }}>
+              Email Address
+            </label>
+            <input
+              id="edit_email"
+              name="email"
+              type="email"
+              className="form-input"
+              value={editFormData.email}
+              onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+              style={{ background: '#f8fafc', color: '#1e293b' }}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="edit_role" style={{ color: '#64748b', fontSize: '0.78rem' }}>
+              System Operational Role (RBAC)
+            </label>
+            <select
+              id="edit_role"
+              name="role"
+              className="form-select"
+              value={editFormData.role}
+              onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+              style={{ background: '#f8fafc', color: '#1e293b' }}
+              required
+            >
+              <option value="admin">Administrator (Complete Governance & Security)</option>
+              <option value="manager">Manager (Store, Inventory & PO Operations)</option>
+              <option value="cashier">Cashier (Point of Sale Counter & Shifts)</option>
+              <option value="storekeeper">Storekeeper (Warehouse Stock & GRN)</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="edit_password" style={{ color: '#64748b', fontSize: '0.78rem' }}>
+              New Password (Optional, leave blank to keep existing)
+            </label>
+            <input
+              id="edit_password"
+              name="password"
+              type="password"
+              className="form-input"
+              placeholder="Leave blank to keep unchanged"
+              value={editFormData.password}
+              onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+              style={{ background: '#f8fafc', color: '#1e293b' }}
+            />
+          </div>
+
+          {editFormData.password && (
+            <div className="form-group">
+              <label className="form-label" htmlFor="edit_password_confirmation" style={{ color: '#64748b', fontSize: '0.78rem' }}>
+                Confirm New Password
+              </label>
+              <input
+                id="edit_password_confirmation"
+                name="password_confirmation"
+                type="password"
+                className="form-input"
+                placeholder="Confirm new password"
+                value={editFormData.password_confirmation}
+                onChange={(e) => setEditFormData({ ...editFormData, password_confirmation: e.target.value })}
+                style={{ background: '#f8fafc', color: '#1e293b' }}
+                required
+              />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="btn btn-secondary"
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{ background: '#1677ff' }}
+              disabled={submitting}
+            >
+              {submitting ? 'Saving...' : 'Save Staff Changes'}
             </button>
           </div>
         </form>
