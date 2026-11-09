@@ -9,7 +9,6 @@ const DEFAULT_PAYMENT_METHODS = [
   { id: 1, name: 'Cash', method_type: 'cash', code: 'CASH', requires_reference: false },
   { id: 2, name: 'Telebirr', method_type: 'mobile_money', code: 'TELEBIRR', requires_reference: true },
   { id: 3, name: 'CBE Birr', method_type: 'mobile_money', code: 'CBEBIRR', requires_reference: true },
-  { id: 4, name: 'Card / POS', method_type: 'card', code: 'CARD', requires_reference: true },
 ];
 
 export const Pos = () => {
@@ -80,9 +79,10 @@ export const Pos = () => {
         }
 
         const rawPms = Array.isArray(pmRes) ? pmRes : (pmRes?.data || []);
-        const pms = rawPms.length > 0 ? rawPms : DEFAULT_PAYMENT_METHODS;
-        setPaymentMethods(pms);
-        const defaultPm = pms.find((m) => m.method_type === 'cash' || m.code?.toLowerCase() === 'cash') || pms[0];
+        const activePms = (rawPms.length > 0 ? rawPms : DEFAULT_PAYMENT_METHODS)
+          .filter((m) => m.is_active !== false && !['bank_transfer', 'card'].includes(m.code?.toLowerCase()));
+        setPaymentMethods(activePms);
+        const defaultPm = activePms.find((m) => m.method_type === 'cash' || m.code?.toLowerCase() === 'cash') || activePms[0];
         setSelectedPaymentMethod(defaultPm);
 
         // Check if cashier has active open shift strictly for this logged-in user
@@ -1512,15 +1512,37 @@ export const Pos = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6 }}>
-                  Transaction / Slip Reference
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                    {selectedPaymentMethod?.name} Reference (Sandbox / Slip)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const isCbe = selectedPaymentMethod?.code?.toUpperCase().includes('CBE');
+                      const prefix = isCbe ? 'CBE-POS' : 'TLB-POS';
+                      setTransactionRef(`${prefix}-${Math.floor(100000 + Math.random() * 900000)}`);
+                    }}
+                    style={{
+                      background: 'rgba(22, 119, 255, 0.1)',
+                      border: '1px solid #1677ff',
+                      color: '#1677ff',
+                      borderRadius: 6,
+                      padding: '2px 8px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ⚡ Auto-Fill Sandbox Ref
+                  </button>
+                </div>
                 <input
                   type="text"
                   required={selectedPaymentMethod?.requires_reference}
                   value={transactionRef}
                   onChange={(e) => setTransactionRef(e.target.value)}
-                  placeholder="e.g. TLB-20261028-98421 or Bank Slip #"
+                  placeholder="e.g. TLB-POS-984210 or CBE-POS-448102"
                   style={{
                     width: '100%',
                     padding: '10px 14px',

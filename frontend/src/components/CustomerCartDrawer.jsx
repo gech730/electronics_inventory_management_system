@@ -545,25 +545,32 @@ export const CustomerCartDrawer = () => {
                 </div>
               </div>
 
-              {/* 2. Payment Method Selection (Real DB Tender Methods) */}
+              {/* 2. Payment Method Selection (Strictly Telebirr, CBE Birr & Cash) */}
               <div>
                 <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-                  2. Payment Method
+                  2. Payment Method (Telebirr, CBE Birr &amp; Cash)
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
                   {[
-                    { id: 'telebirr', name: 'Telebirr', sub: 'Ethio Telecom Mobile Wallet', icon: '📱' },
-                    { id: 'cbe_birr', name: 'CBE Birr', sub: 'Commercial Bank of Ethiopia', icon: '🏦' },
-                    { id: 'cash', name: 'Cash on Delivery', sub: 'Pay Upon Physical Inspection', icon: '💵' },
-                    { id: 'bank_transfer', name: 'Bank Transfer', sub: 'Commercial Account Clearing', icon: '🏛️' },
-                    { id: 'card', name: 'Debit / Visa Card', sub: 'CBE / Dashen POS Terminal', icon: '💳' },
+                    { id: 'telebirr', name: 'Telebirr', sub: 'Ethio Telecom (Sandbox)', icon: '📱' },
+                    { id: 'cbe_birr', name: 'CBE Birr', sub: 'CBE Mobile Banking (Sandbox)', icon: '🏦' },
+                    { id: 'cash', name: 'Cash on Delivery', sub: 'Pay Upon Inspection / Showroom', icon: '💵' },
                   ].map((method) => {
                     const isSelected = paymentMethod === method.id;
                     return (
                       <div
                         key={method.id}
-                        onClick={() => setPaymentMethod(method.id)}
+                        onClick={() => {
+                          setPaymentMethod(method.id);
+                          if (method.id === 'telebirr' && !formData.payment_reference) {
+                            setFormData((prev) => ({ ...prev, payment_reference: `TLB-SBX-${Math.floor(100000 + Math.random() * 900000)}` }));
+                          } else if (method.id === 'cbe_birr' && !formData.payment_reference) {
+                            setFormData((prev) => ({ ...prev, payment_reference: `CBE-SBX-${Math.floor(100000 + Math.random() * 900000)}` }));
+                          } else if (method.id === 'cash') {
+                            setFormData((prev) => ({ ...prev, payment_reference: '' }));
+                          }
+                        }}
                         style={{
                           padding: '12px',
                           borderRadius: '14px',
@@ -571,7 +578,6 @@ export const CustomerCartDrawer = () => {
                           background: isSelected ? 'rgba(245, 158, 11, 0.12)' : colors.bgCard,
                           cursor: 'pointer',
                           transition: 'all 0.2s',
-                          gridColumn: method.id === 'card' ? 'span 2' : 'span 1',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -586,17 +592,57 @@ export const CustomerCartDrawer = () => {
                   })}
                 </div>
 
+                {/* Telebirr Sandbox Simulator Banner */}
+                {paymentMethod === 'telebirr' && (
+                  <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.08)', border: '1px dashed #3b82f6' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#60a5fa' }}>📱 Telebirr Sandbox Mode Active</span>
+                      <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd', fontWeight: 700 }}>VERIFIED SIMULATION</span>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: colors.textMuted, lineHeight: 1.4 }}>
+                      Merchant Code: <strong>NGUS-TEL-9901</strong> | USSD Code: <strong>*127#</strong>. Instant simulated test clearance.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, payment_reference: `TLB-SBX-${Math.floor(100000 + Math.random() * 900000)}` }))}
+                      style={{ marginTop: 8, padding: '6px 12px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      ⚡ Re-generate Telebirr Approval Code
+                    </button>
+                  </div>
+                )}
+
+                {/* CBE Birr Sandbox Simulator Banner */}
+                {paymentMethod === 'cbe_birr' && (
+                  <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.08)', border: '1px dashed #10b981' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#34d399' }}>🏦 CBE Birr Sandbox Gateway Active</span>
+                      <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.2)', color: '#6ee7b7', fontWeight: 700 }}>VERIFIED SIMULATION</span>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: colors.textMuted, lineHeight: 1.4 }}>
+                      CBE Shortcode: <strong>552211</strong> | Account: <strong>1000-4829-1029</strong>. Instant simulated clearance.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, payment_reference: `CBE-SBX-${Math.floor(100000 + Math.random() * 900000)}` }))}
+                      style={{ marginTop: 8, padding: '6px 12px', borderRadius: '8px', background: '#059669', border: 'none', color: '#fff', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      ⚡ Re-generate CBE Birr Approval Code
+                    </button>
+                  </div>
+                )}
+
                 {/* Optional Payment Reference */}
                 <div style={{ marginTop: 12 }}>
                   <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: colors.textMuted, marginBottom: 4 }}>
-                    Transaction Reference or SMS Receipt (Optional)
+                    {paymentMethod === 'cash' ? 'Special Instructions / Change Notes (Optional)' : 'Transaction Reference / SMS Receipt Code'}
                   </label>
                   <input
                     type="text"
                     name="payment_reference"
                     value={formData.payment_reference}
                     onChange={handleInputChange}
-                    placeholder="e.g. TLB-984218 or CBE-TRX-09"
+                    placeholder={paymentMethod === 'cash' ? 'e.g. Please bring change for 1,000 ETB note' : 'e.g. TLB-SBX-492102 or CBE-SBX-883104'}
                     style={{
                       width: '100%',
                       padding: '10px 14px',
