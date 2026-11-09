@@ -99,22 +99,8 @@ const CUSTOMER_REVIEWS = [
 ];
 
 export const Home = () => {
-  const { isAuthenticated, user, login, register, logout } = useAuth();
+  const { isAuthenticated, user, login, register, logout, theme, toggleTheme } = useAuth();
   const { addToCart, setIsCartOpen, totalCount } = useCart();
-
-  // Light / Dark mode state (Inspired by Rosa)
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('ngus_theme') || 'dark';
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('ngus_theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
 
   const isDark = theme === 'dark';
 

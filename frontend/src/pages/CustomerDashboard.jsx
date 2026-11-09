@@ -6,24 +6,10 @@ import { useCart } from '../context/CartContext';
 import Icon from '../components/Icons';
 
 export default function CustomerDashboard() {
-  const { user, logout, showToast } = useAuth();
+  const { user, logout, showToast, theme, toggleTheme } = useAuth();
   const { cart, addToCart, setIsCartOpen, totalCount } = useCart();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  // ── Theme State (Synced with Rosa Home Page) ───────────────────────
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('ngus_theme') || 'dark';
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('ngus_theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
 
   const isDark = theme === 'dark';
 

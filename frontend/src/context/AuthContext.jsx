@@ -11,8 +11,8 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('volttrack_token') || '');
   const [loading, setLoading] = useState(true);
 
-  // Theme State
-  const [theme, setTheme] = useState(() => localStorage.getItem('volttrack_theme') || 'dark');
+  // Theme State (Unified Single Source of Truth for Storefront & Admin)
+  const [theme, setTheme] = useState(() => localStorage.getItem('ngus_theme') || localStorage.getItem('volttrack_theme') || 'dark');
 
   // Toast System
   const [toasts, setToasts] = useState([]);
@@ -32,12 +32,15 @@ export const AuthProvider = ({ children }) => {
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
+    localStorage.setItem('ngus_theme', nextTheme);
     localStorage.setItem('volttrack_theme', nextTheme);
     document.documentElement.setAttribute('data-theme', nextTheme);
   };
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('ngus_theme', theme);
+    localStorage.setItem('volttrack_theme', theme);
   }, [theme]);
 
   // Initial user fetch
